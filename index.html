@@ -35196,9 +35196,11 @@ ${lessonsText || '—'}
       <option value="SM1">Super Minds 1</option>
       <option value="SM2">Super Minds 2</option>
       <option value="SM3">Super Minds 3</option>
+      <option value="SM4">Super Minds 4</option>
       <option value="GG1">Go Getter 1</option>
       <option value="GG2">Go Getter 2</option>
       <option value="GG3">Go Getter 3</option>
+      <option value="GG4">Go Getter 4</option>
       <option value="WD1">Wow Dragon 1</option>
       <option value="WD2">Wow Dragon 2</option>
       <option value="PR1">Prepare 1</option>
@@ -35207,6 +35209,11 @@ ${lessonsText || '—'}
       <option value="PR4">Prepare 4</option>
       <option value="PR5">Prepare 5</option>
       <option value="PR6">Prepare 6</option>
+      <option value="PR7">Prepare 7</option>
+      <option value="EFB">English File Beginner</option>
+      <option value="EFE">English File Elementary</option>
+      <option value="EFP">English File Pre-Intermediate</option>
+      <option value="EFI">English File Intermediate</option>
     </select>
 
     <label style="margin-top:16px"><span class="h3-en">Unit</span><span class="h3-ru">Юнит</span></label>
@@ -35825,6 +35832,154 @@ const TEXTBOOKS = {
     },
     unitOrder: ["0","1","2","3","4","5","6","7","8","9","final"]
   },
+  SM4: {
+    name: "Super Minds 4",
+    units: {
+      "1": {
+        label: "Unit 1 — In the museum",
+        nameRu: "Юнит 1: В музее",
+        skills: [
+          "Называть лексику о рыцарях и королях (queen, knight, crown, helmet, shield, bow and arrow).",
+          "Использовать must / mustn't для правил и запретов.",
+          "Употреблять местоимения в конструкции Give me / him / her / us / them (the book), please.",
+          "Reading и Listening: понимать историю «The knight».",
+          "Phonics: читать буквосочетание ow.",
+          "Communication: рассказывать о жизни в музее.",
+          "Value: ценить свою семью.",
+          "Writing: писать рекламу музея."
+        ]
+      },
+      "2": {
+        label: "Unit 2 — The world around us",
+        nameRu: "Юнит 2: Мир вокруг нас",
+        skills: [
+          "Называть лексику о природе (mountain, forest, village, lake, island, field, river, path).",
+          "Использовать союзы but, and, because, so.",
+          "Употреблять could / couldn't и вопрос Could you (swim for 10 hours)?",
+          "Reading и Writing: понимать историю «At the restaurant».",
+          "Phonics: различать немые согласные (silent consonants).",
+          "Communication: рассказывать, чем занимаемся в свободное время.",
+          "Value: находить время для семьи.",
+          "Writing: описывать любимое место на улице."
+        ]
+      },
+      "3": {
+        label: "Unit 3 — Danger!",
+        nameRu: "Юнит 3: Опасность!",
+        skills: [
+          "Называть экстренные службы (fire, flood, police officer, firefighter, ambulance, paramedic).",
+          "Использовать Past Continuous (I was climbing a tree; What were they doing?).",
+          "Строить вопросы и краткие ответы в Past Continuous (Was he playing? Yes, he was).",
+          "Reading и Listening: понимать историю «The man in the car».",
+          "Phonics: читать звук /aɪ/.",
+          "Communication: говорить о чрезвычайных ситуациях.",
+          "Value: учиться у природы.",
+          "Writing: рассказывать историю (story telling)."
+        ]
+      },
+      "4": {
+        label: "Unit 4 — Two return tickets",
+        nameRu: "Юнит 4: Два билета туда-обратно",
+        skills: [
+          "Называть лексику вокзала (station, platform, escalator, ticket office, train driver, suitcase).",
+          "Использовать предлоги времени (in September, at eight o'clock, on Sunday, in the morning).",
+          "Употреблять Past Continuous с when (I was having dinner when you phoned me).",
+          "Reading и Listening: понимать историю «The tunnel».",
+          "Phonics: читать звук /eə/.",
+          "Communication: общаться на вокзале.",
+          "Value: бережно относиться к вещам.",
+          "Writing: писать объявление о школьной поездке."
+        ]
+      },
+      "5": {
+        label: "Unit 5 — Police!",
+        nameRu: "Юнит 5: Полиция!",
+        skills: [
+          "Описывать волосы и лицо (dark, blonde, fair, moustache, curly, beard, scar, straight).",
+          "Использовать used to для прошлых состояний (He used to be a police officer).",
+          "Употреблять had to (We had to be really careful).",
+          "Reading и Listening: понимать историю «The Mysterious H».",
+          "Phonics: различать звуки /ɑː/ и /ɔː/.",
+          "Communication: говорить о привычках чтения.",
+          "Value: исправлять свои ошибки.",
+          "Writing: писать отзыв о книге (book review)."
+        ]
+      },
+      "6": {
+        label: "Unit 6 — Mythical beasts",
+        nameRu: "Юнит 6: Мифические существа",
+        skills: [
+          "Называть части тела животных (tail, horn, scales, wing, neck, feathers, tongue).",
+          "Использовать сравнительную и превосходную степени (longer, more dangerous, the biggest, the best, the worst).",
+          "Употреблять конструкцию look like (It looks like a horse, but it's got a big horn).",
+          "Reading и Listening: понимать историю «The secret door».",
+          "Phonics: читать буквосочетание ea.",
+          "Communication: находить необычное животное.",
+          "Value: всегда думать о безопасности.",
+          "Writing: описывать своё мифическое существо."
+        ]
+      },
+      "7": {
+        label: "Unit 7 — Orchestra practice",
+        nameRu: "Юнит 7: Репетиция оркестра",
+        skills: [
+          "Называть музыкальные инструменты (tambourine, triangle, trumpet, trombone, drums, harp, saxophone, violin).",
+          "Использовать притяжательные местоимения (mine, yours, his, hers, ours, theirs).",
+          "Употреблять относительные придаточные с who, which, where (The boy who plays the recorder).",
+          "Reading и Listening: понимать историю «At the concert hall».",
+          "Phonics: различать звуки /ɜː/ и /ɔː/.",
+          "Communication: говорить о музыке в классе.",
+          "Value: работать в команде (teamwork).",
+          "Writing: писать музыкальный отзыв (music review)."
+        ]
+      },
+      "8": {
+        label: "Unit 8 — In the planetarium",
+        nameRu: "Юнит 8: В планетарии",
+        skills: [
+          "Называть космическую лексику (planet, rocket, UFO, star, comet, telescope, astronaut, space station).",
+          "Использовать will для будущего (What will you be when you grow up? I'll be a police officer).",
+          "Употреблять наречия образа действия (angrily, beautifully, carefully, happily, quickly, slowly).",
+          "Reading и Listening: понимать историю «The trap».",
+          "Phonics: понимать словесное ударение и звук /ə/ (schwa).",
+          "Communication: брать интервью у инопланетянина.",
+          "Value: уважать старших.",
+          "Writing: писать запись в дневнике (diary entry)."
+        ]
+      },
+      "9": {
+        label: "Unit 9 — At the campsite",
+        nameRu: "Юнит 9: В кемпинге",
+        skills: [
+          "Называть занятия на отдыхе (sail a boat, dive into the water, row a boat, put up a tent, make a fire, collect wood).",
+          "Различать исчисляемые и неисчисляемые существительные (some cheese, a loaf of bread, a piece of cheese).",
+          "Использовать вопросы How much / How many (How much cheese do we need? How many bottles?).",
+          "Reading и Listening: понимать историю «The last line».",
+          "Phonics: понимать безударные слова (unstressed words).",
+          "Communication: обсуждать планы на отдых.",
+          "Value: тщательно готовиться.",
+          "Writing: писать листовку об отдыхе (holiday leaflet)."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Units",
+        nameRu: "Финальный тест: все юниты курса",
+        skills: [
+          "Описывать музеи и рыцарей, использовать must / mustn't.",
+          "Рассказывать о природе, используя союзы и could / couldn't.",
+          "Говорить о чрезвычайных ситуациях в Past Continuous.",
+          "Описывать путешествия с предлогами времени и Past Continuous + when.",
+          "Описывать внешность с used to и had to.",
+          "Сравнивать существ со сравнительной и превосходной степенями.",
+          "Говорить о музыке с притяжательными местоимениями и relative clauses.",
+          "Рассказывать о космосе и будущем с will и наречиями образа действия.",
+          "Обсуждать кемпинг с исчисляемыми/неисчисляемыми и How much/many."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["1","2","3","4","5","6","7","8","9","final"]
+  },
   GG1: {
     name: "Go Getter 1",
     units: {
@@ -36245,6 +36400,157 @@ const TEXTBOOKS = {
           "Описывать еду, готовку и кулинарный опыт.",
           "Описывать жильё, правила и приглашения.",
           "Строить предсказания и планы на будущее."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["0","1","2","3","4","5","6","7","8","final"]
+  },
+  GG4: {
+    name: "Go Getter 4",
+    units: {
+      "0": {
+        label: "Unit 0 — Get started!",
+        nameRu: "Юнит 0: Get started!",
+        skills: [
+          "Называть виды досуга (free-time activities), прилагательные и слова о погоде.",
+          "Различать Present Simple и Present Continuous, включая глаголы состояния (stative verbs).",
+          "Использовать Present Continuous для будущих договорённостей.",
+          "Образовывать сравнительную и превосходную степени прилагательных.",
+          "Правильно употреблять артикли (a/an, the, нулевой артикль).",
+          "Применять was / were для описания прошлого.",
+          "Communication: представлять себя, говорить о планах, мнениях и каникулах."
+        ]
+      },
+      "1": {
+        label: "Unit 1 — Who we are",
+        nameRu: "Юнит 1: Кто мы",
+        skills: [
+          "Называть одежду и аксессуары, описывать стиль и причёски.",
+          "Использовать прилагательные характера и отрицательные прилагательные.",
+          "Применять Past Simple для рассказа о завершённых событиях.",
+          "Различать Past Continuous и Past Simple.",
+          "Communication: рассказывать историю и реагировать на неё.",
+          "Reading: понимать текст о подростковой моде.",
+          "Listening: воспринимать на слух тему первых впечатлений.",
+          "Writing: описывать друга.",
+          "Pronunciation: различать звуки /s/ и /ʃ/."
+        ]
+      },
+      "2": {
+        label: "Unit 2 — Working hard",
+        nameRu: "Юнит 2: Усердная работа",
+        skills: [
+          "Называть профессии и описывать работу, различать make и do.",
+          "Использовать лексику об учёбе и экзаменах, выражения с take.",
+          "Применять have to / must / mustn't для правил и обязанностей.",
+          "Использовать had to / could для прошлого.",
+          "Communication: просить и давать советы.",
+          "Reading: понимать текст о необычных профессиях.",
+          "Listening: воспринимать информацию об учёбе и экзаменах.",
+          "Writing: описывать школу.",
+          "Pronunciation: отрабатывать звук /h/."
+        ]
+      },
+      "3": {
+        label: "Unit 3 — That's exciting!",
+        nameRu: "Юнит 3: Как увлекательно!",
+        skills: [
+          "Называть виды опыта, спортивные глаголы и снаряжение, сложные существительные.",
+          "Применять Present Perfect с ever и never.",
+          "Использовать Present Perfect с just, already и yet.",
+          "Communication: давать и понимать инструкции.",
+          "Reading: понимать текст о силе и достижениях (Girl power).",
+          "Listening: воспринимать рассказ о прыжках с парашютом.",
+          "Writing: писать письмо о каникулах (email).",
+          "Pronunciation: различать звуки /ʊ/ и /uː/."
+        ]
+      },
+      "4": {
+        label: "Unit 4 — A good story",
+        nameRu: "Юнит 4: Хорошая история",
+        skills: [
+          "Называть виды фильмов и книг, этапы жизни, кинопрофессии.",
+          "Использовать глаголы с предлогами.",
+          "Применять Present Perfect с for и since.",
+          "Различать Present Perfect и Past Simple.",
+          "Communication: приносить и принимать извинения.",
+          "Reading: понимать текст о доброте (Don't forget to be awesome).",
+          "Listening: воспринимать дополнительную информацию на слух.",
+          "Writing: писать рецензию (review).",
+          "Pronunciation: отрабатывать звук /ɔː/."
+        ]
+      },
+      "5": {
+        label: "Unit 5 — Don't stop the music!",
+        nameRu: "Юнит 5: Не прекращай музыку!",
+        skills: [
+          "Называть музыкальные стили и инструменты, музыкальные коллокации.",
+          "Использовать лексику о преступлениях, личных качествах и прилагательные от существительных.",
+          "Различать going to и will для будущего.",
+          "Употреблять определительные придаточные с who, which, that, where.",
+          "Communication: говорить о планах.",
+          "Reading: понимать текст о юном таланте (Alma Deutscher).",
+          "Listening: воспринимать рассказ о конкурсе талантов.",
+          "Writing: писать email с запросом информации.",
+          "Pronunciation: различать звуки /w/ и /v/."
+        ]
+      },
+      "6": {
+        label: "Unit 6 — Protect the planet",
+        nameRu: "Юнит 6: Защити планету",
+        skills: [
+          "Называть диких животных, глаголы об экологии, природные явления и большие числа.",
+          "Применять первый тип условных предложений (first conditional).",
+          "Использовать глаголы с инфинитивом или -ing.",
+          "Communication: убеждать собеседника.",
+          "Reading: понимать текст «Message in a bottle».",
+          "Listening: воспринимать информацию о природных явлениях.",
+          "Writing: составлять листовку с советами или инструкциями.",
+          "Pronunciation: различать звуки /θ/ и /f/."
+        ]
+      },
+      "7": {
+        label: "Unit 7 — Material world",
+        nameRu: "Юнит 7: Мир материалов",
+        skills: [
+          "Называть материалы и прилагательные для описания предметов.",
+          "Использовать глаголы открытий и творчества, технологические глаголы, фразовые глаголы с up и down.",
+          "Применять Present Simple passive.",
+          "Применять Past Simple passive.",
+          "Communication: просить уточнения и проверять понимание.",
+          "Reading: понимать текст «What's it made of?».",
+          "Listening: воспринимать рассказ о любимых гаджетах.",
+          "Writing: описывать популярный продукт.",
+          "Pronunciation: различать звонкие и глухие окончания."
+        ]
+      },
+      "8": {
+        label: "Unit 8 — That's life",
+        nameRu: "Юнит 8: Такова жизнь",
+        skills: [
+          "Называть лексику об отношениях и конфликтах, чувствах и крайних прилагательных (extreme adjectives).",
+          "Использовать be allowed to и let.",
+          "Повторить и закрепить все изученные времена.",
+          "Communication: сочувствовать и подбадривать.",
+          "Reading: понимать текст «Bedroom battles».",
+          "Listening: воспринимать тему буллинга.",
+          "Writing: отвечать на письмо в рубрику проблем.",
+          "Pronunciation: различать звуки /aʊ/ и /əʊ/."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Units",
+        nameRu: "Финальный тест: все юниты курса",
+        skills: [
+          "Рассказывать о себе, внешности, характере и стиле.",
+          "Описывать работу, учёбу, правила и обязанности.",
+          "Делиться опытом и достижениями (Present Perfect).",
+          "Рассказывать о фильмах, книгах и этапах жизни.",
+          "Говорить о музыке, планах и давать определения с relative clauses.",
+          "Обсуждать экологию, делать прогнозы и убеждать.",
+          "Описывать материалы и технологии (passive voice).",
+          "Говорить об отношениях, чувствах, правах и запретах."
         ],
         isFinal: true
       }
@@ -37485,6 +37791,806 @@ const TEXTBOOKS = {
       }
     },
     unitOrder: ["1-2","3-4","5-6","7-8","9-10","11-12","13-14","15-16","17-18","19-20","final"]
+  },
+  PR7: {
+    name: "Prepare 7",
+    units: {
+      "1-2": {
+        label: "Units 1–2 — Creative Minds / Addicted to Fashion",
+        nameRu: "Юниты 1–2: Творческий ум / Помешанные на моде",
+        skills: [
+          "Называть лексику об искусстве, медиа и творческих профессиях.",
+          "Описывать характер: adjective + preposition, verb + preposition.",
+          "Различать Simple, Continuous и Perfect времена.",
+          "Использовать Present Perfect Simple и Continuous.",
+          "Reading: понимать тексты об искусстве и моде (Use of English Part 7, Part 1).",
+          "Обсуждать, важна ли мода."
+        ]
+      },
+      "3-4": {
+        label: "Units 3–4 — All in the Mind / Take It Easy",
+        nameRu: "Юниты 3–4: Всё в голове / Не напрягайся",
+        skills: [
+          "Называть абстрактные существительные и фразовые глаголы об обучении и мышлении.",
+          "Называть лексику о стрессе и фразовые глаголы о здоровье.",
+          "Понимать грамматику фразовых глаголов.",
+          "Использовать Modals (1): необходимость, обязанность, запрет и совет.",
+          "Reading: понимать тексты об интеллекте и давлении (Use of English Part 6, Part 4).",
+          "Life Skills: управление временем (time management)."
+        ]
+      },
+      "5-6": {
+        label: "Units 5–6 — Past Times / Totally Emotional",
+        nameRu: "Юниты 5–6: Дела минувшие / Сплошные эмоции",
+        skills: [
+          "Называть лексику об истории и выражать частотность.",
+          "Выражать эмоции; использовать наречия (тип и позиция).",
+          "Различать present and past habits (привычки).",
+          "Использовать be / get used to.",
+          "Reading: понимать тексты о сне и фобиях (Use of English Part 2, Part 1).",
+          "Culture: цвета в разных культурах."
+        ]
+      },
+      "7-8": {
+        label: "Units 7–8 — Telling Stories / A Great Place to Live",
+        nameRu: "Юниты 7–8: Рассказываем истории / Отличное место для жизни",
+        skills: [
+          "Называть глаголы движения и звуков, временные фразы.",
+          "Называть лексику о сообществе; использовать as if / as though.",
+          "Использовать narrative tenses (повествовательные времена).",
+          "Использовать Future (1): обзор форм будущего.",
+          "Reading: понимать тексты-рассказы и рекомендации (Use of English Part 5, Part 7).",
+          "Life Skills: креативное письмо (creative writing)."
+        ]
+      },
+      "9-10": {
+        label: "Units 9–10 — A Bright Future / Surprise!",
+        nameRu: "Юниты 9–10: Светлое будущее / Сюрприз!",
+        skills: [
+          "Называть коллокации; суффиксы прилагательных и существительных.",
+          "Использовать фразы с in, out of, at, by; расширенные значения слов.",
+          "Использовать Future (2): Continuous и Perfect.",
+          "Использовать Modals (2): модальные глаголы в прошлом.",
+          "Reading: понимать тексты о будущем и флешмобах (Use of English Part 3, Part 6, Part 4)."
+        ]
+      },
+      "11-12": {
+        label: "Units 11–12 — We Are Family / Making a Difference",
+        nameRu: "Юниты 11–12: Мы семья /Менять мир к лучшему",
+        skills: [
+          "Называть фразовые глаголы об отношениях и составные прилагательные.",
+          "Называть глаголы коммуникации; both, either, neither.",
+          "Использовать relative clauses (относительные придаточные).",
+          "Использовать The Passive (1): обзор; каузатив have / get.",
+          "Reading: понимать тексты о знакомствах и добрых делах (Use of English Part 2, Part 5).",
+          "Life Skills: сотрудничество и волонтёрство."
+        ]
+      },
+      "13-14": {
+        label: "Units 13–14 — Leading the Way / Getting There",
+        nameRu: "Юниты 13–14: Вести за собой / Как добраться",
+        skills: [
+          "Называть лексику о лидерстве и достижениях, фразовые глаголы с up.",
+          "Называть фразовые глаголы о транспорте и глаголы для пересказа (reporting verbs).",
+          "Использовать The Passive (2): другие конструкции.",
+          "Использовать Reported Speech (косвенная речь).",
+          "Reading: понимать тексты о вызовах и Hyperloop (Use of English Part 7, Part 4).",
+          "Culture: gap years (год перерыва)."
+        ]
+      },
+      "15-16": {
+        label: "Units 15–16 — The Bigger Picture / New and Improved!",
+        nameRu: "Юниты 15–16: Шире взгляд / Новое и улучшенное!",
+        skills: [
+          "Называть глобальные проблемы (существительные и глаголы), фразы с in.",
+          "Называть лексику о рекламе; коллокации adverb + adjective.",
+          "Использовать Modals (3): дедукция (предположения).",
+          "Использовать Conditionals (1): обзор условных предложений.",
+          "Reading: понимать тексты о молодёжном парламенте и маркетинге (Use of English Part 1, Part 2).",
+          "Life Skills: критическое мышление и оценка рекламы."
+        ]
+      },
+      "17-18": {
+        label: "Units 17–18 — Making Headlines / Creative Careers",
+        nameRu: "Юниты 17–18: Заголовки новостей / Творческие профессии",
+        skills: [
+          "Называть лексику о СМИ и фразовые глаголы о медиа.",
+          "Называть лексику о мире работы; word pairs (парные слова).",
+          "Использовать Conditionals (2): смешанный тип (mixed).",
+          "Использовать конструкции с verb + -ing.",
+          "Reading: понимать тексты о фейках и выборе профессии (Use of English Part 3, Part 5).",
+          "Culture: фан-культура (fan culture)."
+        ]
+      },
+      "19-20": {
+        label: "Units 19–20 — Points of View / Speak Up",
+        nameRu: "Юниты 19–20: Точки зрения / Высказывайся",
+        skills: [
+          "Называть лексику мнений и убеждений; множественные существительные (plural nouns).",
+          "Называть идиомы и часто путаемые слова (commonly confused words).",
+          "Использовать subject–verb agreement (согласование подлежащего и сказуемого).",
+          "Использовать determiners (определители).",
+          "Reading: понимать тексты о мозге и подростковой речи (Use of English Part 6, Part 3)."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Units",
+        nameRu: "Финальный тест: все юниты курса",
+        skills: [
+          "Описывать искусство и моду, используя Perfect времена и предлоги.",
+          "Обсуждать мышление и здоровье с фразовыми глаголами и модальными глаголами.",
+          "Рассказывать о привычках и эмоциях с be/get used to.",
+          "Строить повествование и говорить о будущем (narrative tenses, Future).",
+          "Обсуждать будущее и сюрпризы с Future Continuous/Perfect и Modals в прошлом.",
+          "Описывать семью и перемены с relative clauses и Passive.",
+          "Говорить о лидерстве и транспорте в Reported Speech.",
+          "Обсуждать глобальные проблемы и рекламу с Modals дедукции и Conditionals.",
+          "Анализировать СМИ и профессии с mixed Conditionals и verb + -ing.",
+          "Выражать мнения с subject–verb agreement и determiners."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["1-2","3-4","5-6","7-8","9-10","11-12","13-14","15-16","17-18","19-20","final"]
+  },
+  EFE: {
+    name: "English File Elementary",
+    units: {
+      "1": {
+        label: "File 1 — Hello, everybody / A world of sport / Open your books",
+        nameRu: "File 1: Знакомство, страны, язык класса",
+        skills: [
+          "Использовать глагол be (+/−/?) и личные местоимения (I, you, etc.).",
+          "Применять притяжательные прилагательные (my, your, etc.).",
+          "Называть дни недели, числа 0–100, страны и язык класса (classroom language).",
+          "Pronunciation: гласные звуки, словесное ударение, алфавит.",
+          "Listening: распознавать имена, места и числа.",
+          "Speaking: здороваться, прощаться, говорить, откуда люди.",
+          "Writing: заполнять анкету (form)."
+        ]
+      },
+      "2": {
+        label: "File 2 — Your desk and you / Made in the USA / Don't worry. Be happy!",
+        nameRu: "File 2: Предметы, прилагательные, чувства",
+        skills: [
+          "Использовать единственное и множественное число существительных.",
+          "Применять прилагательные и модификаторы (very, really, quite).",
+          "Использовать повелительное наклонение и let's.",
+          "Называть предметы, цвета, чувства; предлоги in, on, under.",
+          "Pronunciation: окончания -s/-es, долгие и краткие гласные, linking.",
+          "Speaking: говорить, где находятся вещи; описывать предметы; выражать чувства.",
+          "Writing: писать сообщения, заметки и объявления."
+        ]
+      },
+      "3": {
+        label: "File 3 — Great Britain? / Goodbye to the office? / Are you a 'dog person'?",
+        nameRu: "File 3: Present Simple, работа, вопросы",
+        skills: [
+          "Использовать Present Simple (+/−/?).",
+          "Соблюдать порядок слов в вопросах (word order in questions).",
+          "Называть глагольные фразы (cook dinner), профессии, вопросительные слова.",
+          "Pronunciation: окончание -s в 3-м лице, sentence stress.",
+          "Speaking: называть причины с why и because; говорить о работе и навыках.",
+          "Writing: писать личный профиль (personal profile)."
+        ]
+      },
+      "4": {
+        label: "File 4 — Who's that in the photo? / Eat, sleep, repeat / Blue Zones",
+        nameRu: "File 4: Семья, распорядок дня, частотность",
+        skills: [
+          "Использовать притяжательный 's и вопрос Whose…?",
+          "Применять предлоги времени, места и движения.",
+          "Использовать позицию наречий и выражения частотности.",
+          "Называть лексику о семье, распорядке дня, месяцах.",
+          "Pronunciation: звук /ʌ/, буквы o и h, linking.",
+          "Speaking: говорить о друзьях и семье; описывать типичный день.",
+          "Writing: писать статью (article)."
+        ]
+      },
+      "5": {
+        label: "File 5 — Sing me a song / What a noise! / I ♥ London",
+        nameRu: "File 5: can/can't, Present Continuous, погода",
+        skills: [
+          "Использовать can / can't для способностей.",
+          "Применять Present Continuous (be + verb + -ing).",
+          "Различать Present Simple и Present Continuous.",
+          "Называть глагольные фразы, лексику о шуме, погоде и временах года.",
+          "Pronunciation: sentence stress, звук /ŋ/.",
+          "Speaking: говорить о способностях; описывать действия; выражать предпочтения.",
+          "Writing: писать пост в соцсети."
+        ]
+      },
+      "6": {
+        label: "File 6 — A traditional story / I don't like Mondays / Making music",
+        nameRu: "File 6: Объектные местоимения, like + -ing",
+        skills: [
+          "Использовать объектные местоимения (me, you, him, etc.).",
+          "Применять конструкцию like + verb + -ing.",
+          "Повторить be или do в вопросах.",
+          "Называть порядковые числительные, даты, лексику о музыке.",
+          "Pronunciation: звуки /ð/, /θ/, /dʒ/; называние дат, выражение мнений.",
+          "Speaking: рассказывать историю, говорить о привычках чтения и музыкальных вкусах.",
+          "Writing: писать неформальное письмо (informal email)."
+        ]
+      },
+      "7": {
+        label: "File 7 — This is me / Small mistake, big problem / Happy New Year",
+        nameRu: "File 7: Past Simple (was/were, правильные и неправильные)",
+        skills: [
+          "Использовать Past Simple глагола be (was / were).",
+          "Применять Past Simple правильных и неправильных глаголов.",
+          "Называть словообразование (write → writer), выражения прошедшего времени.",
+          "Pronunciation: sentence stress, окончания -ed.",
+          "Reading: понимать историю жизни (life story).",
+          "Speaking: говорить о личном фото; описывать, что делал в последний раз.",
+          "Writing: писать запись в дневнике (diary entry)."
+        ]
+      },
+      "8": {
+        label: "File 8 — A murder in the family / A house with a history / Do you believe in ghosts?",
+        nameRu: "File 8: Past Simple, there is/are/was/were",
+        skills: [
+          "Использовать Past Simple правильных и неправильных глаголов.",
+          "Применять there is / there are, there was / there were, some / any + plural nouns.",
+          "Называть лексику о доме, предлоги движения и места.",
+          "Pronunciation: правильные глаголы прошедшего времени, звуки /eə/, /ɪə/, немые буквы.",
+          "Reading: понимать, что и когда произошло.",
+          "Speaking: брать интервью о том, где люди были; описывать дом и комнату.",
+          "Writing: описывать своё жильё."
+        ]
+      },
+      "9": {
+        label: "File 9 — What's for dinner? / White gold / Quizzes and quizzers",
+        nameRu: "File 9: Исчисляемые/неисчисляемые, сравнительные",
+        skills: [
+          "Различать исчисляемые и неисчисляемые существительные (a/an, some/any).",
+          "Использовать квантификаторы (how much / how many, a lot of).",
+          "Применять сравнительную степень прилагательных.",
+          "Называть еду и напитки, ёмкости, большие числа.",
+          "Pronunciation: буквы ea, звуки /ʃ/ и /s/, sentence stress.",
+          "Speaking: говорить о привычках в еде; спрашивать о количестве; задавать вопросы викторины.",
+          "Writing: описывать запоминающийся приём пищи."
+        ]
+      },
+      "10": {
+        label: "File 10 — Top of the list / In the footsteps of Marco Polo / The cards don't lie",
+        nameRu: "File 10: Превосходная степень, be going to",
+        skills: [
+          "Использовать превосходную степень прилагательных.",
+          "Применять be going to для планов и предсказаний; выражения будущего времени.",
+          "Называть места и здания, лексику о городском отдыхе, игральных картах.",
+          "Pronunciation: группы согласных, буквы ear, sentence stress.",
+          "Speaking: давать туристическую информацию; говорить о планах; делать предсказания.",
+          "Writing: писать рекламу города и формальное письмо (formal email)."
+        ]
+      },
+      "11": {
+        label: "File 11 — Culture shock / It's on my list / Download the app",
+        nameRu: "File 11: Наречия, verb + to + infinitive, артикль",
+        skills: [
+          "Использовать наречия (образа действия и модификаторы).",
+          "Применять конструкцию verb + to + infinitive.",
+          "Использовать определённый артикль (the или без the).",
+          "Называть распространённые наречия, глагольные фразы, лексику о телефонах и приложениях.",
+          "Pronunciation: связная речь, слабое to, the.",
+          "Speaking: говорить о привычках, мечтах и амбициях, использовании телефона.",
+          "Writing: писать пост на форуме (forum post)."
+        ]
+      },
+      "12": {
+        label: "File 12 — It's a classic! / Let's go out for dinner! / National treasures",
+        nameRu: "File 12: Present Perfect",
+        skills: [
+          "Использовать Present Perfect.",
+          "Различать Present Perfect и Past Simple.",
+          "Повторить формирование вопросов (question formation).",
+          "Называть неправильные причастия прошедшего времени (irregular past participles).",
+          "Pronunciation: sentence stress, неправильные причастия.",
+          "Speaking: говорить о фильмах, книгах и ТВ; о том, что вы делали; о стиле жизни и опыте.",
+          "Writing: писать биографию (biography)."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Files",
+        nameRu: "Финальный тест: все файлы курса",
+        skills: [
+          "Использовать глагол be, местоимения и Present Simple для базового общения.",
+          "Описывать предметы, чувства, семью и распорядок дня.",
+          "Говорить о способностях и текущих действиях (can, Present Continuous).",
+          "Рассказывать о прошлом в Past Simple (was/were, правильные и неправильные глаголы).",
+          "Описывать дом и места с there is/are/was/were.",
+          "Обсуждать еду и количество с исчисляемыми/неисчисляемыми и квантификаторами.",
+          "Сравнивать с comparative и superlative; строить планы с be going to.",
+          "Использовать наречия, verb + to + infinitive и артикли.",
+          "Делиться опытом в Present Perfect."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["1","2","3","4","5","6","7","8","9","10","11","12","final"]
+  },
+  EFP: {
+    name: "English File Pre-Intermediate",
+    units: {
+      "1": {
+        label: "File 1 — All about you / Looking good / Remakes",
+        nameRu: "File 1: О тебе, описание людей, одежда",
+        skills: [
+          "Соблюдать порядок слов в вопросах (word order in questions).",
+          "Использовать Present Simple и Present Continuous.",
+          "Называть распространённые глагольные фразы, описывать внешность и характер, одежду, предлоги места.",
+          "Pronunciation: алфавит, окончания -s/-es, звуки /ə/ и /ɜː/.",
+          "Speaking: обмениваться личной информацией, описывать профиль и картину.",
+          "Writing: писать личный профиль (personal profile)."
+        ]
+      },
+      "2": {
+        label: "File 2 — Lost…and found? / On top of the world / One dark October evening",
+        nameRu: "File 2: Past Simple, Past Continuous, рассказ",
+        skills: [
+          "Использовать Past Simple (правильные и неправильные глаголы).",
+          "Применять Past Continuous.",
+          "Использовать связки последовательности (time sequencers and connectors).",
+          "Называть лексику об отпуске, предлоги времени и места (at, in, on), глагольные фразы.",
+          "Pronunciation: окончания -ed, слабые формы was/were, словесное ударение.",
+          "Speaking: проявлять интерес, давать больше информации, пересказывать конец истории.",
+          "Writing: описывать фото."
+        ]
+      },
+      "3": {
+        label: "File 3 — The waiting game / Can we meet? / Word games",
+        nameRu: "File 3: be going to, будущие договорённости, relative clauses",
+        skills: [
+          "Использовать be going to для планов и предсказаний.",
+          "Применять Present Continuous для будущих договорённостей.",
+          "Использовать определительные придаточные (defining relative clauses).",
+          "Называть лексику об аэропортах, глаголы с предлогами (arrive in), перефразирование.",
+          "Pronunciation: буква g, linking, немое e.",
+          "Speaking: сравнивать советы, предлагать маршрут, договариваться, давать определения.",
+          "Writing: писать неформальное письмо (informal email)."
+        ]
+      },
+      "4": {
+        label: "File 4 — Have you finished yet? / How we shop / Weekend",
+        nameRu: "File 4: Present Perfect, покупки",
+        skills: [
+          "Использовать Present Perfect с yet, just, already.",
+          "Различать Present Perfect и Past Simple (1).",
+          "Использовать something, anything, nothing и т.д.",
+          "Называть лексику о домашних делах (make или do?), покупках, прилагательные на -ed и -ing.",
+          "Pronunciation: буквы y и j, c и ch, звуки /e/, /əʊ/, /ʌ/.",
+          "Speaking: сравнивать информацию (yet/already), говорить о домашних делах и выходных.",
+          "Writing: писать эссе с мнением (opinion essay)."
+        ]
+      },
+      "5": {
+        label: "File 5 — Fast forward / Superlative cities? / Too much or not enough?",
+        nameRu: "File 5: Сравнительные и превосходные, квантификаторы",
+        skills: [
+          "Использовать сравнительные прилагательные и наречия, конструкцию as…as.",
+          "Применять превосходную степень (+ ever + present perfect).",
+          "Использовать квантификаторы too, (not) enough.",
+          "Называть типы чисел, лексику для описания города, здоровье и тело.",
+          "Pronunciation: звуки /ə/, /ʌ/, sentence stress.",
+          "Speaking: реагировать на идеи, говорить об изменениях, о привычках (enough, too much/many).",
+          "Writing: описывать свой город."
+        ]
+      },
+      "6": {
+        label: "File 6 — Optimist or pessimist? / Love will find a way / Sweet dreams?",
+        nameRu: "File 6: will/won't, обзор времён",
+        skills: [
+          "Использовать will / won't для предсказаний.",
+          "Применять will / won't / shall в других значениях.",
+          "Повторить формы глагола: настоящее, прошедшее и будущее.",
+          "Называть противоположные глаголы, verb + back, модификаторы.",
+          "Pronunciation: 'll / won't, ударение в двусложных глаголах, буквы ea и ear.",
+          "Speaking: реагировать на предсказания, давать информацию (verb + back), сообщать факты.",
+          "Writing: писать сообщения в соцсети."
+        ]
+      },
+      "7": {
+        label: "File 7 — I will survive / Happy days / Could you pass the test?",
+        nameRu: "File 7: Инфинитив, герундий, have to/must",
+        skills: [
+          "Использовать инфинитив с to (try to, forget to).",
+          "Применять герундий (verb + -ing).",
+          "Использовать have to, don't have to, must, mustn't.",
+          "Называть прилагательные с предлогами (afraid of), глаголы + инфинитив/герундий.",
+          "Pronunciation: слабая форма to, linking, звуки /j/, /ŋ/, /k/, ударение на предлогах.",
+          "Speaking: спрашивать и отвечать бегло, давать советы, обсуждать поведение.",
+          "Writing: писать статью с советами (article giving tips)."
+        ]
+      },
+      "8": {
+        label: "File 8 — Should I or shouldn't I? / Absolutely typical! / Who is Vivienne?",
+        nameRu: "File 8: should, first conditional, притяжательные местоимения",
+        skills: [
+          "Использовать should для советов.",
+          "Применять first conditional (if + present, will + infinitive).",
+          "Использовать притяжательные местоимения (possessive pronouns).",
+          "Называть лексику с get, путаемые глаголы, наречия образа действия.",
+          "Pronunciation: звуки /ʊ/ и /uː/, омофоны, чтение вслух.",
+          "Speaking: оценивать советы, обмениваться информацией и мнениями.",
+          "Writing: писать короткий рассказ (short story)."
+        ]
+      },
+      "9": {
+        label: "File 9 — Watch out! / Don't panic! / Born to be stars",
+        nameRu: "File 9: second conditional, Present Perfect for/since",
+        skills: [
+          "Использовать second conditional (if + past, would + infinitive).",
+          "Применять Present Perfect с for и since.",
+          "Различать Present Perfect и Past Simple (2).",
+          "Называть животных и насекомых, слова о страхе, лексику биографий.",
+          "Pronunciation: словесное и фразовое ударение, звук /ɔː/.",
+          "Speaking: передавать факты, задавать уточняющие вопросы, рассказывать о жизни человека.",
+          "Writing: писать биографию (biography)."
+        ]
+      },
+      "10": {
+        label: "File 10 — Winners and losers / Larks and owls / Inventions that changed the world",
+        nameRu: "File 10: Движение, фразовые глаголы, пассив",
+        skills: [
+          "Выражать движение (expressing movement).",
+          "Соблюдать порядок слов фразовых глаголов (word order of phrasal verbs).",
+          "Использовать пассивный залог (the passive).",
+          "Называть лексику о спорте, фразовые глаголы, людей из разных стран.",
+          "Pronunciation: словесное ударение, linking, звуки /ʃ/, /tʃ/, /dʒ/.",
+          "Speaking: рассказывать о спорте, задавать вопросы (phrasal verbs), обмениваться информацией (passives).",
+          "Writing: писать статью (article)."
+        ]
+      },
+      "11": {
+        label: "File 11 — Live and learn / Make up your mind! / Find your 'twin'",
+        nameRu: "File 11: used to, might, so/neither",
+        skills: [
+          "Использовать used to для прошлых привычек.",
+          "Применять might для возможности.",
+          "Использовать so, neither + вспомогательные глаголы.",
+          "Называть школьные предметы, словообразование существительных, сходства и различия.",
+          "Pronunciation: used to / didn't use to, дифтонги, звуки /ʌ/ и /aɪ/.",
+          "Speaking: выражать мнение, давать примеры, говорить о сходстве и различиях.",
+          "Writing: писать формальное письмо (formal email)."
+        ]
+      },
+      "12": {
+        label: "File 12 — Strange but true! / Don't tell anybody! / The English File quiz",
+        nameRu: "File 12: Past Perfect, косвенная речь",
+        skills: [
+          "Использовать Past Perfect.",
+          "Применять косвенную речь (reported speech).",
+          "Строить вопросы без вспомогательных глаголов (questions without auxiliaries).",
+          "Называть выражения времени, различать say или tell, повторить вопросительные слова.",
+          "Pronunciation: буква i, двойные согласные, звуки /w/ и /h/.",
+          "Speaking: пересказывать новость, передавать чужие слова, задавать фактические вопросы.",
+          "Writing: писать рецензию (review)."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Files",
+        nameRu: "Финальный тест: все файлы курса",
+        skills: [
+          "Описывать людей и одежду в Present Simple и Continuous.",
+          "Рассказывать о прошлом в Past Simple и Past Continuous.",
+          "Строить планы и договорённости (be going to, Present Continuous, relative clauses).",
+          "Использовать Present Perfect и различать его с Past Simple.",
+          "Сравнивать с comparative/superlative и квантификаторами.",
+          "Делать предсказания с will/won't, повторять все времена.",
+          "Использовать инфинитив, герундий, have to/must, should и conditionals.",
+          "Применять пассив, фразовые глаголы, used to, might, so/neither.",
+          "Использовать Past Perfect и reported speech."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["1","2","3","4","5","6","7","8","9","10","11","12","final"]
+  },
+  EFB: {
+    name: "English File Beginner",
+    units: {
+      "1": {
+        label: "File 1 — A cappuccino, please / World music",
+        nameRu: "File 1: Глагол be (ед. ч.), страны",
+        skills: [
+          "Использовать глагол be в единственном числе (I, you, he, she, it).",
+          "Называть числа 0–10, дни недели, страны; прощаться.",
+          "Pronunciation: звуки /h/, /aɪ/, /iː/, /ɪ/, /əʊ/, /s/, /ʃ/.",
+          "Speaking: представляться, знакомиться, говорить, откуда люди.",
+          "Practical English: заселяться в отель, бронировать столик; язык класса, алфавит."
+        ]
+      },
+      "2": {
+        label: "File 2 — Are you on holiday? / That's my bus!",
+        nameRu: "File 2: Глагол be (мн. ч.), вопросы Wh-/How",
+        skills: [
+          "Использовать глагол be во множественном числе (we, you, they).",
+          "Строить вопросы Wh- и How с be.",
+          "Называть национальности, номера телефонов, числа 11–100.",
+          "Pronunciation: звуки /dʒ/, /tʃ/, /ʃ/; понимание чисел.",
+          "Speaking: говорить о национальностях, давать личную информацию.",
+          "Reading: понимать тексты о первом знакомстве и личной информации."
+        ]
+      },
+      "3": {
+        label: "File 3 — Where are my keys? / Souvenirs",
+        nameRu: "File 3: Существительные, this/that/these/those",
+        skills: [
+          "Использовать единственное и множественное число существительных, a / an.",
+          "Применять this / that / these / those.",
+          "Называть мелкие предметы, сувениры.",
+          "Pronunciation: звуки /z/, /s/, окончания множественного числа, /ð/, ритм предложения.",
+          "Speaking: говорить о вещах в сумке, разыгрывать покупку сувениров.",
+          "Practical English: понимать цены, покупать обед."
+        ]
+      },
+      "4": {
+        label: "File 4 — Meet the family / The perfect car",
+        nameRu: "File 4: Притяжательные, прилагательные",
+        skills: [
+          "Использовать притяжательные прилагательные и притяжательный 's.",
+          "Применять прилагательные.",
+          "Называть людей и семью, цвета и распространённые прилагательные.",
+          "Pronunciation: звуки /ʌ/, /æ/, /ə/, /ɑː/, /ɔː/, linking.",
+          "Speaking: говорить о семье и друзьях, об автомобилях и предпочтениях.",
+          "Listening: понимать разговор."
+        ]
+      },
+      "5": {
+        label: "File 5 — A big breakfast / A very long flight",
+        nameRu: "File 5: Present Simple (I/you/we/they)",
+        skills: [
+          "Использовать Present Simple (+/−/?) для I, you, we, they.",
+          "Называть еду и напитки, распространённые глагольные фразы.",
+          "Pronunciation: звуки /dʒ/, /g/, /w/, /v/, ритм и связь предложения.",
+          "Speaking: говорить о еде и приёмах пищи, о привычках.",
+          "Practical English: называть время, говорить о самочувствии."
+        ]
+      },
+      "6": {
+        label: "File 6 — A school reunion / Good morning, goodnight",
+        nameRu: "File 6: Present Simple (he/she/it), наречия частотности",
+        skills: [
+          "Использовать Present Simple для he, she, it.",
+          "Применять наречия частотности (adverbs of frequency).",
+          "Называть профессии и места работы, описывать типичный день.",
+          "Pronunciation: -es в 3-м лице, звуки /j/, /juː/, ритм предложения.",
+          "Speaking: говорить о работе, описывать распорядок дня.",
+          "Listening: понимать интервью."
+        ]
+      },
+      "7": {
+        label: "File 7 — Have a nice weekend! / Lights, camera, action!",
+        nameRu: "File 7: Порядок слов в вопросах, императив",
+        skills: [
+          "Соблюдать порядок слов в вопросах (be и Present Simple).",
+          "Использовать повелительное наклонение и объектные местоимения (me, him).",
+          "Называть глагольные фразы о свободном времени, виды фильмов.",
+          "Pronunciation: звуки /w/, /h/, /eə/, /aʊ/, ритм предложения.",
+          "Speaking: говорить о выходных и о фильмах.",
+          "Practical English: называть дату, говорить по телефону."
+        ]
+      },
+      "8": {
+        label: "File 8 — Can I park here? / I ♥ cooking",
+        nameRu: "File 8: can/can't, like + verb + -ing",
+        skills: [
+          "Использовать can / can't.",
+          "Применять like / love / hate + verb + -ing.",
+          "Называть глагольные фразы, виды деятельности.",
+          "Pronunciation: can/can't, звуки /ə/, /æ/, /ɑː/, /ʊ/, /uː/, /ŋ/, ритм предложения.",
+          "Speaking: говорить, что можно и нельзя делать в городе; о любимых занятиях.",
+          "Reading: понимать твиты о занятиях."
+        ]
+      },
+      "9": {
+        label: "File 9 — Everything's fine! / Working undercover",
+        nameRu: "File 9: Present Continuous",
+        skills: [
+          "Использовать Present Continuous.",
+          "Различать Present Continuous и Present Simple.",
+          "Называть глагольные фразы о путешествиях, лексику одежды.",
+          "Pronunciation: ритм предложения, звук /ɜː/ и другие гласные.",
+          "Speaking: говорить о том, что люди делают сейчас, об одежде.",
+          "Practical English: приглашать и предлагать."
+        ]
+      },
+      "10": {
+        label: "File 10 — A room with a view / Where were you?",
+        nameRu: "File 10: there is/are, Past Simple be",
+        skills: [
+          "Использовать there's a… / there are some….",
+          "Применять Past Simple глагола be (was / were).",
+          "Называть лексику об отелях, предлоги in, on, under, at.",
+          "Pronunciation: звуки /ɪə/, /eə/, was/were, ритм предложения.",
+          "Speaking: описывать комнаты, говорить, где вы были вчера.",
+          "Reading: понимать текст о Шотландии и Лох-Несс."
+        ]
+      },
+      "11": {
+        label: "File 11 — A new life in the USA / How was your day?",
+        nameRu: "File 11: Past Simple (правильные и неправильные)",
+        skills: [
+          "Использовать Past Simple правильных глаголов.",
+          "Применять Past Simple неправильных глаголов (get, go, have, do).",
+          "Называть правильные глаголы, глагольные фразы с get, go, have, do.",
+          "Pronunciation: окончания -ed, ритм предложения.",
+          "Speaking: говорить о прошлых действиях и событиях, о вчерашнем дне.",
+          "Practical English: спрашивать и объяснять дорогу."
+        ]
+      },
+      "12": {
+        label: "File 12 — Strangers on a train / Revise the past",
+        nameRu: "File 12: Past Simple (обзор)",
+        skills: [
+          "Использовать Past Simple правильных и неправильных глаголов.",
+          "Повторить Past Simple (revision).",
+          "Называть правильные и неправильные глаголы, связки first, then, after that.",
+          "Pronunciation: неправильные глаголы, was/wasn't, were/weren't, гласные звуки.",
+          "Speaking: пересказывать историю, устно повторять Past Simple.",
+          "Reading и Listening: понимать историю «Strangers on a train»."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Files",
+        nameRu: "Финальный тест: все файлы курса",
+        skills: [
+          "Использовать глагол be в ед. и мн. числе, строить вопросы.",
+          "Использовать существительные, артикли и this/that/these/those.",
+          "Применять притяжательные формы и прилагательные.",
+          "Использовать Present Simple (все лица) и наречия частотности.",
+          "Строить вопросы и использовать императив и объектные местоимения.",
+          "Применять can/can't и like + -ing.",
+          "Использовать Present Continuous и различать его с Present Simple.",
+          "Использовать there is/are и Past Simple глагола be.",
+          "Рассказывать о прошлом в Past Simple (правильные и неправильные глаголы)."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["1","2","3","4","5","6","7","8","9","10","11","12","final"]
+  },
+  EFI: {
+    name: "English File Intermediate",
+    units: {
+      "1": {
+        label: "File 1 — Eating in…and out / Modern families",
+        nameRu: "File 1: Времена, формы будущего",
+        skills: [
+          "Использовать Present Simple и Continuous, action и non-action verbs.",
+          "Применять формы будущего: Present Continuous, be going to, will / won't.",
+          "Называть лексику о еде и готовке, семье, прилагательные характера.",
+          "Pronunciation: краткие и долгие гласные, фразовое и словесное ударение.",
+          "Speaking: говорить о предпочтениях, соглашаться и не соглашаться, о будущем.",
+          "Practical English: представлять себя и других, реагировать на сказанное."
+        ]
+      },
+      "2": {
+        label: "File 2 — Spending money / Changing lives",
+        nameRu: "File 2: Present Perfect, Present Perfect Continuous",
+        skills: [
+          "Различать Present Perfect и Past Simple.",
+          "Использовать Present Perfect с for / since, Present Perfect Continuous.",
+          "Называть лексику о деньгах, сильные прилагательные (exhausted, amazed).",
+          "Pronunciation: o и or, фразовое ударение.",
+          "Speaking: говорить о деньгах и опыте, использовать How long…?, говорить о крайностях.",
+          "Reading: понимать абзацы и порядок событий."
+        ]
+      },
+      "3": {
+        label: "File 3 — Survive the drive / Men, women, and children",
+        nameRu: "File 3: Сравнения, артикли",
+        skills: [
+          "Выбирать между сравнительной и превосходной степенями.",
+          "Использовать артикли (a / an, the, нулевой артикль).",
+          "Называть лексику о транспорте, коллокации (verbs/adjectives + prepositions).",
+          "Pronunciation: звуки /ʃ/, /dʒ/, /tʃ/, linking, /ə/, два произношения the.",
+          "Speaking: туристическая ролевая игра, обобщение, разговор о детстве.",
+          "Reading: подтверждать прогнозы, понимать главную мысль абзаца."
+        ]
+      },
+      "4": {
+        label: "File 4 — Bad manners? / Yes, I can!",
+        nameRu: "File 4: Обязанность, способность",
+        skills: [
+          "Выражать обязанность и запрет (have to, must, should).",
+          "Выражать способность и возможность (can, could, be able to).",
+          "Называть телефонную лексику, прилагательные на -ed / -ing.",
+          "Pronunciation: немые согласные, фразовое ударение.",
+          "Speaking: говорить о раздражающих привычках и манерах, о способностях, оценивать советы.",
+          "Reading: оценивать точку зрения, понимать советы и примеры."
+        ]
+      },
+      "5": {
+        label: "File 5 — Sporting superstitions / #thewaywemet",
+        nameRu: "File 5: Прошедшие времена, привычки",
+        skills: [
+          "Использовать прошедшие времена: Simple, Continuous, Perfect.",
+          "Говорить о прошлых и настоящих привычках и состояниях (used to).",
+          "Называть лексику о спорте и отношениях.",
+          "Pronunciation: звуки /ɔː/ и /ɜː/, буква s, used to.",
+          "Speaking: говорить о спорте, рассказывать анекдот, о настоящих и прошлых привычках.",
+          "Practical English: просить разрешения, делать запросы, приветствовать после долгой разлуки."
+        ]
+      },
+      "6": {
+        label: "File 6 — Behind the scenes / Every picture tells a story",
+        nameRu: "File 6: Пассив, модальные дедукции",
+        skills: [
+          "Использовать пассивный залог (все времена).",
+          "Применять модальные глаголы дедукции (might, can't, must).",
+          "Называть лексику о кино и теле, части тела.",
+          "Pronunciation: правильные и неправильные причастия, дифтонги.",
+          "Speaking: говорить о фильмах, о фото профиля, делать предположения.",
+          "Reading: понимать главную мысль, юмор, проверять предположения."
+        ]
+      },
+      "7": {
+        label: "File 7 — Live and learn / The hotel of Mum and Dad",
+        nameRu: "File 7: Условные предложения",
+        skills: [
+          "Использовать first conditional и будущие временные придаточные (when, until).",
+          "Применять second conditional, выбирать между типами условных.",
+          "Называть лексику об образовании и жилье.",
+          "Pronunciation: буквы u и c, фразовое ударение.",
+          "Speaking: говорить о школе, оценивать мнения, обсуждать за и против, описывать идеальные ситуации.",
+          "Practical English: предлагать и реагировать на предложения, извиняться."
+        ]
+      },
+      "8": {
+        label: "File 8 — The right job for you / Have a nice day!",
+        nameRu: "File 8: Герундий/инфинитив, косвенная речь",
+        skills: [
+          "Выбирать между герундием и инфинитивом.",
+          "Использовать косвенную речь (утверждения и вопросы).",
+          "Называть лексику о работе и покупках, словообразование существительных.",
+          "Pronunciation: словесное ударение, буквы ai.",
+          "Speaking: делать презентацию, говорить о покупках.",
+          "Reading: предсказывать по фактам, понимать конец истории."
+        ]
+      },
+      "9": {
+        label: "File 9 — Lucky encounters / Digital detox",
+        nameRu: "File 9: Third conditional, квантификаторы",
+        skills: [
+          "Использовать third conditional.",
+          "Применять квантификаторы (quantifiers).",
+          "Называть способы образования прилагательных и наречий, лексику об электронных устройствах.",
+          "Pronunciation: фразовый ритм, слабое have, linking, ough и augh.",
+          "Speaking: говорить об удаче, обсуждать цифровые привычки.",
+          "Reading: понимать тематические предложения и технический язык."
+        ]
+      },
+      "10": {
+        label: "File 10 — Idols and icons / And the murderer is…",
+        nameRu: "File 10: Относительные придаточные, question tags",
+        skills: [
+          "Использовать относительные придаточные (defining и non-defining).",
+          "Применять разделительные вопросы (question tags).",
+          "Называть составные существительные (compound nouns), лексику о преступлениях.",
+          "Pronunciation: словесное ударение, интонация в question tags.",
+          "Speaking: говорить о людях и вещах, которыми восхищаетесь, ролевая игра «полицейский допрос».",
+          "Reading: читать с целью, понимать отсылки (referencing)."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Files",
+        nameRu: "Финальный тест: все файлы курса",
+        skills: [
+          "Использовать все времена и формы будущего.",
+          "Применять Present Perfect (Simple и Continuous) и различать с Past Simple.",
+          "Сравнивать с comparative/superlative и использовать артикли.",
+          "Выражать обязанность, запрет и способность (modals).",
+          "Использовать прошедшие времена и used to.",
+          "Применять пассив и модальные дедукции.",
+          "Использовать все типы условных предложений.",
+          "Применять герундий/инфинитив и косвенную речь.",
+          "Использовать квантификаторы, относительные придаточные и question tags."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["1","2","3","4","5","6","7","8","9","10","final"]
   }
 };
 
@@ -37659,9 +38765,11 @@ window.tr_TEXTBOOKS        = TEXTBOOKS;
       <option value="SM1">Super Minds 1</option>
       <option value="SM2">Super Minds 2</option>
       <option value="SM3">Super Minds 3</option>
+      <option value="SM4">Super Minds 4</option>
       <option value="GG1">Go Getter 1</option>
       <option value="GG2">Go Getter 2</option>
       <option value="GG3">Go Getter 3</option>
+      <option value="GG4">Go Getter 4</option>
       <option value="WD1">Wow Dragon 1</option>
       <option value="WD2">Wow Dragon 2</option>
       <option value="PR1">Prepare 1</option>
@@ -37670,6 +38778,11 @@ window.tr_TEXTBOOKS        = TEXTBOOKS;
       <option value="PR4">Prepare 4</option>
       <option value="PR5">Prepare 5</option>
       <option value="PR6">Prepare 6</option>
+      <option value="PR7">Prepare 7</option>
+      <option value="EFB">English File Beginner</option>
+      <option value="EFE">English File Elementary</option>
+      <option value="EFP">English File Pre-Intermediate</option>
+      <option value="EFI">English File Intermediate</option>
     </select>
 
     <label style="margin-top:16px"><span class="h3-en">Unit</span><span class="h3-ru">Юнит</span></label>
