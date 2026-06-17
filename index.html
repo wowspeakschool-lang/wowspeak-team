@@ -8502,8 +8502,16 @@
                    style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.95rem; margin-bottom:1rem;">
 
             <label style="display:block; margin-bottom:0.4rem; font-weight:500; color:#475569; font-size:0.85rem;">Сообщение:</label>
-            <textarea id="composeNotifMessage" rows="5" placeholder="Текст сообщения..."
-                      style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.95rem; resize:vertical; margin-bottom:1rem;"></textarea>
+            <div style="display:flex; gap:0.4rem; margin-bottom:0.4rem; flex-wrap:wrap;">
+                <button type="button" onclick="composeNotifWrap('**','**','текст')" style="padding:4px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:13px; font-weight:700;">Ж</button>
+                <button type="button" onclick="composeNotifWrap('*','*','текст')" style="padding:4px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:13px; font-style:italic;">К</button>
+                <button type="button" onclick="composeNotifWrap('[','](https://)','текст ссылки')" style="padding:4px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; font-size:13px;">🔗 Ссылка</button>
+            </div>
+            <textarea id="composeNotifMessage" rows="5" placeholder="Текст сообщения...&#10;&#10;**жирный**, *курсив*, [текст](https://ссылка)"
+                      style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.95rem; resize:vertical; margin-bottom:0.3rem;"></textarea>
+            <div style="font-size:0.78rem; color:#94a3b8; margin-bottom:1rem;">
+                Форматирование: <b>**жирный**</b>, <i>*курсив*</i>, ссылка — [текст](https://...). Ссылки вставляются автоматически активными.
+            </div>
 
             <div style="display:flex; justify-content:flex-end; gap:0.6rem;">
                 <button class="btn btn-secondary" onclick="closeComposeNotificationModal()">Отмена</button>
@@ -33656,6 +33664,31 @@
             } catch (e) {}
         }
 
+        // Рендер форматирования в уведомлениях: **жирный**, *курсив*, [текст](url), переносы строк.
+        // Безопасно: экранируем весь текст, затем разрешаем только наши теги, финально чистим DOMPurify.
+        function notifMdToHtml(text) {
+            if (!text) return '';
+            let h = escapeHtml(text);
+            // **жирный** и *курсив*
+            h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+            h = h.replace(/\*(.+?)\*/g, '<i>$1</i>');
+            // [текст](url) — только http(s)-ссылки
+            h = h.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g,
+                '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+            // голые ссылки http(s) без разметки → тоже кликабельные (если ещё не внутри <a>)
+            h = h.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g,
+                '$1<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
+            // переносы строк
+            h = h.replace(/\n/g, '<br>');
+            if (typeof DOMPurify !== 'undefined') {
+                return DOMPurify.sanitize(h, {
+                    ALLOWED_TAGS: ['b','strong','i','em','a','br'],
+                    ALLOWED_ATTR: ['href','target','rel']
+                });
+            }
+            return h;
+        }
+
         async function renderNotificationsList() {
             await loadNotifications();
             const wrap = document.getElementById('notificationsList');
@@ -33704,7 +33737,7 @@
                             <div class="notif-icon">${cfg.icon}</div>
                             <div class="notif-body">
                                 <div class="notif-title">${escapeHtml(n.title || '')}</div>
-                                ${n.message ? `<div class="notif-message">${escapeHtml(n.message)}</div>` : ''}
+                                ${n.message ? `<div class="notif-message" onclick="if(event.target.tagName==='A'){event.stopPropagation();}">${notifMdToHtml(n.message)}</div>` : ''}
                                 <div class="notif-time">${time}</div>
                             </div>
                             <button class="notif-del" onclick="event.stopPropagation(); deleteNotif('${n.id}')" title="Удалить">✕</button>
@@ -33904,6 +33937,20 @@
         //              МОДАЛКА: ПИСЬМО КОМАНДЕ
         // ============================================================
         let _composeRecipients = new Set();
+
+        // Обернуть выделенный текст в форматирование (кнопки Ж/К/ссылка)
+        function composeNotifWrap(pre, post, placeholder) {
+            const ta = document.getElementById('composeNotifMessage');
+            if (!ta) return;
+            const sc = ta.scrollTop;
+            const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+            const sel = v.slice(s, e) || (placeholder || 'текст');
+            ta.value = v.slice(0, s) + pre + sel + post + v.slice(e);
+            ta.focus();
+            ta.selectionStart = s + pre.length;
+            ta.selectionEnd = s + pre.length + sel.length;
+            ta.scrollTop = sc;
+        }
 
         function openComposeNotificationModal() {
             const modal = document.getElementById('composeNotifModal');
