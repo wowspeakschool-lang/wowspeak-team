@@ -10558,26 +10558,9 @@
 
         function initRoleSwitcher() {
             const wrap = document.getElementById('roleSwitcherWrap');
-            const sel = document.getElementById('roleSwitcher');
-            if (!wrap || !sel) return;
-            const rs = realRoles();
-            // Если ролей больше одной — показываем переключатель
-            // Супер-админ видит переключатель всегда — может "прикинуться" любой ролью
-            const showSwitcher = rs.length > 1 || rs.includes('super_admin');
-            wrap.style.display = showSwitcher ? '' : 'none';
-            if (!showSwitcher) return;
-
-            // Список доступных ролей: все реальные + возможность "сбросить" на все
-            const availableRoles = rs.includes('super_admin')
-                ? ['super_admin', 'methodist', 'curator', 'assistant', 'manager']
-                : rs;
-
-            const dedup = Array.from(new Set(availableRoles));
-            sel.innerHTML = `
-                <option value="">Все роли (${dedup.length})</option>
-                ${dedup.map(r => `<option value="${r}">${ROLE_LABELS[r] || r}</option>`).join('')}
-            `;
-            sel.value = _activeRoleOverride || '';
+            if (wrap) wrap.style.display = 'none';
+            // Переключатель активной роли отключён — всегда активны все реальные роли пользователя.
+            _activeRoleOverride = null;
             applyRoleToUI();
         }
 
