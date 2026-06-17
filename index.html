@@ -27091,6 +27091,14 @@
             const ds = _lessonModalState.draft.students.find(x => x.student_id === studentId);
             if (!ds) return;
             ds.attendance_touched = true;
+            // Повторный клик по уже активному состоянию — снимаем отметку (возврат в "не отмечено")
+            const current = attendanceState(ds);
+            if (current === state) {
+                ds.visited = null;
+                ds.good_reason = false;
+                renderLessonModalBody();
+                return;
+            }
             if (state === 'present') { ds.visited = true; ds.good_reason = false; }
             else if (state === 'absent') { ds.visited = false; ds.good_reason = false; }
             else if (state === 'good_reason') { ds.visited = false; ds.good_reason = true; }
@@ -27221,6 +27229,20 @@
                         external_id: lesson.external_id,
                         status: 1,
                     });
+                }
+
+                // 3c. Если посещение менялось и в уроке НЕ осталось ни одной отметки
+                // (все ученики "не отмечено"), а урок "проведён" — снимаем с "проведено" (status=0).
+                // Это повторяет действие в МК: пропуск + снять бегунок "проведено".
+                if (anyAttendanceChanged && d.students.length > 0) {
+                    const noneMarked = d.students.every(ds => (ds.visited ?? null) === null);
+                    if (noneMarked && lesson.status === 1) {
+                        await callEdgeFunction('mk-update-lesson', {
+                            external_id: lesson.external_id,
+                            status: 0,
+                        });
+                        lesson.status = 0;
+                    }
                 }
 
                 // 4. Оценки per student per type (через mk-write-lesson)
