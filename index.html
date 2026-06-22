@@ -5706,6 +5706,42 @@
                 min-width: 0;
                 text-align: left;
             }
+            /* ===== Таблица учеников → карточки на мобильном ===== */
+            .students-table {
+                table-layout: auto !important;
+                font-size: 13px;
+            }
+            .students-table colgroup { display: none; }
+            .students-table thead { display: none; }
+            .students-table tbody { display: block; }
+            .students-table tr {
+                display: block;
+                border: 1px solid #e5e7eb;
+                border-radius: 10px;
+                margin-bottom: 10px;
+                padding: 6px 4px;
+                background: #fff;
+            }
+            .students-table td {
+                display: flex;
+                width: auto !important;
+                padding: 6px 12px !important;
+                border: none !important;
+                gap: 8px;
+                align-items: baseline;
+            }
+            .students-table td::before {
+                content: attr(data-label);
+                flex: 0 0 90px;
+                font-size: 11px;
+                font-weight: 600;
+                color: #94a3b8;
+                text-transform: uppercase;
+            }
+            .students-table td[data-label="Преподаватели"] {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
@@ -19560,20 +19596,6 @@
         }
 
         // Утилита: копирование значения любого инпута по id
-        async function copyFromInput(inputId, btn) {
-            const inp = document.getElementById(inputId);
-            if (!inp) return;
-            try {
-                await navigator.clipboard.writeText(inp.value);
-            } catch (e) {
-                inp.select();
-                document.execCommand('copy');
-            }
-            const prev = btn.textContent;
-            btn.textContent = '✓ Скопировано';
-            setTimeout(() => { btn.textContent = prev; }, 1500);
-        }
-
         function backToTeachers() {
             goToHome();
             // мы уже показали mainApp внутри goToHome и спрятали dashboard
@@ -28192,10 +28214,6 @@
             }
         }
 
-        async function renderUnitRequestsSection() {
-            await loadUnitRequests();
-        }
-
         let _unitReqCurrentTab = 'all-pending';
 
         function _setUnitReqTab(tab) {
@@ -29320,7 +29338,7 @@
             const html = `
                 ${pagerHtml}
                 <div style="background:white; border-radius:12px; overflow-x:auto; border:1px solid #e5e7eb;">
-                    <table style="width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed;">
+                    <table class="students-table" style="width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed;">
                         <colgroup>
                             <col style="width:28%;">
                             <col style="width:18%;">
@@ -29547,10 +29565,10 @@
                 <tr onclick="openStudentDetail('${s.id}')" style="border-bottom:1px solid #f1f5f9; cursor:pointer; transition:background 0.15s;"
                     onmouseenter="this.style.background='#f8fafc'"
                     onmouseleave="this.style.background='white'">
-                    <td style="padding:10px 14px; overflow-wrap:break-word; word-break:break-word;"><span style="font-weight:500;">${escapeHtml(s.name)}</span>${ageBadge} ${statusBadge}</td>
-                    <td style="padding:10px 14px;">${s.level ? `<span style="display:inline-block; background:#dbeafe; color:#1e40af; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:500;">${escapeHtml(s.level)}${s.unit ? ` · ${escapeHtml(s.unit)}` : ''}</span>` : '<span style="color:#cbd5e1; font-size:12px;">—</span>'}</td>
-                    <td style="padding:10px 14px; color:#64748b; overflow-wrap:break-word; word-break:break-word;">${escapeHtml(s.parent_text || '—')}</td>
-                    ${hideTeachersCol ? '' : `<td style="padding:10px 14px;" onclick="event.stopPropagation()">
+                    <td data-label="Ученик" style="padding:10px 14px; overflow-wrap:break-word; word-break:break-word;"><span style="font-weight:500;">${escapeHtml(s.name)}</span>${ageBadge} ${statusBadge}</td>
+                    <td data-label="Уровень" style="padding:10px 14px;">${s.level ? `<span style="display:inline-block; background:#dbeafe; color:#1e40af; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:500;">${escapeHtml(s.level)}${s.unit ? ` · ${escapeHtml(s.unit)}` : ''}</span>` : '<span style="color:#cbd5e1; font-size:12px;">—</span>'}</td>
+                    <td data-label="Родитель" style="padding:10px 14px; color:#64748b; overflow-wrap:break-word; word-break:break-word;">${escapeHtml(s.parent_text || '—')}</td>
+                    ${hideTeachersCol ? '' : `<td data-label="Преподаватели" style="padding:10px 14px;" onclick="event.stopPropagation()">
                         <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
                             ${teachersHtml || (!s.attends_space ? '<span style="color:#94a3b8; font-size:12px;">не закреплён</span>' : '')}
                             ${spaceTag}
