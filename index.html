@@ -3323,6 +3323,19 @@
         .status-onbreak     { background: #64748b; }
         .status-inactive    { background: #334155; }
 
+        /* Чипы-фильтры статуса: в неактивном состоянии — обычные белые пилюли (без яркой заливки).
+           Яркая заливка .status-* остаётся только для бейджей в карточках преподов. */
+        .filter-chip-status.status-working,
+        .filter-chip-status.status-onboarding,
+        .filter-chip-status.status-paused,
+        .filter-chip-status.status-onbreak,
+        .filter-chip-status.status-dismissal,
+        .filter-chip-status.status-inactive {
+            background: #fff !important;
+            color: #475569 !important;
+            border-color: #cbd5e1 !important;
+        }
+
         /* Мягкие пастельные цвета для чипов-фильтров статуса (активные) */
         .filter-chip-status.active.status-working    { background: #EAFAF1 !important; border-color: #2ECC71 !important; color: #1a7a45 !important; }
         .filter-chip-status.active.status-onboarding { background: #F0ECFF !important; border-color: #7B61FF !important; color: #5b3fd0 !important; }
