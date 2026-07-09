@@ -62,6 +62,7 @@
             border: none;
             color: #5A5A6E;
             font-size: 0.9rem;
+            font-weight: 600;
             text-align: left;
             cursor: pointer;
             border-radius: 10px;
@@ -74,7 +75,7 @@
         .side-nav-item.active {
             background: linear-gradient(135deg, #7B61FF, #6c3de0);
             color: #fff;
-            font-weight: 600;
+            font-weight: 700;
         }
         .snav-icon { font-size: 1rem; min-width: 1.1rem; text-align: center; }
         .wiki-video { position: relative; width: 100%; max-width: 720px; padding-bottom: 40%; margin: 1rem 0; border-radius: 12px; overflow: hidden; background: #000; }
@@ -3321,6 +3322,15 @@
         .status-paused      { background: #f97316; }
         .status-onbreak     { background: #64748b; }
         .status-inactive    { background: #334155; }
+
+        /* Мягкие пастельные цвета для чипов-фильтров статуса (активные) */
+        .filter-chip-status.active.status-working    { background: #EAFAF1 !important; border-color: #2ECC71 !important; color: #1a7a45 !important; }
+        .filter-chip-status.active.status-onboarding { background: #F0ECFF !important; border-color: #7B61FF !important; color: #5b3fd0 !important; }
+        .filter-chip-status.active.status-paused     { background: #FFF3E6 !important; border-color: #FF8C42 !important; color: #c05a12 !important; }
+        .filter-chip-status.active.status-onbreak    { background: #F1F5F9 !important; border-color: #94a3b8 !important; color: #475569 !important; }
+        .filter-chip-status.active.status-dismissal  { background: #FDECEF !important; border-color: #E91E8C !important; color: #b01560 !important; }
+        .filter-chip-status.active.status-inactive   { background: #E8EAF0 !important; border-color: #64748b !important; color: #334155 !important; }
+        .filter-chip-status.active { font-weight: 700; }
 
         /* Группа бейджей (грейд + статус) */
         .teacher-badges {
