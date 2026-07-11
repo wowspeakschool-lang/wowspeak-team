@@ -5824,6 +5824,22 @@
                 font-size: 0.82rem;
                 border-radius: 9px;
             }
+            /* ===== История оценок (ass-row) → столбик на мобильном ===== */
+            .ass-row {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.2rem;
+            }
+            .ass-row .date { font-size: 0.78rem; order: 1; }
+            .ass-row .meta { order: 2; }
+            .ass-row .teacher { order: 3; }
+            .ass-row .score {
+                order: 4;
+                min-width: 0;
+                text-align: left;
+                font-size: 1rem;
+            }
         }
     </style>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
@@ -22231,7 +22247,7 @@
             try {
                 // Свежие данные из БД
                 const { data: u, error } = await sb.from('users')
-                    .select('id, email, name, roles, phone, telegram, avatar_url, birth_date, start_date, notification_sound, email_notifications')
+                    .select('id, email, name, roles, phone, telegram, avatar_url, birth_date, start_date, notification_sound, email_notifications, timezone_offset')
                     .eq('id', currentAppUser.id)
                     .maybeSingle();
                 if (error) throw error;
