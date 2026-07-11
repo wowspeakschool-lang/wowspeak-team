@@ -6501,6 +6501,12 @@
                 <input type="password" id="password" placeholder="Введите пароль" autocomplete="current-password"
                        onkeydown="if(event.key==='Enter') login()">
             </div>
+            <div id="loginCaptcha" class="cf-turnstile"
+                 data-sitekey="0x4AAAAAADz1mfQKn0ofqzfs"
+                 data-callback="onCaptchaSuccess"
+                 data-expired-callback="onCaptchaExpired"
+                 data-error-callback="onCaptchaExpired"
+                 style="margin: 0 0 1rem; display:flex; justify-content:center;"></div>
             <button class="login-btn" onclick="login()">Войти в панель</button>
             <div style="text-align:center; margin-top:1rem;">
                 <a href="#" onclick="event.preventDefault(); openForgotPassword()"
@@ -9118,6 +9124,7 @@
     <!-- marked + DOMPurify для рендера Markdown в Wiki -->
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script>
         // ============ SUPABASE: подключение через прокси api.wowteach.ru ============
         // Прокси на Timeweb VPS (Москва) → Supabase Frankfurt — для стабильности из РФ
@@ -9728,6 +9735,17 @@
             closeProfileEditor();
         }
 
+        // ----- Cloudflare Turnstile (капча на входе) -----
+        let _captchaToken = null;
+        function onCaptchaSuccess(token) { _captchaToken = token; }
+        function onCaptchaExpired() { _captchaToken = null; }
+        function resetCaptcha() {
+            _captchaToken = null;
+            try {
+                if (window.turnstile) window.turnstile.reset('#loginCaptcha');
+            } catch (e) {}
+        }
+
         async function login() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -9738,16 +9756,27 @@
                 return;
             }
 
+            if (!_captchaToken) {
+                alert('Подтвердите, что вы не робот (капча ещё загружается или не пройдена).');
+                return;
+            }
+
             // Блокируем кнопку
             const origText = btn ? btn.textContent : '';
             if (btn) { btn.disabled = true; btn.textContent = 'Вход…'; }
 
             try {
-                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                const { data, error } = await sb.auth.signInWithPassword({
+                    email,
+                    password,
+                    options: { captchaToken: _captchaToken }
+                });
                 if (error) throw error;
                 await onLoginSuccess();
             } catch (err) {
                 console.error('Login error:', err);
+                // Токен капчи одноразовый — после любой попытки нужно получить новый
+                resetCaptcha();
                 let msg = err.message || 'Ошибка входа';
                 if (/invalid.*credentials/i.test(msg)) msg = 'Неверный email или пароль';
                 alert(msg);
