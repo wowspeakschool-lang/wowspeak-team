@@ -9875,11 +9875,19 @@
 
         // После успешного входа — подгружаем профиль и данные
         async function onLoginSuccess() {
-            // Получаем текущий auth_id
-            const { data: { user: authUser } } = await sb.auth.getUser();
+            // Берём пользователя из локальной сессии (без лишнего сетевого запроса).
+            // Раньше здесь был sb.auth.getUser() — сетевой вызов, который мог вернуть null
+            // при сбое сети/капче, после чего код делал signOut() и стирал рабочую сессию.
+            let authUser = null;
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                authUser = session?.user || null;
+            } catch (e) {
+                console.warn('getSession failed:', e);
+            }
             if (!authUser) {
-                alert('Не удалось получить данные авторизации. Попробуйте войти снова.');
-                await sb.auth.signOut();
+                // Сессии нет — просто показываем экран логина, ничего не стирая
+                document.getElementById('loginScreen').style.display = 'flex';
                 return;
             }
 
@@ -9890,7 +9898,14 @@
                 .eq('auth_id', authUser.id)
                 .maybeSingle();
 
-            if (userErr || !userRow) {
+            if (userErr) {
+                // Временный сбой сети/БД — НЕ стираем сессию, просто просим повторить
+                console.error('Ошибка загрузки профиля:', userErr);
+                alert('Не удалось загрузить профиль (проблема со связью). Обновите страницу.');
+                return;
+            }
+
+            if (!userRow) {
                 alert('Не удалось загрузить профиль пользователя. Обратитесь к супер-админу.');
                 await sb.auth.signOut();
                 return;
