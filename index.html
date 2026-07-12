@@ -6489,7 +6489,7 @@
     </div>
 
     <!-- Login Screen -->
-    <div id="loginScreen" class="login-container">
+    <div id="loginScreen" class="login-container" style="display:none;">
         <div class="login-card">
             <div class="logo"><span class="logo-icon">W</span><span><span class="logo-name">WowSpeak</span> <span class="logo-suffix">Team</span></span></div>
             <div class="form-group">
@@ -9658,7 +9658,10 @@
                 console.warn('Session check failed:', e);
             }
 
-            // 4. Нет сессии — экран логина уже видим по умолчанию, ничего не делаем
+            // 4. Сессии нет — показываем экран логина
+            // (по умолчанию он скрыт, чтобы не мелькал при восстановлении сессии)
+            const _ls = document.getElementById('loginScreen');
+            if (_ls) _ls.style.display = 'flex';
         });
 
         // Дефолтный профиль (используется только если localStorage пуст при первом заходе)
