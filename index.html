@@ -6531,6 +6531,12 @@
                 <input type="email" id="forgotPasswordEmail" placeholder="you@example.com"
                        onkeydown="if(event.key==='Enter') sendResetPasswordEmail()">
             </div>
+            <div id="forgotCaptcha" class="cf-turnstile"
+                 data-sitekey="0x4AAAAAADz1mfQKn0ofqzfs"
+                 data-callback="onForgotCaptchaSuccess"
+                 data-expired-callback="onForgotCaptchaExpired"
+                 data-error-callback="onForgotCaptchaExpired"
+                 style="margin: 0 0 1rem; display:flex; justify-content:center;"></div>
             <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                 <button type="button" class="btn btn-secondary" onclick="closeForgotPassword()">Отмена</button>
                 <button type="button" class="btn btn-primary" id="forgotPasswordSendBtn" onclick="sendResetPasswordEmail()">Отправить ссылку</button>
@@ -6563,8 +6569,8 @@
             <div class="header-left"></div>
             <nav class="subsite-switch" aria-label="Переключатель сабсайтов">
                 <button class="subsite-btn active" disabled title="Админ-панель">⚙️ Admin</button>
-                <a class="subsite-btn" href="https://train.wowteach.ru" title="Тренажёр карточек">⚡ Train</a>
-                <a class="subsite-btn" href="https://classroom.wowteach.ru" title="Платформа уроков">📚 Study</a>
+                <a class="subsite-btn" href="https://train.wowteach.ru" target="_blank" rel="noopener" title="Тренажёр карточек">⚡ Train</a>
+                <a class="subsite-btn" href="https://classroom.wowteach.ru" target="_blank" rel="noopener" title="Платформа уроков">📚 Study</a>
             </nav>
             <div class="header-right">
                 <div class="user-profile" onclick="sideNavGo('account')" title="Личный кабинет" style="cursor:pointer;">
@@ -9746,6 +9752,17 @@
             } catch (e) {}
         }
 
+        // ----- Капча в форме сброса пароля -----
+        let _forgotCaptchaToken = null;
+        function onForgotCaptchaSuccess(token) { _forgotCaptchaToken = token; }
+        function onForgotCaptchaExpired() { _forgotCaptchaToken = null; }
+        function resetForgotCaptcha() {
+            _forgotCaptchaToken = null;
+            try {
+                if (window.turnstile) window.turnstile.reset('#forgotCaptcha');
+            } catch (e) {}
+        }
+
         async function login() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -9805,6 +9822,11 @@
             if (!email) { alert('Введите email'); return; }
             if (!/^\S+@\S+\.\S+$/.test(email)) { alert('Некорректный email'); return; }
 
+            if (!_forgotCaptchaToken) {
+                alert('Подтвердите, что вы не робот (капча ещё загружается или не пройдена).');
+                return;
+            }
+
             const btn = document.getElementById('forgotPasswordSendBtn');
             btn.disabled = true;
             const origTxt = btn.textContent;
@@ -9812,12 +9834,14 @@
 
             try {
                 const { error } = await sb.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + window.location.pathname
+                    redirectTo: window.location.origin + window.location.pathname,
+                    captchaToken: _forgotCaptchaToken
                 });
                 if (error) throw error;
                 alert('Письмо со ссылкой для сброса пароля отправлено на ' + email + '. Проверьте почту.');
                 closeForgotPassword();
             } catch (e) {
+                resetForgotCaptcha();
                 const msg = (e.message || '').toLowerCase();
                 if (msg.includes('rate')) {
                     alert('Слишком часто. Подождите несколько минут.');
