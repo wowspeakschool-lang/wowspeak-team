@@ -22665,10 +22665,17 @@
                 if (fMeth === 'unassigned') {
                     if (t.assignedMethodistId || t.assignedAssessorUserId) return false;
                 } else if (fMeth && (fMeth.startsWith('m:') || fMeth.startsWith('a:'))) {
-                    // Методисты и ассессоры хранятся в едином поле assignedAssessorUserId.
-                    // Фолбэк на старое assignedMethodistId — для не перенесённых записей.
+                    // Историчность: если в выбранном месяце у препода ЕСТЬ ассесмент —
+                    // фильтруем по тому, кто его реально провёл (methodist_id ассесмента).
+                    // Если ассесмента нет — по текущему закреплению (assignedAssessorUserId).
                     const wantId = fMeth.slice(2);
-                    const assigned = t.assignedAssessorUserId || t.assignedMethodistId || null;
+                    const monthRecords = byMap.get(t.id) || [];
+                    let assigned;
+                    if (monthRecords.length) {
+                        assigned = monthRecords[0].methodist_id || null;
+                    } else {
+                        assigned = t.assignedAssessorUserId || t.assignedMethodistId || null;
+                    }
                     if (assigned !== wantId) return false;
                 }
                 return true;
@@ -23011,15 +23018,32 @@
                         .concat([`<option value="skip:${month}" ${isSkipped ? 'selected' : ''}>🚫 Не смотрим в этом месяце</option>`])
                         .join('');
 
+                    // Если ассесмент в этом месяце уже проведён — куратора менять нельзя,
+                    // показываем, кто его провёл (исторически). Иначе — селект выбора куратора.
+                    let supervisorControl;
+                    if (list.length) {
+                        const doneById = list[0].methodist_id;
+                        const doneBy = (_methodistsCache || []).find(m => m.id === doneById)
+                                     || (window._assessorsCache || []).find(a => a.id === doneById);
+                        const doneByName = doneBy ? doneBy.name : '—';
+                        supervisorControl = `
+                            <div style="padding:6px 10px; font-size:12px; color:#475569; display:flex; align-items:center; gap:4px;">
+                                <span style="color:#16a34a;">✓</span> ${escapeHtml(doneByName)}
+                            </div>`;
+                    } else {
+                        supervisorControl = `
+                            <select onchange="onAssignSupervisor('${t.id}', this.value)"
+                                style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; font-family:inherit; background:white; width:100%; box-sizing:border-box;">
+                                ${supervisorOpts}
+                            </select>`;
+                    }
+
                     return `
                         <div class="month-row month-row--with-methodist">
                             ${checkmark}
                             <div class="name">${escapeHtml(t.name)}${t.lessonsFolderUrl ? ` <a href="${escapeHtml(t.lessonsFolderUrl)}" target="_blank" rel="noopener" title="Папка с уроками" style="text-decoration:none; margin-left:4px;">📁</a>` : ''}${statusTag}</div>
                             <div class="scores">${scoresPills}</div>
-                            <select onchange="onAssignSupervisor('${t.id}', this.value)"
-                                style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; font-family:inherit; background:white; width:100%; box-sizing:border-box;">
-                                ${supervisorOpts}
-                            </select>
+                            ${supervisorControl}
                             <div class="actions" style="white-space:nowrap;">
                                 <button class="btn btn-primary btn-small" onclick="startAssessmentForTeacher('${t.id}')" style="white-space:nowrap;">+ Ассесмент</button>
                             </div>
