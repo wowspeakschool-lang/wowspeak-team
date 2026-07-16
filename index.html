@@ -22664,10 +22664,12 @@
                 if (isSkipped && fMeth !== '' && fMeth !== 'skip') return false;
                 if (fMeth === 'unassigned') {
                     if (t.assignedMethodistId || t.assignedAssessorUserId) return false;
-                } else if (fMeth && fMeth.startsWith('m:')) {
-                    if (t.assignedMethodistId !== fMeth.slice(2)) return false;
-                } else if (fMeth && fMeth.startsWith('a:')) {
-                    if (t.assignedAssessorUserId !== fMeth.slice(2)) return false;
+                } else if (fMeth && (fMeth.startsWith('m:') || fMeth.startsWith('a:'))) {
+                    // Методисты и ассессоры хранятся в едином поле assignedAssessorUserId.
+                    // Фолбэк на старое assignedMethodistId — для не перенесённых записей.
+                    const wantId = fMeth.slice(2);
+                    const assigned = t.assignedAssessorUserId || t.assignedMethodistId || null;
+                    if (assigned !== wantId) return false;
                 }
                 return true;
             });
