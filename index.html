@@ -29805,9 +29805,11 @@
                         <div style="background:#fafbfc; border:1px solid #e2e8f0; border-radius:10px; padding:0.9rem 1.1rem;">
                             <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:4px;">Контакты</div>
                             <div style="font-size:14px; color:#0f172a;">
-                                ${stu.phone ? `📞 <a href="tel:${escapeHtml(stu.phone.replace(/\s/g,''))}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.phone)}</a><br>` : ''}
-                                ${stu.email ? `✉️ <a href="mailto:${escapeHtml(stu.email)}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.email)}</a>` : ''}
-                                ${!stu.phone && !stu.email ? '<span style="color:#94a3b8;">—</span>' : ''}
+                                ${hasAnyRole(['super_admin','admin','methodist','manager','assistant','curator']) ? `
+                                    ${stu.phone ? `📞 <a href="tel:${escapeHtml(stu.phone.replace(/\s/g,''))}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.phone)}</a><br>` : ''}
+                                    ${stu.email ? `✉️ <a href="mailto:${escapeHtml(stu.email)}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.email)}</a>` : ''}
+                                    ${!stu.phone && !stu.email ? '<span style="color:#94a3b8;">—</span>' : ''}
+                                ` : '<span style="color:#94a3b8; font-size:13px;">Недоступно</span>'}
                             </div>
                         </div>
                     </div>
