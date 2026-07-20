@@ -27049,7 +27049,7 @@
                 const [lessonR, studentsR, tasksR, marksR] = await Promise.all([
                     sb.from('mk_lessons_with_details').select('*').eq('id', lessonId).maybeSingle(),
                     sb.from('mk_lesson_students')
-                        .select('student_id, external_id, visited, is_test, good_reason, students(id, name, external_id)')
+                        .select('student_id, external_id, visited, is_test, good_reason, students(id, name, external_id, about_student, test_level, learning_goal, level, unit)')
                         .eq('lesson_id', lessonId),
                     sb.from('lesson_tasks').select('*').eq('lesson_id', lessonId),
                     sb.from('lesson_marks').select('*').eq('lesson_id', lessonId),
@@ -27066,6 +27066,11 @@
                     mk_user_id: r.students?.external_id,
                     visited: r.visited,
                     good_reason: r.good_reason,
+                    about_student: r.students?.about_student || null,
+                    test_level: r.students?.test_level || null,
+                    learning_goal: r.students?.learning_goal || null,
+                    stu_level: r.students?.level || null,
+                    stu_unit: r.students?.unit || null,
                 }));
                 const tasks = tasksR.data || [];
                 const homeTask = tasks.find(t => t.type === 'home');
@@ -27310,6 +27315,33 @@
                     </div>` : ''}
                 </div>`;
 
+            // ----- Хелперы: кнопка-заметка и сам блок с информацией об ученике -----
+            function _studentInfo(ds) {
+                const orig = students.find(s => s.student_id === ds.student_id) || ds;
+                const has = orig.about_student || orig.test_level || orig.learning_goal;
+                return has ? orig : null;
+            }
+            function _noteId(ds) {
+                return 'snote_' + String(ds.student_id).replace(/[^a-zA-Z0-9]/g, '');
+            }
+            function studentNoteBtn(ds) {
+                if (!_studentInfo(ds)) return '';
+                const nid = _noteId(ds);
+                return `<button type="button" onclick="const e=document.getElementById('${nid}'); e.style.display = e.style.display==='none' ? 'block' : 'none';"
+                        title="Информация об ученике"
+                        style="border:none; background:#ede9fe; color:#6d28d9; cursor:pointer; font-size:12px; padding:2px 7px; border-radius:6px; margin-left:6px; font-weight:600;">ℹ️ инфо</button>`;
+            }
+            function studentNoteBox(ds) {
+                const info = _studentInfo(ds);
+                if (!info) return '';
+                return `
+                    <div id="${_noteId(ds)}" style="display:none; margin-top:8px; padding:10px 12px; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:8px; font-size:13px; color:#4c1d95; line-height:1.5;">
+                        ${info.test_level ? `<div><b>Уровень при тестировании:</b> ${escapeHtml(info.test_level)}</div>` : ''}
+                        ${info.learning_goal ? `<div><b>Цель обучения:</b> ${escapeHtml(info.learning_goal)}</div>` : ''}
+                        ${info.about_student ? `<div style="margin-top:4px; white-space:pre-wrap;"><b>Об ученике:</b> ${escapeHtml(info.about_student)}</div>` : ''}
+                    </div>`;
+            }
+
             // ----- Хелпер: 3 кнопки посещения -----
             function attendanceButtons(ds) {
                 const st = attendanceState(ds);
@@ -27358,11 +27390,14 @@
                                 const bg = st==='present'?'#f0fdf4':st==='absent'?'#fef2f2':st==='good_reason'?'#fffbeb':'#fafbfc';
                                 const bd = st==='present'?'#bbf7d0':st==='absent'?'#fecaca':st==='good_reason'?'#fde68a':'#e2e8f0';
                                 return `
-                                <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center; padding:10px 12px; background:${bg}; border:1px solid ${bd}; border-radius:10px;">
-                                    <div style="font-weight:600; color:#0f172a; font-size:14px;">${escapeHtml(orig?.student_name || '')}</div>
-                                    <div>${attendanceButtons(ds)}</div>
-                                    <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
-                                    <div style="text-align:center;">${markInput(ds, 'home')}</div>
+                                <div style="padding:10px 12px; background:${bg}; border:1px solid ${bd}; border-radius:10px;">
+                                    <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center;">
+                                        <div style="font-weight:600; color:#0f172a; font-size:14px;">${escapeHtml(orig?.student_name || '')}${studentNoteBtn(ds)}</div>
+                                        <div>${attendanceButtons(ds)}</div>
+                                        <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
+                                        <div style="text-align:center;">${markInput(ds, 'home')}</div>
+                                    </div>
+                                    ${studentNoteBox(ds)}
                                 </div>`;
                             }).join('')}
                         </div>
@@ -27379,9 +27414,10 @@
                     const stateLabel = {present:'Был на уроке', absent:'Пропустил', good_reason:'Пропустил по уважительной причине'}[st] || 'Не отмечено';
                     attendanceSection = `
                         <div style="${sectionStyle}">
-                            <div style="${labelStyle}">✓ Посещение</div>
+                            <div style="${labelStyle}">✓ Посещение${studentNoteBtn(ds)}</div>
                             ${attendanceButtons(ds)}
                             <div style="margin-top:6px; font-size:12px; color:#64748b;">${stateLabel}</div>
+                            ${studentNoteBox(ds)}
                         </div>`;
                     lessonMarkSection = `
                         <div style="${sectionStyle}">
