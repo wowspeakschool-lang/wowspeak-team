@@ -29738,7 +29738,7 @@
                 // Базовая инфа из кэша + дозагрузка отчётов параллельно
                 const cached = (_studentsListCache || []).find(s => s.id === studentId);
                 const [stuResp, reportsResp] = await Promise.all([
-                    sb.from('students').select('id, external_id, name, parent_text, birth_date, phone, email, status, comment, client_state_id, attends_space, level, unit, about_student, test_level, learning_goal').eq('id', studentId).maybeSingle(),
+                    sb.from('students').select('id, external_id, name, parent_text, birth_date, phone, email, client_state_id, attends_space, level, unit, about_student, test_level, learning_goal').eq('id', studentId).maybeSingle(),
                     sb.from('teacher_reports')
                         .select('id, report_type, teacher_id, program, language, form_data, created_at')
                         .eq('student_id', studentId)
