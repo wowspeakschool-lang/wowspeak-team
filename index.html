@@ -8892,6 +8892,14 @@
                     </div>
                 </div>
 
+                <!-- Кнопка пересчёта авто-финансов (бонусы + штрафы за месяц) -->
+                <div id="dashboardRecalcBar" style="grid-column: 1 / -1; display:none; align-items:center; gap:0.75rem; flex-wrap:wrap; padding:0.6rem 0.9rem; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:10px;">
+                    <span style="font-size:13px; color:#5b21b6;">Пересчитать автоматические бонусы и штрафы за месяц:</span>
+                    <input type="month" id="recalcFinMonth" style="padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                    <button class="btn btn-primary btn-small" onclick="recalcTeacherFinancesUI()">⚙️ Пересчитать</button>
+                    <span id="recalcFinStatus" style="font-size:13px; color:#64748b;"></span>
+                </div>
+
                 <!-- Штрафы, бонусы, звёзды (три колонки) -->
                 <div class="dashboard-card">
                     <div class="card-header">
@@ -19282,7 +19290,43 @@
         }
 
         // ---------- Загрузка финансовой истории для дашборда ----------
+        // Пересчёт авто-бонусов и авто-штрафов за месяц для текущего препода
+        async function recalcTeacherFinancesUI() {
+            const teacher = window._recalcFinTeacher;
+            const month = document.getElementById('recalcFinMonth')?.value;
+            const st = document.getElementById('recalcFinStatus');
+            if (!teacher || !month) {
+                if (st) st.textContent = 'Выберите месяц';
+                return;
+            }
+            if (st) { st.textContent = 'Пересчитываю…'; st.style.color = '#64748b'; }
+            try {
+                const { error } = await sb.rpc('recalc_teacher_finances', {
+                    p_teacher_id: teacher.id,
+                    p_year_month: month
+                });
+                if (error) throw error;
+                if (st) { st.textContent = '✓ Пересчитано'; st.style.color = '#16a34a'; }
+                // перезагружаем список штрафов/бонусов
+                loadTeacherFinance(teacher);
+            } catch (e) {
+                console.error('recalc finances failed:', e);
+                if (st) { st.textContent = 'Ошибка: ' + (e.message || e); st.style.color = '#dc2626'; }
+            }
+        }
+
         async function loadTeacherFinance(teacher) {
+            // Кнопка пересчёта — только управляющим ролям
+            const recalcBar = document.getElementById('dashboardRecalcBar');
+            if (recalcBar) {
+                const canRecalc = hasAnyRole(['super_admin','admin','methodist','manager','assistant']);
+                recalcBar.style.display = canRecalc ? 'flex' : 'none';
+                const mInput = document.getElementById('recalcFinMonth');
+                if (mInput && !mInput.value) mInput.value = new Date().toISOString().slice(0, 7);
+                window._recalcFinTeacher = teacher;
+                const st = document.getElementById('recalcFinStatus');
+                if (st) st.textContent = '';
+            }
             // Параллельные запросы: штрафы, бонусы, звёзды (нелистанные + списанные последние)
             const penEl = document.getElementById('dashboardPenalties');
             const bonEl = document.getElementById('dashboardBonuses');
@@ -19291,7 +19335,7 @@
             try {
                 const [pens, bons, stars] = await Promise.all([
                     sb.from('penalties')
-                        .select('id, date, amount, reason_code, reason_text, student_name, issued_by, created_at')
+                        .select('id, date, amount, reason_code, reason_text, student_name, issued_by, created_at, is_auto')
                         .eq('teacher_id', teacher.id)
                         .is('deleted_at', null)
                         .order('date', { ascending: false })
@@ -19522,8 +19566,8 @@
                     <div class="fin-details-row"><span class="lbl">Дата выписки:</span><span>${formatDate(r.date)}</span></div>
                     ${hasComment ? `<div class="fin-details-row"><span class="lbl">💬 Комментарий:</span><span class="fin-comment-text">${escapeHtml(r.reason_text)}</span></div>` : ''}
                     ${r.student_name ? `<div class="fin-details-row"><span class="lbl">Ученик:</span><span>${escapeHtml(r.student_name)}</span></div>` : ''}
-                    <div class="fin-details-row"><span class="lbl">Кто выписал:</span><span>${escapeHtml(issuerLabel)}</span></div>
-                    <div class="fin-details-row"><span class="lbl">Источник:</span><span>${fromScreening ? '🎯 Из скрининга' : '✏️ Выписан вручную'}</span></div>
+                    <div class="fin-details-row"><span class="lbl">Кто выписал:</span><span>${r.is_auto ? '🤖 Начислено автоматически' : escapeHtml(issuerLabel)}</span></div>
+                    <div class="fin-details-row"><span class="lbl">Источник:</span><span>${r.is_auto ? '⚙️ Автоматически (по данным месяца)' : (fromScreening ? '🎯 Из скрининга' : '✏️ Выписан вручную')}</span></div>
                     <div class="fin-details-row"><span class="lbl">Создано:</span><span>${formatDateTimeRu(r.created_at)}</span></div>
                 </div>
             `;
@@ -26536,6 +26580,17 @@
             });
         }
 
+        // Для трекеров: месяц засчитывается по updated_at (когда препод его заполнял),
+        // а не по created_at (когда была создана болванка). Трекер, созданный в июне
+        // и доделанный в июле, должен попадать в июльскую статистику.
+        function filterTrackersByMonth(rows, ym) {
+            if (!ym) return rows;
+            return rows.filter(r => {
+                const d = r.updated_at || r.created_at;
+                return d && d.slice(0, 7) === ym;
+            });
+        }
+
         async function renderTrackersList() {
             ensureTrackersMonth();
             const wrap = document.getElementById('trackersListWrap');
@@ -26558,7 +26613,7 @@
                 // Фильтр по месяцу (если не "Все месяцы")
                 const allMonths = document.getElementById('trackersAllMonths')?.checked || false;
                 if (!allMonths) {
-                    rows = filterByCreatedMonth(rows, _trackersState.yearMonth);
+                    rows = filterTrackersByMonth(rows, _trackersState.yearMonth);
                 }
 
                 const search = (document.getElementById('trackersSearch')?.value || '').trim().toLowerCase();
@@ -26620,7 +26675,7 @@
                 // Фильтр по месяцу
                 const allMonths = document.getElementById('adminTrackersAllMonths')?.checked || false;
                 if (!allMonths) {
-                    rows = filterByCreatedMonth(rows, _adminTrackersState.yearMonth);
+                    rows = filterTrackersByMonth(rows, _adminTrackersState.yearMonth);
                 }
 
                 const search = (document.getElementById('adminTrackersSearch')?.value || '').trim().toLowerCase();
