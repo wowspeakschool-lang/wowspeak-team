@@ -23247,7 +23247,12 @@
 
             try {
                 const monthStart = `${ym}-01`;
-                const nextMonth = new Date(+yy, +mm, 1).toISOString().slice(0, 10);
+                // Первое число следующего месяца — строкой, без Date/toISOString,
+                // иначе часовой пояс сдвигает границу и штрафы с датой "последнее число месяца" теряются.
+                const _y = +yy, _m = +mm;
+                const _ny = _m === 12 ? _y + 1 : _y;
+                const _nm = _m === 12 ? 1 : _m + 1;
+                const nextMonth = `${_ny}-${String(_nm).padStart(2, '0')}-01`;
 
                 const [calcRes, bonusRes, penaltyRes] = await Promise.all([
                     sb.rpc('calc_teacher_salary', { p_teacher_id: teacher.id, p_year_month: ym }),
