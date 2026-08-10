@@ -6632,6 +6632,7 @@
                 <div class="ass-main-tabs" style="margin-bottom:1rem;">
                     <button class="ass-main-tab active" data-reptab="trackers" onclick="setReportsSubTab('trackers')">📋 Трекеры прогресса</button>
                     <button class="ass-main-tab" data-reptab="trial" onclick="setReportsSubTab('trial')">📄 Отчёты после пробного</button>
+                    <button class="ass-main-tab" id="vuTabBtn" data-reptab="vu" onclick="setReportsSubTab('vu')" style="display:none;">🚀 Отчёты после ВУ</button>
                 </div>
 
                 <!-- Трекеры прогресса -->
@@ -6675,12 +6676,36 @@
                     </div>
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
                         <button class="btn btn-primary" onclick="openNewTrialReportModal()">+ Сгенерировать отчёт</button>
-                        <button class="btn btn-primary" id="vuNewReportBtn" style="background:linear-gradient(135deg,#7B61FF,#FF6B9D); display:none;" onclick="vuStartNew()">🚀 Новый отчёт ВУ</button>
                         <input type="search" id="trialReportsSearch" placeholder="🔍 Поиск по ученику или программе"
                                oninput="renderTrialReportsList()"
                                style="flex: 1; min-width: 220px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
                     </div>
                     <div id="trialReportsListWrap">
+                        <div class="analytics-loading">Загрузка…</div>
+                    </div>
+                </div>
+
+                <!-- Отчёты после ВУ (вводного урока) — только для МВУ -->
+                <div id="repSubVu" class="ass-subtab">
+                    <div class="summaries-toolbar">
+                        <div class="summaries-month-picker">
+                            <button class="btn btn-secondary btn-small" onclick="changeVuReportsMonth(-1)" title="Предыдущий">‹</button>
+                            <input type="month" id="vuReportsMonthInput" onchange="onVuReportsMonthChange(this.value)">
+                            <button class="btn btn-secondary btn-small" onclick="changeVuReportsMonth(+1)" title="Следующий">›</button>
+                            <button class="btn btn-small" style="background:#eef2ff;color:#4338ca;" onclick="setVuReportsMonthToday()">Текущий</button>
+                            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; color:#475569; cursor:pointer; padding:0.3rem 0.6rem; background:#fff; border:1px solid #cbd5e1; border-radius:8px; margin-left:0.5rem;">
+                                <input type="checkbox" id="vuReportsAllMonths" onchange="renderVuReportsList()" style="width:auto; margin:0;">
+                                Все месяцы
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+                        <button class="btn btn-primary" style="background:linear-gradient(135deg,#7B61FF,#FF6B9D);" onclick="vuStartNew()">🚀 Новый отчёт после ВУ</button>
+                        <input type="search" id="vuReportsSearch" placeholder="🔍 Поиск по ученику"
+                               oninput="renderVuReportsList()"
+                               style="flex: 1; min-width: 220px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
+                    </div>
+                    <div id="vuReportsListWrap">
                         <div class="analytics-loading">Загрузка…</div>
                     </div>
                 </div>
@@ -26515,10 +26540,13 @@
             });
             const trackers = document.getElementById('repSubTrackers');
             const trial    = document.getElementById('repSubTrial');
+            const vu       = document.getElementById('repSubVu');
             if (trackers) trackers.classList.toggle('active', tab === 'trackers');
             if (trial)    trial.classList.toggle('active', tab === 'trial');
+            if (vu)       vu.classList.toggle('active', tab === 'vu');
             if (tab === 'trackers') renderTrackersList();
             if (tab === 'trial') renderTrialReportsList();
+            if (tab === 'vu') renderVuReportsList();
         }
 
         // Подтабы в Сводках → Отчёты (для админа)
@@ -33072,7 +33100,7 @@
         var VU_AGE_GROUPS={
         "4-6":{label:"4–6 лет",icon:"🐉",progName:"Wow Dragon",
         progs:["Wow Dragon 1","Wow Dragon 2"],durs:["20 минут","30 минут"],freqs:["2","3"],
-        progInfo:{"Wow Dragon 1":"Pre-A1.1 · 4-5 лет · 81 урок","Wow Dragon 2":"Pre-A1.2 · 5-6 лет · 81 урок"},
+        progInfo:{"Wow Dragon 1":"Pre-A1.1 · 4-6 лет · 81 урок","Wow Dragon 2":"Pre-A1.2 · 4-6 лет · 81 урок","Wow Dragon 3":"Pre-A1.3 · 4-6 лет · 81 урок"},
         topics:[
         {mod:"WD1 — Модуль 1",items:[{id:"toys",ru:"Игрушки",t:"lex"},{id:"can",ru:"Can + Действия",t:"gram"},{id:"food",ru:"Еда",t:"lex"}]},
         {mod:"WD1 — Модуль 2",items:[{id:"school",ru:"Школьные принадлежности",t:"lex"},{id:"clothes",ru:"Одежда",t:"lex"},{id:"have",ru:"Have / don't have",t:"gram"}]},
@@ -33084,8 +33112,8 @@
         paHints:["Нулевой уровень, никогда не занимался","Знает несколько слов (цвета, числа)","Занимался в другой школе","Занимался с родителями дома","Смотрит мультики на английском","Понимает простые фразы, но не говорит","Стесняется говорить","Есть старший брат/сестра, который учит английский"],
         cmHints:["Очень активный и любознательный","Хорошо идёт на контакт","Стеснялся в начале, но раскрылся","Быстро схватывает новое","Нужно больше времени на адаптацию","С удовольствием участвовал в играх","Отличная память","Любит песенки и рифмовки","Хорошо реагирует на похвалу","Было сложно удерживать внимание","Очень дружелюбный","Нужна поддержка и мягкий подход"]},
         "7-9":{label:"7–9 лет",icon:"🗝️",progName:"Treasure",
-        progs:["Super Minds 1","Super Minds 2","Super Minds 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
-        progInfo:{"Super Minds 1":"A1.1 · 7-8 лет","Super Minds 2":"A1.2 · 8-9 лет","Super Minds 3":"A2.1 · 9-10 лет"},
+        progs:["Super Minds Starter","Super Minds 1","Super Minds 2","Super Minds 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
+        progInfo:{"Super Minds Starter":"Pre-A1.2 · 7-9 лет","Super Minds 1":"Pre-A1.3 · 7-9 лет","Super Minds 2":"Pre-A1.4–A1.1 · 7-9 лет","Super Minds 3":"A1.2 · 7-9 лет"},
         topics:[
         {mod:"SM1 — Модуль 1",items:[{id:"sm1_greet",ru:"Приветствие и знакомство",t:"lex"},{id:"sm1_class",ru:"Школьные предметы",t:"lex"},{id:"sm1_colors",ru:"Цвета и числа 1-20",t:"lex"}]},
         {mod:"SM1 — Модуль 2",items:[{id:"sm1_family",ru:"Члены семьи",t:"lex"},{id:"sm1_pets",ru:"Питомцы и животные",t:"lex"},{id:"sm1_body",ru:"Части тела",t:"lex"}]},
@@ -33098,7 +33126,7 @@
         cmHints:["Активно участвовал в квесте","Демонстрирует хорошую базу лексики","Уверенно строит короткие фразы","Хорошо воспринимает речь на слух","Нуждается в работе над грамматикой","Проявляет любознательность","Читает простые слова уверенно","Не боится ошибаться","Быстро запоминает новые слова","Нужна дополнительная практика говорения","Хорошо работает с картинками и визуалом","Мотивирован и заинтересован"]},
         "10-12":{label:"10–12 лет",icon:"🔍",progName:"Detectives",
         progs:["Go Getter 1","Go Getter 2","Go Getter 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
-        progInfo:{"Go Getter 1":"A1 · 10-11 лет","Go Getter 2":"A1-A2 · 11-12 лет","Go Getter 3":"A2 · 12-13 лет"},
+        progInfo:{"Go Getter 1":"Pre-A1.4–A1.1 · 10-12 лет","Go Getter 2":"A1.2 · 10-12 лет","Go Getter 3":"A2.1 · 10-12 лет"},
         topics:[
         {mod:"GG1 — Модуль 1",items:[{id:"gg1_personal",ru:"Личная информация",t:"lex"},{id:"gg1_countries",ru:"Страны и национальности",t:"lex"},{id:"gg1_possess",ru:"Притяжательные прилагательные",t:"gram"}]},
         {mod:"GG1 — Модуль 2",items:[{id:"gg1_routine",ru:"Распорядок дня",t:"gram"},{id:"gg1_time",ru:"Telling the time",t:"gram"},{id:"gg1_adverbs",ru:"Наречия частотности",t:"gram"}]},
@@ -33111,7 +33139,7 @@
         cmHints:["Демонстрирует хороший уровень языка","Активно участвует в диалоге","Не боится ошибаться","Уверенно читает тексты","Нуждается в систематизации грамматики","Хороший словарный запас","Есть пробелы в произношении","Мотивирован на обучение","Ставит конкретные цели","Легко переключается между темами","Хорошо аргументирует свои ответы","Нужна практика свободного говорения"]},
         "13+":{label:"13–17 лет",icon:"🎓",progName:"Prepare",
         progs:["Prepare 1","Prepare 2","Prepare 3","Prepare 4","Prepare 5","Prepare 6","Prepare 7"],durs:["40 минут","60 минут"],freqs:["2","3"],
-        progInfo:{"Prepare 1":"A1.1-A1.2 · 13+ лет","Prepare 2":"A2.1 · 13+ лет","Prepare 3":"A2.2 · 13+ лет","Prepare 4":"B1.1 · 13+ лет","Prepare 5":"B1.2 · 14+ лет","Prepare 6":"B2.1 · 14+ лет","Prepare 7":"B2.2 · 15+ лет"},
+        progInfo:{"Prepare 1":"A1.1–A1.2 · 13-17 лет","Prepare 2":"A2.1 · 13-17 лет","Prepare 3":"A2.2 · 13-17 лет","Prepare 4":"B1.1 · 13-17 лет","Prepare 5":"B1.2 · 13-17 лет","Prepare 6":"B2.1 · 13-17 лет","Prepare 7":"B2.2 · 13-17 лет"},
         topics:[
         {mod:"PR1 — Units 0-4",items:[{id:"pr1_families",ru:"Families",t:"lex"},{id:"pr1_countries",ru:"Countries",t:"lex"},{id:"pr1_tobe",ru:"To be",t:"gram"},{id:"pr1_havegot",ru:"Have got",t:"gram"}]},
         {mod:"PR1 — Units 5-9",items:[{id:"pr1_sports",ru:"Sports",t:"lex"},{id:"pr1_food",ru:"Food and drinks",t:"lex"},{id:"pr1_pressim",ru:"Present Simple",t:"gram"},{id:"pr1_can",ru:"Can / Can't",t:"gram"}]},
@@ -33165,7 +33193,7 @@
             if(!teacherObj && hasAnyRole(['super_admin','methodist'])) teacherObj={id:null,name:'—'};
             if(!teacherObj){alert('Не удалось определить преподавателя');return;}
             VU_S={step:-1,reportId:null,token:null,createdAt:null,teacherId:teacherObj.id,teacher:teacherObj.name,
-                studentId:null,studentExtId:null,ageGroup:"",show:false,name:"",surname:"",age:"",date:new Date().toISOString().slice(0,10),
+                studentId:null,studentExtId:null,ageGroup:"",show:false,name:"",surname:"",age:"",canRead:null,date:new Date().toISOString().slice(0,10),
                 goals:[],goalsCustom:"",pointA:"",scores:{},soft:{},comment:"",prog:"",dur:"",freq:"2",grade:"Basic",err:{}};
             document.getElementById('vuModalTitle').textContent='🚀 Новый отчёт после ВУ';
             document.getElementById('vuCopyLinkBtn').style.display='none';
@@ -33243,11 +33271,26 @@
         }
 
         function vuStep0(){
+            var readBlock='';
+            if(VU_S.ageGroup==="7-9"){
+                var yesSel=VU_S.canRead===true, noSel=VU_S.canRead===false;
+                readBlock='<div style="margin-top:14px;background:#FFF7ED;border:1px solid '+(VU_S.err.canRead?'#DC2626':'#FED7AA')+';border-radius:10px;padding:12px 14px">'+
+                    '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#9A3412">📖 Умеет читать по-английски? *</label>'+
+                    '<div style="display:flex;gap:8px">'+
+                    '<button onclick="vuSetCanRead(true)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(yesSel?'#16A34A':'#E2E8F0')+';background:'+(yesSel?'#DCFCE7':'#fff')+';color:'+(yesSel?'#15803D':'#64748B')+';font-weight:600;cursor:pointer">Да</button>'+
+                    '<button onclick="vuSetCanRead(false)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(noSel?'#DC2626':'#E2E8F0')+';background:'+(noSel?'#FEE2E2':'#fff')+';color:'+(noSel?'#B91C1C':'#64748B')+';font-weight:600;cursor:pointer">Нет</button>'+
+                    '</div>'+
+                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>Super Minds Starter</b> (обучение чтению с нуля)</div>':'')+
+                    '</div>';
+            }
             return '<h2 style="font-size:18px;font-weight:700;margin-bottom:14px">Данные ребёнка '+vuAg().icon+'</h2>'+
                 '<div style="background:#E0F7F5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#2AACA0">💡 Имя, фамилия и возраст подтягиваются из карточки ученика МК. Можно поправить вручную.</div>'+
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+vuInp('name','Имя *','Петя')+vuInp('surname','Фамилия','Иванов')+'</div>'+
-                '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+vuInp('age','Возраст *','5')+vuInp('date','Дата урока','','date')+vuInp('teacher','Преподаватель','Анна')+'</div>';
+                '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+vuInp('age','Возраст *','5')+vuInp('date','Дата урока','','date')+vuInp('teacher','Преподаватель','Анна')+'</div>'+
+                readBlock;
         }
+
+        function vuSetCanRead(v){VU_S.canRead=v;vuRender();}
 
         function vuStep1(){
             var g=vuAg();var h='<h2 style="font-size:18px;font-weight:700;margin-bottom:14px">Цели и точка А</h2><label style="display:block;font-size:13px;font-weight:600;margin-bottom:5px">Цели обучения</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
@@ -33310,7 +33353,11 @@
             var avgVal=tested.length?tested.reduce(function(s,i){return s+VU_S.scores[i.id];},0)/tested.length:-1;
             var n=parseInt(VU_S.age)||5;
             if(VU_S.ageGroup==="4-6") return{prog:avgVal>=1.5?"Wow Dragon 2":"Wow Dragon 1",dur:n<=4?"20 минут":"30 минут",freq:"2",grade:"Basic"};
-            if(VU_S.ageGroup==="7-9"){var p="Super Minds 1";if(avgVal>=1.5)p="Super Minds 2";if(avgVal>=1.8&&n>=9)p="Super Minds 3";return{prog:p,dur:n<=7?"30 минут":"40 минут",freq:"2",grade:"Basic"};}
+            if(VU_S.ageGroup==="7-9"){
+                // Не умеет читать → всегда Super Minds Starter (обучение чтению с нуля), баллы не важны
+                if(VU_S.canRead===false) return{prog:"Super Minds Starter",dur:n<=7?"30 минут":"40 минут",freq:"2",grade:"Basic"};
+                var p="Super Minds 1";if(avgVal>=1.5)p="Super Minds 2";if(avgVal>=1.8&&n>=9)p="Super Minds 3";return{prog:p,dur:n<=7?"30 минут":"40 минут",freq:"2",grade:"Basic"};
+            }
             if(VU_S.ageGroup==="10-12"){var p2="Go Getter 1";if(avgVal>=1.5)p2="Go Getter 2";if(avgVal>=1.8&&n>=12)p2="Go Getter 3";return{prog:p2,dur:"40 минут",freq:"2",grade:"Basic"};}
             var p3="Prepare 1";if(avgVal>=1.8)p3="Prepare 3";else if(avgVal>=1.5)p3="Prepare 2";return{prog:p3,dur:"40 минут",freq:"2",grade:"Expert"};
         }
@@ -33324,7 +33371,7 @@
         function vuValidate(step){
             VU_S.err={};
             if(step===-1){if(!VU_S.ageGroup)VU_S.err.ageGroup=true;}
-            if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;}
+            if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;if(VU_S.ageGroup==="7-9"&&VU_S.canRead===null)VU_S.err.canRead=true;}
             if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;}
             if(step===4){if(!VU_S.comment.trim())VU_S.err.comment=true;}
             return Object.keys(VU_S.err).length===0;
@@ -33341,10 +33388,15 @@
             var weak=tested.filter(function(i){return VU_S.scores[i.id]===0;});
             var avgS=tested.length?tested.reduce(function(s,t){return s+VU_S.scores[t.id];},0)/tested.length:0;
             var cefr,cefrSub;
-            if(VU_S.ageGroup==="4-6"){cefr="Pre-A1";cefrSub="Начинающий";if(avgS>=1.5){cefr="Pre-A1.2";cefrSub="Уверенный старт";}else if(avgS>=0.8){cefr="Pre-A1.1";cefrSub="Первые шаги";}}
-            else if(VU_S.ageGroup==="7-9"){cefr="Pre-A1";cefrSub="Начинающий";if(avgS>=1.8){cefr="A1.2";cefrSub="Уверенный";}else if(avgS>=1.3){cefr="A1.1";cefrSub="Хороший старт";}else if(avgS>=0.8){cefr="Pre-A1.2";cefrSub="Есть база";}}
-            else if(VU_S.ageGroup==="10-12"){cefr="A1";cefrSub="Начинающий";if(avgS>=1.8){cefr="A2";cefrSub="Уверенный";}else if(avgS>=1.3){cefr="A1.2";cefrSub="Выше начального";}else if(avgS>=0.8){cefr="A1.1";cefrSub="Есть база";}}
-            else{cefr="A1";cefrSub="Начинающий";if(avgS>=1.8){cefr="B1+";cefrSub="Продвинутый";}else if(avgS>=1.5){cefr="B1";cefrSub="Средний";}else if(avgS>=1.3){cefr="A2";cefrSub="Выше начального";}else if(avgS>=0.8){cefr="A1-A2";cefrSub="Есть база";}}
+            // CEFR соответствует назначенной программе (из карты progInfo), а не среднему баллу.
+            // Подзаголовок (cefrSub) плавает по баллам — отражает уверенность ребёнка.
+            var progInfoStr=(vuAg().progInfo&&vuAg().progInfo[VU_S.prog])||"";
+            var cefrFromProg=progInfoStr.split("·")[0].trim();
+            cefr=cefrFromProg||"Pre-A1";
+            if(avgS>=1.8)cefrSub="Уверенный старт";
+            else if(avgS>=1.3)cefrSub="Хороший старт";
+            else if(avgS>=0.8)cefrSub="Есть база";
+            else cefrSub="Начинающий";
             var lexI=items.filter(function(i){return i.t==="lex";});var gramI=items.filter(function(i){return i.t==="gram";});
             var pct=function(arr){var t=arr.filter(function(i){return VU_S.scores[i.id]>=0;});return t.length?t.reduce(function(s,i){return s+VU_S.scores[i.id];},0)/(t.length*2):0;};
             var radar=[{l:"Лексика",v:pct(lexI),c:"#7B61FF"},{l:"Грамматика",v:pct(gramI),c:"#FF6B9D"},{l:"Аудирование",v:(VU_S.soft.listening||0)/5,c:"#4ECDC4"},{l:"Говорение",v:(VU_S.soft.speaking||0)/5,c:"#FFB347"},{l:"Внимание",v:(VU_S.soft.attention||0)/5,c:"#77DD77"}];
@@ -33444,7 +33496,7 @@
                 document.getElementById('vuCopyLinkBtn').style.display='';
                 if(hasAnyRole(['super_admin','methodist'])) document.getElementById('vuDeleteBtn').style.display='';
                 if(typeof _showToast==='function')_showToast('✅ Отчёт сохранён');
-                if(typeof renderTrialReportsList==='function')renderTrialReportsList();
+                if(typeof renderVuReportsList==='function')renderVuReportsList();
             }catch(e){alert('Не удалось сохранить: '+(e.message||e));}
         }
 
@@ -33461,7 +33513,7 @@
             if(res.error){alert('Ошибка: '+res.error.message);return;}
             document.getElementById('vuModal').style.display='none';
             if(typeof _showToast==='function')_showToast('✅ Удалён');
-            if(typeof renderTrialReportsList==='function')renderTrialReportsList();
+            if(typeof renderVuReportsList==='function')renderVuReportsList();
         }
 
         // Публичная страница ?vu_report=token
@@ -33533,11 +33585,91 @@
             renderAdminTrialReportsList();
         }
 
-        // ----- Список trial-report для препода -----
+        // ============================================================
+        //          ВКЛАДКА "ОТЧЁТЫ ПОСЛЕ ВУ" (только trial_report_v2)
+        // ============================================================
+        let _vuReportsState = { yearMonth: null };
+
+        function ensureVuReportsMonth() {
+            if (!_vuReportsState.yearMonth) _vuReportsState.yearMonth = currentYearMonth();
+            const inp = document.getElementById('vuReportsMonthInput');
+            if (inp) inp.value = _vuReportsState.yearMonth;
+        }
+        function onVuReportsMonthChange(value) {
+            if (/^\d{4}-\d{2}$/.test(value)) { _vuReportsState.yearMonth = value; renderVuReportsList(); }
+        }
+        function changeVuReportsMonth(delta) {
+            const cur = _vuReportsState.yearMonth || currentYearMonth();
+            const [y, m] = cur.split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            _vuReportsState.yearMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const inp = document.getElementById('vuReportsMonthInput');
+            if (inp) inp.value = _vuReportsState.yearMonth;
+            renderVuReportsList();
+        }
+        function setVuReportsMonthToday() {
+            _vuReportsState.yearMonth = currentYearMonth();
+            const inp = document.getElementById('vuReportsMonthInput');
+            if (inp) inp.value = _vuReportsState.yearMonth;
+            renderVuReportsList();
+        }
+
+        async function renderVuReportsList() {
+            ensureVuReportsMonth();
+            const wrap = document.getElementById('vuReportsListWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+
+            try {
+                const { data, error } = await sb.from('teacher_reports')
+                    .select('id, teacher_id, report_type, student_name, program, language, created_at, updated_at')
+                    .eq('report_type', 'trial_report_v2')
+                    .is('deleted_at', null)
+                    .order('updated_at', { ascending: false })
+                    .limit(200);
+                if (error) throw error;
+
+                let rows = data || [];
+                const allMonths = document.getElementById('vuReportsAllMonths')?.checked || false;
+                if (!allMonths) rows = filterByCreatedMonth(rows, _vuReportsState.yearMonth);
+
+                const search = (document.getElementById('vuReportsSearch')?.value || '').trim().toLowerCase();
+                if (search) {
+                    rows = rows.filter(r => (r.student_name || '').toLowerCase().includes(search));
+                }
+
+                if (!rows.length) {
+                    const msg = allMonths
+                        ? 'Пока отчётов после ВУ нет. Нажмите «🚀 Новый отчёт после ВУ»'
+                        : 'За выбранный месяц отчётов нет. Включите «Все месяцы» или выберите другой.';
+                    wrap.innerHTML = `<div class="analytics-empty" style="padding:2rem; text-align:center; color:#94a3b8;">${msg}</div>`;
+                    return;
+                }
+
+                wrap.innerHTML = rows.map(r => `
+                    <div class="tracker-row">
+                        <div class="tracker-row-info">
+                            <div class="tracker-row-title">
+                                <span>👤 ${escapeHtml(r.student_name || '—')}</span>
+                                ${r.program ? `<span class="tracker-row-pill">${escapeHtml(r.program)}</span>` : ''}
+                            </div>
+                            <div class="tracker-row-meta">📅 ${formatDateRu(r.created_at)}${r.updated_at && r.updated_at !== r.created_at ? ' · обновлён ' + formatDateRu(r.updated_at) : ''}</div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="vuOpenEdit('${r.id}')">Открыть</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+                wrap.innerHTML = '<div class="analytics-empty">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
+            }
+        }
+
+        // ----- Список trial-report для препода (старая вкладка "после пробного") -----
         async function renderTrialReportsList() {
             ensureTrialReportsMonth();
-            const vuBtn = document.getElementById('vuNewReportBtn');
-            if (vuBtn) vuBtn.style.display = (typeof vuCanCreate === 'function' && vuCanCreate()) ? '' : 'none';
+            // Показываем вкладку "Отчёты после ВУ" только тем, кто может их создавать (МВУ/методист/админ)
+            const vuTabBtn = document.getElementById('vuTabBtn');
+            if (vuTabBtn) vuTabBtn.style.display = (typeof vuCanCreate === 'function' && vuCanCreate()) ? '' : 'none';
             const wrap = document.getElementById('trialReportsListWrap');
             if (!wrap) return;
             wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
@@ -33545,7 +33677,7 @@
             try {
                 const { data, error } = await sb.from('teacher_reports')
                     .select('id, teacher_id, report_type, student_name, program, language, created_at, updated_at')
-                    .in('report_type', ['trial_report', 'trial_report_v2'])
+                    .eq('report_type', 'trial_report')
                     .is('deleted_at', null)
                     .order('updated_at', { ascending: false })
                     .limit(200);
