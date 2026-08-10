@@ -8639,7 +8639,7 @@
                 <div class="tracker-modal-actions">
                     <button class="btn btn-secondary btn-small" id="vuCopyLinkBtn" onclick="vuCopyLink()" style="display:none;">🔗 Ссылка родителю</button>
                     <button class="btn btn-secondary btn-small" id="vuDeleteBtn" onclick="vuDelete()" style="display:none; color:#dc2626; border-color:#fca5a5;">🗑 Удалить</button>
-                    <button class="btn btn-secondary btn-small" onclick="document.getElementById('vuModal').style.display='none'">✕</button>
+                    <button class="btn btn-secondary btn-small" onclick="vuTryClose()">✕</button>
                 </div>
             </div>
             <div id="vuContent" class="tracker-content" style="background:#F8F6FF;">
@@ -13329,7 +13329,7 @@
             if (tab === 'contacts') renderContactsList();
             if (tab === 'chat') renderChatSection();
             if (tab === 'account') renderAccountPage();
-            if (tab === 'reports') renderTrackersList();
+            if (tab === 'reports') { updateVuTabVisibility(); renderTrackersList(); }
             if (tab === 'notifications') renderNotificationsList();
             if (tab === 'students') renderStudentsSection();
             if (tab === 'unit_requests') renderUnitRequestsSection();
@@ -33271,23 +33271,10 @@
         }
 
         function vuStep0(){
-            var readBlock='';
-            if(VU_S.ageGroup==="7-9"){
-                var yesSel=VU_S.canRead===true, noSel=VU_S.canRead===false;
-                readBlock='<div style="margin-top:14px;background:#FFF7ED;border:1px solid '+(VU_S.err.canRead?'#DC2626':'#FED7AA')+';border-radius:10px;padding:12px 14px">'+
-                    '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#9A3412">📖 Умеет читать по-английски? *</label>'+
-                    '<div style="display:flex;gap:8px">'+
-                    '<button onclick="vuSetCanRead(true)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(yesSel?'#16A34A':'#E2E8F0')+';background:'+(yesSel?'#DCFCE7':'#fff')+';color:'+(yesSel?'#15803D':'#64748B')+';font-weight:600;cursor:pointer">Да</button>'+
-                    '<button onclick="vuSetCanRead(false)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(noSel?'#DC2626':'#E2E8F0')+';background:'+(noSel?'#FEE2E2':'#fff')+';color:'+(noSel?'#B91C1C':'#64748B')+';font-weight:600;cursor:pointer">Нет</button>'+
-                    '</div>'+
-                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>Super Minds Starter</b> (обучение чтению с нуля)</div>':'')+
-                    '</div>';
-            }
             return '<h2 style="font-size:18px;font-weight:700;margin-bottom:14px">Данные ребёнка '+vuAg().icon+'</h2>'+
                 '<div style="background:#E0F7F5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#2AACA0">💡 Имя, фамилия и возраст подтягиваются из карточки ученика МК. Можно поправить вручную.</div>'+
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+vuInp('name','Имя *','Петя')+vuInp('surname','Фамилия','Иванов')+'</div>'+
-                '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+vuInp('age','Возраст *','5')+vuInp('date','Дата урока','','date')+vuInp('teacher','Преподаватель','Анна')+'</div>'+
-                readBlock;
+                '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+vuInp('age','Возраст *','5')+vuInp('date','Дата урока','','date')+vuInp('teacher','Преподаватель','Анна')+'</div>';
         }
 
         function vuSetCanRead(v){VU_S.canRead=v;vuRender();}
@@ -33305,6 +33292,18 @@
         function vuStep2(){
             var g=vuAg();var h='<h2 style="font-size:18px;font-weight:700;margin-bottom:6px">Чек-лист оценки '+vuAg().icon+'</h2><p style="font-size:13px;color:#6B6B80;margin-bottom:10px">0 = не знает, 1 = с подсказкой, 2 = сам, — = не проверялось</p>';
             if(VU_S.err.scores) h+='<p style="color:#FF4444;font-size:13px;margin-bottom:8px">Оцените хотя бы 3 темы</p>';
+            // Для 7-9: вопрос про чтение решает Starter vs SM1+
+            if(VU_S.ageGroup==="7-9"){
+                var yesSel=VU_S.canRead===true, noSel=VU_S.canRead===false;
+                h+='<div style="margin-bottom:14px;background:#FFF7ED;border:1px solid '+(VU_S.err.canRead?'#DC2626':'#FED7AA')+';border-radius:10px;padding:12px 14px">'+
+                    '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#9A3412">📖 Умеет читать по-английски? *</label>'+
+                    '<div style="display:flex;gap:8px">'+
+                    '<button onclick="vuSetCanRead(true)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(yesSel?'#16A34A':'#E2E8F0')+';background:'+(yesSel?'#DCFCE7':'#fff')+';color:'+(yesSel?'#15803D':'#64748B')+';font-weight:600;cursor:pointer">Да</button>'+
+                    '<button onclick="vuSetCanRead(false)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(noSel?'#DC2626':'#E2E8F0')+';background:'+(noSel?'#FEE2E2':'#fff')+';color:'+(noSel?'#B91C1C':'#64748B')+';font-weight:600;cursor:pointer">Нет</button>'+
+                    '</div>'+
+                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>Super Minds Starter</b> (обучение чтению с нуля)</div>':'')+
+                    '</div>';
+            }
             g.topics.forEach(function(mod){
                 h+='<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:#7B61FF;padding:5px 10px;background:#E8E0FF;border-radius:8px;margin-bottom:4px">'+mod.mod+'</div>';
                 mod.items.forEach(function(it){
@@ -33371,8 +33370,8 @@
         function vuValidate(step){
             VU_S.err={};
             if(step===-1){if(!VU_S.ageGroup)VU_S.err.ageGroup=true;}
-            if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;if(VU_S.ageGroup==="7-9"&&VU_S.canRead===null)VU_S.err.canRead=true;}
-            if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;}
+            if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;}
+            if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;if(VU_S.ageGroup==="7-9"&&VU_S.canRead===null)VU_S.err.canRead=true;}
             if(step===4){if(!VU_S.comment.trim())VU_S.err.comment=true;}
             return Object.keys(VU_S.err).length===0;
         }
@@ -33504,6 +33503,26 @@
             if(!VU_S.token){alert('Сначала сформируйте отчёт');return;}
             var url=location.origin+location.pathname+'?vu_report='+VU_S.token;
             navigator.clipboard.writeText(url).then(function(){if(typeof _showToast==='function')_showToast('🔗 Ссылка скопирована');else alert('Ссылка: '+url);},function(){prompt('Скопируйте ссылку:',url);});
+        }
+
+        // Закрытие модалки с защитой: если новый отчёт начали заполнять и не сохранили — спросить
+        function vuTryClose(){
+            var hasData = !!(VU_S && (
+                (VU_S.name && VU_S.name.trim()) ||
+                (VU_S.surname && VU_S.surname.trim()) ||
+                (VU_S.scores && Object.keys(VU_S.scores).length) ||
+                (VU_S.comment && VU_S.comment.trim()) ||
+                (VU_S.goals && VU_S.goals.length)
+            ));
+            // Уже сохранён (есть reportId) или показан готовый отчёт — данные в БД, закрываем сразу.
+            // Несохранённый черновик с введёнными данными — предупреждаем.
+            if(!VU_S || VU_S.reportId || VU_S.show || !hasData){
+                document.getElementById('vuModal').style.display='none';
+                return;
+            }
+            if(confirm('Закрыть без сохранения? Введённые данные не сохранятся.')){
+                document.getElementById('vuModal').style.display='none';
+            }
         }
 
         async function vuDelete(){
@@ -33665,11 +33684,15 @@
         }
 
         // ----- Список trial-report для препода (старая вкладка "после пробного") -----
-        async function renderTrialReportsList() {
-            ensureTrialReportsMonth();
-            // Показываем вкладку "Отчёты после ВУ" только тем, кто может их создавать (МВУ/методист/админ)
+        // Показывать вкладку "Отчёты после ВУ" только тем, кто может их создавать (МВУ/методист/админ)
+        function updateVuTabVisibility() {
             const vuTabBtn = document.getElementById('vuTabBtn');
             if (vuTabBtn) vuTabBtn.style.display = (typeof vuCanCreate === 'function' && vuCanCreate()) ? '' : 'none';
+        }
+
+        async function renderTrialReportsList() {
+            ensureTrialReportsMonth();
+            updateVuTabVisibility();
             const wrap = document.getElementById('trialReportsListWrap');
             if (!wrap) return;
             wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
