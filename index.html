@@ -9943,14 +9943,16 @@
             try {
                 const { data: myTeacher } = await sb
                     .from('teachers')
-                    .select('grade')
+                    .select('grade, grades_extra')
                     .eq('user_id', userRow.id)
                     .is('deleted_at', null)
                     .maybeSingle();
                 currentAppUser.grade = myTeacher?.grade || null;
+                currentAppUser.grades_extra = myTeacher?.grades_extra || [];
             } catch (e) {
                 console.warn('Не удалось загрузить грейд пользователя:', e);
                 currentAppUser.grade = null;
+                currentAppUser.grades_extra = [];
             }
 
             // Загружаем уведомления и подписываемся на realtime
@@ -33130,16 +33132,20 @@
         function vuAllItems(){return vuAg().topics.flatMap(function(m){return m.items;});}
         function vuEsc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-        // Может ли текущий пользователь создавать отчёты ВУ (grade='МВУ' либо super_admin/methodist)
+        // Может ли текущий пользователь создавать отчёты ВУ (grade='МВУ' в основном или доп-грейдах, либо super_admin/methodist)
         function vuCanCreate(){
             if(hasAnyRole(['super_admin','methodist'])) return true;
-            // Грейд текущего пользователя подгружается в currentAppUser при логине —
-            // это надёжнее, чем искать в teachersFromDb (который под ролью teacher урезан).
-            if(currentAppUser && currentAppUser.grade==='МВУ') return true;
+            // МВУ может быть в основном грейде ИЛИ в доп-грейдах (grades_extra).
+            // Грейды подгружаются в currentAppUser при логине — надёжнее, чем teachersFromDb.
+            if(currentAppUser){
+                if(currentAppUser.grade==='МВУ') return true;
+                if(Array.isArray(currentAppUser.grades_extra) && currentAppUser.grades_extra.indexOf('МВУ')!==-1) return true;
+            }
             var t=null;
             if(currentTeacher) t=findTeacher(currentTeacher);
             if(!t && currentAppUser) t=teachersFromDb.find(function(x){return x.userId===currentAppUser.id;});
-            return !!(t && t.grade==='МВУ');
+            if(t && (t.grade==='МВУ' || (Array.isArray(t.grades_extra) && t.grades_extra.indexOf('МВУ')!==-1))) return true;
+            return false;
         }
 
         // Запуск нового отчёта — привязка к МК-ученику
