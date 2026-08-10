@@ -9938,6 +9938,21 @@
 
             currentAppUser = userRow;
 
+            // Подгружаем грейд текущего пользователя из его teacher-записи (для проверок вроде МВУ).
+            // teachersFromDb под некоторыми ролями загружается урезанно, поэтому берём грейд напрямую.
+            try {
+                const { data: myTeacher } = await sb
+                    .from('teachers')
+                    .select('grade')
+                    .eq('user_id', userRow.id)
+                    .is('deleted_at', null)
+                    .maybeSingle();
+                currentAppUser.grade = myTeacher?.grade || null;
+            } catch (e) {
+                console.warn('Не удалось загрузить грейд пользователя:', e);
+                currentAppUser.grade = null;
+            }
+
             // Загружаем уведомления и подписываемся на realtime
             try {
                 await loadNotifications();
@@ -13854,7 +13869,7 @@
             wikiRenderTree();
         }
 
-        function wikiCanEdit(){return hasAnyRole(['super_admin','methodist']);}
+        function wikiCanEdit(){return false;}  // редактор отключён: wiki наполняется через SQL, только чтение
 
         async function renderWikiSection(){
             // Кнопки редактирования только для staff
@@ -33118,6 +33133,9 @@
         // Может ли текущий пользователь создавать отчёты ВУ (grade='МВУ' либо super_admin/methodist)
         function vuCanCreate(){
             if(hasAnyRole(['super_admin','methodist'])) return true;
+            // Грейд текущего пользователя подгружается в currentAppUser при логине —
+            // это надёжнее, чем искать в teachersFromDb (который под ролью teacher урезан).
+            if(currentAppUser && currentAppUser.grade==='МВУ') return true;
             var t=null;
             if(currentTeacher) t=findTeacher(currentTeacher);
             if(!t && currentAppUser) t=teachersFromDb.find(function(x){return x.userId===currentAppUser.id;});
@@ -33130,6 +33148,14 @@
             var teacherObj=null;
             if(currentTeacher) teacherObj=findTeacher(currentTeacher);
             if(!teacherObj && currentAppUser) teacherObj=teachersFromDb.find(function(t){return t.userId===currentAppUser.id;});
+            // Под ролью teacher список teachersFromDb урезан — если МВУ не нашёлся, берём его запись напрямую
+            if(!teacherObj && currentAppUser){
+                try{
+                    const { data: myT } = await sb.from('teachers')
+                        .select('id, name').eq('user_id', currentAppUser.id).is('deleted_at', null).maybeSingle();
+                    if(myT) teacherObj={id:myT.id, name:myT.name};
+                }catch(e){ console.warn('vuStartNew: не удалось найти teacher-запись', e); }
+            }
             if(!teacherObj && hasAnyRole(['super_admin','methodist'])) teacherObj={id:null,name:'—'};
             if(!teacherObj){alert('Не удалось определить преподавателя');return;}
             VU_S={step:-1,reportId:null,token:null,createdAt:null,teacherId:teacherObj.id,teacher:teacherObj.name,
