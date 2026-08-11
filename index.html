@@ -32774,6 +32774,19 @@
             const unitKey = formData.unitSelect;
             if (!tbKey || !unitKey) { console.log('[unit-progress] EXIT: no tbKey/unitKey'); return; }
             const TEXTBOOKS = window.tr_TEXTBOOKS;
+
+            // Английский трекер кодирует финал как unitSelect === "final" и использует свои
+            // коды учебников (GG3, PR3, SM1...), которых нет в русской структуре tr_TEXTBOOKS.
+            // Поэтому финал ловим по явному признаку ДО обращения к структуре — иначе запрос
+            // методисту не создаётся у англоговорящих преподавателей.
+            const isFinalByKey = (unitKey === 'final');
+            const tbForFinal = (TEXTBOOKS && TEXTBOOKS[tbKey]) ? TEXTBOOKS[tbKey] : null;
+            if (isFinalByKey) {
+                const tbNameFinal = (tbForFinal && tbForFinal.name) || formData.textbookSelect || tbKey;
+                await _createCourseCompletedRequest(tbNameFinal, '🎓 Final Test — All Units');
+                return;
+            }
+
             if (!TEXTBOOKS || !TEXTBOOKS[tbKey]) { console.log('[unit-progress] EXIT: TEXTBOOKS[' + tbKey + '] not found'); return; }
 
             const tb = TEXTBOOKS[tbKey];
@@ -32801,35 +32814,7 @@
             console.log('[unit-progress] decision: currentFinal=', currentUnit.isFinal);
             if (currentUnit.isFinal) {
                 console.log('[unit-progress] → creating unit_change_request');
-                try {
-                    const { data: reqData, error: reqErr } = await sb.from('unit_change_requests').insert({
-                        student_id: _trackerState.studentId,
-                        teacher_id: _trackerState.teacherId,
-                        current_textbook: tb.name || tbKey,
-                        current_unit: currentUnit.label,
-                        reason: 'course_completed',
-                        status: 'pending'
-                    }).select().single();
-                    if (reqErr) throw reqErr;
-
-                    // Сертификат здесь НЕ создаём — он создаётся при одобрении методистом
-                    // (confirmApproveUnitRequest), у которого есть права на certificates.
-
-                    // Уведомить всех методистов
-                    const { data: methodistRoles } = await sb
-                        .from('users')
-                        .select('id')
-                        .contains('roles', ['methodist']);
-                    const methodistIds = (methodistRoles || []).map(r => r.id);
-                    if (methodistIds.length) {
-                        const studentName = [formData.firstName, formData.lastName].filter(Boolean).join(' ');
-                        const teacherObj = teachersFromDb.find(t => t.id === _trackerState.teacherId);
-                        const teacherName = teacherObj ? teacherObj.name : '';
-                        const title = `🎓 ${studentName}: курс завершён${teacherName ? ' · ' + teacherName : ''}`;
-                        const message = (teacherName ? `Преподаватель: ${teacherName}\n` : '') + `Учебник: ${tb.name || tbKey}\nТекущий юнит: ${currentUnit.label}\nНужно: подобрать следующий учебник и юнит.`;
-                        await createNotificationsBatch(methodistIds, 'unit_change_request', title, message, '#section/unit_requests', { request_id: reqData.id });
-                    }
-                } catch (e) { console.warn('unit_change_requests / notify failed', e); }
+                await _createCourseCompletedRequest(tb.name || tbKey, currentUnit.label);
                 return;
             }
 
@@ -32841,6 +32826,38 @@
                         .eq('id', _trackerState.studentId);
                 } catch (e) { console.warn('students.unit update failed', e); }
             }
+        }
+
+        // Создаёт запрос методисту о завершении курса + уведомляет всех методистов.
+        // Используется обоими трекерами: русским (currentUnit.isFinal) и английским (unitSelect==='final').
+        async function _createCourseCompletedRequest(textbookName, unitLabel) {
+            try {
+                const { data: reqData, error: reqErr } = await sb.from('unit_change_requests').insert({
+                    student_id: _trackerState.studentId,
+                    teacher_id: _trackerState.teacherId,
+                    current_textbook: textbookName,
+                    current_unit: unitLabel,
+                    reason: 'course_completed',
+                    status: 'pending'
+                }).select().single();
+                if (reqErr) throw reqErr;
+
+                // Сертификат создаётся при одобрении методистом (confirmApproveUnitRequest).
+
+                const { data: methodistRoles } = await sb
+                    .from('users')
+                    .select('id')
+                    .contains('roles', ['methodist']);
+                const methodistIds = (methodistRoles || []).map(r => r.id);
+                if (methodistIds.length) {
+                    const teacherObj = teachersFromDb.find(t => t.id === _trackerState.teacherId);
+                    const teacherName = teacherObj ? teacherObj.name : '';
+                    const studentName = _trackerState.studentName || _trackerState.studentNameMk || '';
+                    const title = `🎓 ${studentName}: курс завершён${teacherName ? ' · ' + teacherName : ''}`;
+                    const message = (teacherName ? `Преподаватель: ${teacherName}\n` : '') + `Учебник: ${textbookName}\nТекущий юнит: ${unitLabel}\nНужно: подобрать следующий учебник и юнит.`;
+                    await createNotificationsBatch(methodistIds, 'unit_change_request', title, message, '#section/unit_requests', { request_id: reqData.id });
+                }
+            } catch (e) { console.warn('unit_change_requests / notify failed', e); }
         }
 
         async function saveTracker() {
