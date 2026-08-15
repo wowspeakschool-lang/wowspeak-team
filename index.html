@@ -9156,6 +9156,7 @@
                 <div id="dashboardSalaryContent" style="max-width:780px;">
                     <div class="analytics-loading">Загружаю расчёт…</div>
                 </div>
+                <div id="dashboardRetentionContent" style="max-width:780px; margin-top:1.2rem;"></div>
             </div>
         </div>
     </div>
@@ -23376,6 +23377,93 @@
             } catch (e) {
                 console.error('Ошибка расчёта зарплаты:', e);
                 wrap.innerHTML = `<div class="analytics-empty">Не удалось посчитать: ${escapeHtml(e.message || String(e))}</div>`;
+            }
+
+            loadDashboardRetention();
+        }
+
+        // ============================================================
+        //         УДЕРЖАНИЕ УЧЕНИКОВ (блок в табе "Зарплата")
+        // ============================================================
+        function _retPlural(n, one, few, many) {
+            const m10 = n % 10, m100 = n % 100;
+            if (m10 === 1 && m100 !== 11) return one;
+            if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+            return many;
+        }
+
+        async function loadDashboardRetention() {
+            const wrap = document.getElementById('dashboardRetentionContent');
+            if (!wrap) return;
+
+            const teacher = window._currentTeacherObj;
+            if (!teacher) { wrap.innerHTML = ''; return; }
+
+            wrap.innerHTML = '<div class="analytics-loading">Загружаю удержание…</div>';
+
+            try {
+                const { data, error } = await sb.rpc('retention_progress', { p_teacher_id: teacher.id });
+                if (error) throw error;
+
+                // Защита от RLS — оставляем только свои серии
+                const all = data || [];
+                const rows = all.filter(r => r.teacher_id === teacher.id);
+                if (rows.length !== all.length) {
+                    console.warn('[retention] RLS вернула чужие серии! Отфильтровано', all.length - rows.length, 'для teacherId', teacher.id);
+                }
+
+                const head = '<h3 style="margin:0 0 0.7rem; font-size:1rem;">🎯 Удержание учеников</h3>';
+
+                if (!rows.length) {
+                    wrap.innerHTML = head + `
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:0.85rem 1rem; color:#64748b; font-size:0.85rem;">
+                            Пока нет учеников в зачёте. Счётчик начнёт заполняться с уроков после старта вашей когорты.
+                        </div>`;
+                    return;
+                }
+
+                const nearest = rows[0];
+                const totalNext = rows.reduce((s, r) => s + (r.next_amount || 0), 0);
+
+                const cards = rows.map(r => {
+                    const pct = Math.min(100, Math.round(r.lessons_count / r.next_milestone * 100));
+                    const frozen = r.status === 'frozen';
+                    return `
+                        <div style="border:1px solid ${frozen ? '#fed7aa' : '#e2e8f0'}; background:${frozen ? '#fffbeb' : '#fff'}; border-radius:10px; padding:0.7rem 0.9rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.5rem;">
+                                <span style="font-weight:600;">${escapeHtml(r.student_name)}</span>
+                                <span style="font-size:0.8rem; color:#64748b; white-space:nowrap;">${r.lessons_count} / ${r.next_milestone}</span>
+                            </div>
+                            <div style="height:6px; background:#e2e8f0; border-radius:3px; margin:0.45rem 0 0.35rem; overflow:hidden;">
+                                <div style="height:100%; width:${pct}%; background:${frozen ? '#f59e0b' : 'linear-gradient(90deg,#34d399,#10b981)'};"></div>
+                            </div>
+                            <div style="font-size:0.78rem; color:#64748b;">
+                                ${frozen
+                                    ? '⏸ на паузе — сейчас ученика ведёт другой преподаватель'
+                                    : `до бонуса ${r.lessons_left} ${_retPlural(r.lessons_left, 'урок', 'урока', 'уроков')} · ${(r.next_amount || 0).toLocaleString('ru-RU')} ₽`}
+                            </div>
+                        </div>`;
+                }).join('');
+
+                wrap.innerHTML = head + `
+                    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #6ee7b7; border-radius:10px; padding:0.85rem 1rem; margin-bottom:0.9rem;">
+                        <div style="font-weight:600; margin-bottom:0.2rem;">
+                            Ближайший бонус — ${nearest.lessons_left} ${_retPlural(nearest.lessons_left, 'урок', 'урока', 'уроков')}
+                        </div>
+                        <div style="font-size:0.82rem; color:#065f46;">
+                            ${escapeHtml(nearest.student_name)} · ${(nearest.next_amount || 0).toLocaleString('ru-RU')} ₽ ·
+                            учеников в зачёте: ${rows.length} · потенциал ближайших рубежей ${totalNext.toLocaleString('ru-RU')} ₽
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:0.6rem;">
+                        ${cards}
+                    </div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:0.7rem;">
+                        Считаются проведённые уроки с закреплёнными за вами учениками. Обновляется раз в сутки.
+                    </div>`;
+            } catch (e) {
+                console.error('Ошибка загрузки удержания:', e);
+                wrap.innerHTML = `<div class="analytics-empty">Не удалось загрузить удержание: ${escapeHtml(e.message || String(e))}</div>`;
             }
         }
 
