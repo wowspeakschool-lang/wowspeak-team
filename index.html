@@ -29551,7 +29551,8 @@
                                     .map(s => parseFloat(s)).filter(v => !isNaN(v));
                                 if (scores.length) {
                                     avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-                                    grade = avg >= 90 ? 'A' : avg >= 80 ? 'B' : avg >= 70 ? 'C' : avg >= 60 ? 'D' : null;
+                                    // Шкала школы: A 85+, B 70–84, C 60–69, D ниже 60
+                                    grade = avg >= 85 ? 'A' : avg >= 70 ? 'B' : avg >= 60 ? 'C' : 'D';
                                 }
                             }
                         } catch (scoreErr) { console.warn('score calc failed:', scoreErr); }
