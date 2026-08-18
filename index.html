@@ -6443,6 +6443,9 @@
         <button class="side-nav-item" data-snav="unit_requests" onclick="sideNavGo('unit_requests')" style="display:none;">
             <span class="snav-icon">📥</span><span>Запросы<span id="unitRequestsBadge" style="display:none; background:#ef4444; color:white; border-radius:9px; padding:1px 6px; font-size:11px; margin-left:6px;"></span></span>
         </button>
+        <button class="side-nav-item" data-snav="client_cases" onclick="sideNavGo('client_cases')" style="display:none;">
+            <span class="snav-icon">🎯</span><span>Кейсы<span id="clientCasesBadge" style="display:none; background:#ef4444; color:white; border-radius:9px; padding:1px 6px; font-size:11px; margin-left:6px;"></span></span>
+        </button>
         <button class="side-nav-item" data-snav="trash" onclick="sideNavGo('trash')" style="display:none;">
             <span class="snav-icon">🗑</span><span>Корзина</span>
         </button>
@@ -7622,6 +7625,59 @@
 
                 <div id="unitRequestsListWrap">
                     <div class="analytics-loading">Загрузка запросов…</div>
+                </div>
+            </div>
+
+            <!-- 🎯 Кейсы: пожелания, замечания, кризисы -->
+            <div id="client_casesSection" class="content-section">
+                <div class="section-header" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+                    <div>
+                        <h2 style="margin:0;">🎯 Кейсы</h2>
+                        <p style="color:#64748b; font-size:0.9rem; margin:0.25rem 0 0;">Пожелания, замечания и кризисные ситуации по ученикам</p>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="openNewClientCaseModal()">+ Новый кейс</button>
+                </div>
+
+                <div class="ass-main-tabs" style="margin-bottom:1rem;">
+                    <button class="ass-main-tab active" data-cctab="list" onclick="setClientCasesTab('list')">📋 Список</button>
+                    <button class="ass-main-tab" data-cctab="stats" onclick="setClientCasesTab('stats')">📊 Аналитика</button>
+                </div>
+
+                <div id="ccSubList" class="ass-subtab active">
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <button class="ur-tab active" data-ccfilter="open"   onclick="setClientCasesFilter('open')">⏳ В работе</button>
+                        <button class="ur-tab" data-ccfilter="control"      onclick="setClientCasesFilter('control')">👁 На контроле</button>
+                        <button class="ur-tab" data-ccfilter="closed"       onclick="setClientCasesFilter('closed')">✅ Закрытые</button>
+                        <button class="ur-tab" data-ccfilter="all"          onclick="setClientCasesFilter('all')">📋 Все</button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+                        <input id="ccSearch" type="text" placeholder="🔍 Поиск по ученику или тексту…" oninput="renderClientCasesList()"
+                               style="padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; min-width:240px;">
+                        <select id="ccFilterCategory" onchange="renderClientCasesList()"
+                                style="padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white;">
+                            <option value="">🗂 Все категории</option>
+                            <option value="wish">📝 Пожелания</option>
+                            <option value="remark">⚠️ Замечания</option>
+                            <option value="crisis">🚨 Кризисные кейсы</option>
+                        </select>
+                        <select id="ccFilterAssignee" onchange="renderClientCasesList()"
+                                style="padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white;">
+                            <option value="">👤 Все ответственные</option>
+                        </select>
+                    </div>
+                    <div id="clientCasesListWrap"><div class="analytics-loading">Загрузка…</div></div>
+                </div>
+
+                <div id="ccSubStats" class="ass-subtab">
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+                        <label style="font-size:0.85rem; color:#64748b;">Период с</label>
+                        <input type="date" id="ccStatsFrom" onchange="renderClientCasesStats()"
+                               style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-family:inherit;">
+                        <label style="font-size:0.85rem; color:#64748b;">по</label>
+                        <input type="date" id="ccStatsTo" onchange="renderClientCasesStats()"
+                               style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-family:inherit;">
+                    </div>
+                    <div id="clientCasesStatsWrap"><div class="analytics-loading">Загрузка…</div></div>
                 </div>
             </div>
 
@@ -10961,6 +11017,7 @@
                 setSideNavVisible('team',        isSuper);
                 setSideNavVisible('students',    canManageStudents());
                 setSideNavVisible('unit_requests', hasAnyRole(['super_admin', 'admin', 'methodist', 'assistant', 'teacher']));
+                setSideNavVisible('client_cases', hasAnyRole(['super_admin', 'methodist', 'assistant', 'curator', 'manager']));
                 setSideNavVisible('groups',      true);
                 setSideNavVisible('schedule',    true);
                 const scheduleSyncBtn = document.getElementById('scheduleSyncBtn');
@@ -13349,6 +13406,7 @@
             if (tab === 'notifications') renderNotificationsList();
             if (tab === 'students') renderStudentsSection();
             if (tab === 'unit_requests') renderUnitRequestsSection();
+            if (tab === 'client_cases') renderClientCasesSection();
             if (tab === 'groups') renderGroupsSection();
             if (tab === 'schedule') renderScheduleSection();
             if (tab === 'wiki') renderWikiSection();
@@ -24046,6 +24104,645 @@
             filterNotified: '',   // '' / 'yes' / 'no'
             filterMoved: ''       // '' / 'yes' / 'no'
         };
+
+        // ============================================================
+        //          КЕЙСЫ: пожелания / замечания / кризисы
+        // ============================================================
+        const CC_CATEGORIES = {
+            wish:   { label: 'Пожелание',      icon: '📝', bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },
+            remark: { label: 'Замечание',      icon: '⚠️', bg:'#fef3c7', border:'#fcd34d', color:'#92400e' },
+            crisis: { label: 'Кризисный кейс', icon: '🚨', bg:'#fee2e2', border:'#fca5a5', color:'#991b1b' },
+        };
+        const CC_STATUSES = {
+            open:          { label: 'Открыт',      bg:'#f1f5f9', border:'#cbd5e1', color:'#475569' },
+            in_progress:   { label: 'В процессе',  bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },
+            under_control: { label: 'На контроле', bg:'#fef3c7', border:'#fcd34d', color:'#92400e' },
+            closed:        { label: 'Закрыт',      bg:'#dcfce7', border:'#86efac', color:'#166534' },
+        };
+        const CC_OUTCOMES = {
+            positive:  { label: '✅ Решено положительно', color:'#16a34a' },
+            negative:  { label: '❌ Решено отрицательно', color:'#dc2626' },
+            no_result: { label: '➖ Без результата',      color:'#64748b' },
+        };
+        // Подсказки, чтобы куратор не гадал, какую тему выбрать
+        const CC_TOPIC_HINTS = {
+            'Сообщили, что хотят прекратить занятия': 'сказали «мы уходим», денег пока не требуют',
+            'Требуют вернуть деньги':                 'прозвучало слово «возврат»',
+            'Требуют сменить преподавателя':          'просят замену, уходить не собираются',
+            'Конфликт с преподавателем':              'претензия лично к преподавателю',
+            'Нет результата, не сдал экзамен':        'претензия к итогу обучения',
+            'Формат не подошёл':                      'онлайн, длительность, группа',
+            'Жалоба на школу':                        'организация, деньги, сервис',
+        };
+
+        let _ccState = { tab: 'list', filter: 'open', cases: [], topics: [], loaded: false };
+
+        function _ccStyle(map, key) {
+            const c = map[key] || { bg:'#fff', border:'#cbd5e1', color:'#475569' };
+            return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
+        }
+
+        function setClientCasesTab(tab) {
+            _ccState.tab = tab;
+            document.querySelectorAll('[data-cctab]').forEach(b =>
+                b.classList.toggle('active', b.dataset.cctab === tab));
+            const list = document.getElementById('ccSubList');
+            const stats = document.getElementById('ccSubStats');
+            if (list)  list.classList.toggle('active', tab === 'list');
+            if (stats) stats.classList.toggle('active', tab === 'stats');
+            if (tab === 'stats') renderClientCasesStats();
+        }
+
+        function setClientCasesFilter(f) {
+            _ccState.filter = f;
+            document.querySelectorAll('[data-ccfilter]').forEach(b =>
+                b.classList.toggle('active', b.dataset.ccfilter === f));
+            renderClientCasesList();
+        }
+
+        async function renderClientCasesSection() {
+            await _ccLoadData();
+            renderClientCasesList();
+        }
+
+        async function _ccLoadData() {
+            const [casesRes, topicsRes] = await Promise.all([
+                sb.from('client_cases')
+                    .select('*, students(id, name), teachers(id, name), methodist_topics(id, name, category)')
+                    .order('created_at', { ascending: false }),
+                sb.from('methodist_topics')
+                    .select('id, name, category, default_assignee_user_id')
+                    .not('category', 'is', null)
+                    .eq('is_archived', false)
+                    .order('sort_order'),
+            ]);
+            _ccState.cases  = casesRes.data || [];
+            _ccState.topics = topicsRes.data || [];
+            _ccState.loaded = true;
+
+            // Наполняем фильтр по ответственным
+            const sel = document.getElementById('ccFilterAssignee');
+            if (sel) {
+                const ids = [...new Set(_ccState.cases.map(c => c.assignee_user_id).filter(Boolean))];
+                const cur = sel.value;
+                const { data: us } = ids.length
+                    ? await sb.from('users').select('id, name').in('id', ids)
+                    : { data: [] };
+                sel.innerHTML = '<option value="">👤 Все ответственные</option>' +
+                    (us || []).sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ru'))
+                        .map(u => `<option value="${u.id}"${u.id === cur ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+            }
+            _ccUpdateBadge();
+        }
+
+        function _ccUpdateBadge() {
+            const badge = document.getElementById('clientCasesBadge');
+            if (!badge) return;
+            const n = _ccState.cases.filter(c => c.status === 'open').length;
+            badge.textContent = n;
+            badge.style.display = n ? '' : 'none';
+        }
+
+        function renderClientCasesList() {
+            const wrap = document.getElementById('clientCasesListWrap');
+            if (!wrap) return;
+            const search = (document.getElementById('ccSearch')?.value || '').trim().toLowerCase();
+            const catF   = document.getElementById('ccFilterCategory')?.value || '';
+            const asgF   = document.getElementById('ccFilterAssignee')?.value || '';
+
+            let list = _ccState.cases.filter(c => {
+                if (_ccState.filter === 'open'    && !['open','in_progress'].includes(c.status)) return false;
+                if (_ccState.filter === 'control' && c.status !== 'under_control') return false;
+                if (_ccState.filter === 'closed'  && c.status !== 'closed') return false;
+                if (catF && c.category !== catF) return false;
+                if (asgF && c.assignee_user_id !== asgF) return false;
+                if (search) {
+                    const hay = `${c.student_name || ''} ${c.body || ''} ${c.methodist_topics?.name || ''}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                return true;
+            });
+
+            if (!list.length) {
+                wrap.innerHTML = '<div style="padding:2rem; text-align:center; color:#94a3b8;">Ничего не найдено</div>';
+                return;
+            }
+
+            wrap.innerHTML = `<div style="display:flex; flex-direction:column; gap:0.6rem;">
+                ${list.map(c => {
+                    const cat = CC_CATEGORIES[c.category] || {};
+                    const teacher = c.teachers?.name || '—';
+                    const days = c.created_at
+                        ? Math.floor((Date.now() - new Date(c.created_at)) / 86400000) : 0;
+                    const outcome = c.outcome ? CC_OUTCOMES[c.outcome] : null;
+                    return `<div onclick="openClientCase('${c.id}')" style="background:white; border:1px solid #e2e8f0; border-left:4px solid ${cat.border || '#cbd5e1'}; border-radius:10px; padding:12px 16px; cursor:pointer;">
+                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; font-size:14px;">
+                                    ${cat.icon || ''} ${escapeHtml(c.student_name || '—')}
+                                    ${c.student_age ? `<span style="color:#94a3b8; font-weight:400;"> · ${c.student_age} лет</span>` : ''}
+                                </div>
+                                <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                    ${escapeHtml(c.methodist_topics?.name || '—')} · 👩‍🏫 ${escapeHtml(teacher)}
+                                </div>
+                                <div style="font-size:13px; color:#334155; margin-top:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                                    ${escapeHtml(c.body || '')}
+                                </div>
+                            </div>
+                            <div style="text-align:right; white-space:nowrap;">
+                                <span style="padding:3px 9px; border-radius:99px; font-size:11px; ${_ccStyle(CC_STATUSES, c.status)}">${CC_STATUSES[c.status]?.label || c.status}</span>
+                                <div style="font-size:11px; color:#94a3b8; margin-top:5px;">${days === 0 ? 'сегодня' : days + ' дн. назад'}</div>
+                                ${outcome ? `<div style="font-size:11px; margin-top:3px; color:${outcome.color};">${outcome.label}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
+        // ---------- Создание ----------
+        let _ccNewState = { student: null, history: [] };
+
+        function openNewClientCaseModal() {
+            _ccNewState = { student: null, history: [] };
+            let ov = document.getElementById('ccNewOverlay');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'ccNewOverlay';
+                ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:10000; padding:24px; overflow-y:auto;';
+                ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+                document.body.appendChild(ov);
+            }
+            ov.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(640px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <h3 style="margin:0 0 1rem; font-size:1.05rem;">🎯 Новый кейс</h3>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Ученик</label>
+                    <input id="ccNewStudentSearch" type="text" placeholder="Начни вводить имя…" autocomplete="off"
+                           oninput="_ccSearchStudent(this.value)"
+                           style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+                    <div id="ccNewStudentResults" style="margin-top:4px;"></div>
+                    <div id="ccNewStudentCard" style="margin:0.8rem 0;"></div>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Категория</label>
+                    <select id="ccNewCategory" onchange="_ccFillTopics()" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                        <option value="">— выбрать —</option>
+                        <option value="wish">📝 Пожелание</option>
+                        <option value="remark">⚠️ Замечание</option>
+                        <option value="crisis">🚨 Кризисный кейс</option>
+                    </select>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Тема</label>
+                    <select id="ccNewTopic" onchange="_ccShowTopicHint()" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+                        <option value="">— сначала выбери категорию —</option>
+                    </select>
+                    <div id="ccNewTopicHint" style="font-size:0.78rem; color:#94a3b8; margin:4px 0 0.8rem; min-height:1em;"></div>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Суть обращения</label>
+                    <textarea id="ccNewBody" rows="5" placeholder="Что сказал клиент, что уже сделано…"
+                              style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; resize:vertical; margin-bottom:1rem;"></textarea>
+
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('ccNewOverlay').remove()">Отмена</button>
+                        <button class="btn btn-primary btn-small" onclick="_ccSaveNew()">Создать</button>
+                    </div>
+                </div>`;
+        }
+
+        let _ccSearchTimer = null;
+        function _ccSearchStudent(q) {
+            clearTimeout(_ccSearchTimer);
+            const box = document.getElementById('ccNewStudentResults');
+            if (!box) return;
+            if (!q || q.trim().length < 2) { box.innerHTML = ''; return; }
+            _ccSearchTimer = setTimeout(async () => {
+                const { data } = await sb.from('students')
+                    .select('id, name, birth_date, level, unit, client_state_id')
+                    .ilike('name', `%${q.trim()}%`)
+                    .limit(8);
+                box.innerHTML = (data || []).map(s => `
+                    <div onclick="_ccPickStudent('${s.id}')" style="padding:7px 10px; border:1px solid #e2e8f0; border-radius:8px; margin-top:3px; cursor:pointer; font-size:13px;">
+                        ${escapeHtml(s.name)}
+                    </div>`).join('') || '<div style="font-size:12px; color:#94a3b8; padding:4px;">Не найдено</div>';
+            }, 300);
+        }
+
+        async function _ccPickStudent(studentId) {
+            document.getElementById('ccNewStudentResults').innerHTML = '';
+            const { data: s } = await sb.from('students')
+                .select('id, name, birth_date, level, unit').eq('id', studentId).single();
+            if (!s) return;
+
+            // Преподаватель и формат занятий — из закрепления и расписания
+            const { data: st } = await sb.from('student_teachers')
+                .select('teacher_id, teachers(id, name)').eq('student_id', studentId).limit(1);
+            const teacher = st?.[0]?.teachers || null;
+
+            const { data: sta } = await sb.from('student_teacher_assignment')
+                .select('external_class_id').eq('student_id', studentId).limit(1);
+            let format = null;
+            if (sta?.[0]?.external_class_id) {
+                const { data: cls } = await sb.from('mk_classes')
+                    .select('name').eq('external_id', sta[0].external_class_id).single();
+                format = cls?.name || null;
+            }
+
+            const age = _calcAgeFromBd(s.birth_date);
+            const programme = [s.level, s.unit].filter(Boolean).join(' · ') || null;
+
+            // История обращений по этому ученику
+            const { data: hist } = await sb.from('client_cases')
+                .select('id, category, status, created_at, methodist_topics(name)')
+                .eq('student_id', studentId)
+                .order('created_at', { ascending: false });
+
+            _ccNewState.student = {
+                id: s.id, name: s.name, age,
+                teacher_id: teacher?.id || null, teacher_name: teacher?.name || null,
+                format, programme,
+            };
+            _ccNewState.history = hist || [];
+
+            const histHtml = (hist && hist.length)
+                ? `<div style="margin-top:10px; padding:9px 12px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px;">
+                     <div style="font-size:12px; font-weight:700; color:#92400e;">⚠️ По этому ученику уже ${hist.length} ${_retPlural(hist.length,'обращение','обращения','обращений')}</div>
+                     ${hist.slice(0,4).map(h => `<div style="font-size:11px; color:#78350f; margin-top:3px; cursor:pointer;" onclick="document.getElementById('ccNewOverlay').remove(); openClientCase('${h.id}')">
+                        ${CC_CATEGORIES[h.category]?.icon || ''} ${escapeHtml(h.methodist_topics?.name || '')} · ${formatDate(h.created_at)} · ${CC_STATUSES[h.status]?.label || ''}</div>`).join('')}
+                   </div>`
+                : '';
+
+            document.getElementById('ccNewStudentCard').innerHTML = `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:13px;">
+                    <div style="font-weight:700;">${escapeHtml(s.name)}${age ? ` · ${age} лет` : ''}</div>
+                    <div style="color:#64748b; margin-top:3px;">
+                        ${format ? '🎫 ' + escapeHtml(format) + '<br>' : ''}
+                        ${teacher ? '👩‍🏫 ' + escapeHtml(teacher.name) + '<br>' : '👩‍🏫 преподаватель не закреплён<br>'}
+                        ${programme ? '📘 ' + escapeHtml(programme) : ''}
+                    </div>
+                </div>${histHtml}`;
+        }
+
+        function _ccFillTopics() {
+            const cat = document.getElementById('ccNewCategory').value;
+            const sel = document.getElementById('ccNewTopic');
+            const list = _ccState.topics.filter(t => t.category === cat);
+            sel.innerHTML = '<option value="">— выбрать —</option>' +
+                list.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+            document.getElementById('ccNewTopicHint').textContent = '';
+        }
+
+        function _ccShowTopicHint() {
+            const sel = document.getElementById('ccNewTopic');
+            const name = sel.options[sel.selectedIndex]?.text || '';
+            document.getElementById('ccNewTopicHint').textContent = CC_TOPIC_HINTS[name] || '';
+        }
+
+        async function _ccSaveNew() {
+            const s = _ccNewState.student;
+            const category = document.getElementById('ccNewCategory').value;
+            const topicId  = document.getElementById('ccNewTopic').value;
+            const body     = document.getElementById('ccNewBody').value.trim();
+            if (!s)        { alert('Выберите ученика'); return; }
+            if (!category) { alert('Выберите категорию'); return; }
+            if (!topicId)  { alert('Выберите тему'); return; }
+            if (!body)     { alert('Опишите суть обращения'); return; }
+
+            const topic = _ccState.topics.find(t => t.id === topicId);
+            try {
+                const { data, error } = await sb.from('client_cases').insert({
+                    student_id: s.id,
+                    student_name: s.name,
+                    student_age: s.age,
+                    lesson_format: s.format,
+                    teacher_id: s.teacher_id,
+                    programme: s.programme,
+                    category, topic_id: topicId, body,
+                    assignee_user_id: topic?.default_assignee_user_id || null,
+                    status: 'open',
+                    created_by: currentAppUser?.id || null,
+                }).select().single();
+                if (error) throw error;
+
+                // Уведомление ответственному, иначе всем методистам
+                const cat = CC_CATEGORIES[category];
+                const title = `${cat.icon} ${cat.label}: ${s.name}`;
+                const msg = `${topic?.name || ''}\n\n${body}`;
+                if (topic?.default_assignee_user_id) {
+                    await createNotification(topic.default_assignee_user_id, 'teacher_question',
+                        title, msg, '#section/client_cases', { case_id: data.id });
+                } else {
+                    const { data: mRoles } = await sb.from('users').select('id').contains('roles', ['methodist']);
+                    const ids = (mRoles || []).map(r => r.id);
+                    if (ids.length) await createNotificationsBatch(ids, 'teacher_question',
+                        title, msg, '#section/client_cases', { case_id: data.id });
+                }
+                document.getElementById('ccNewOverlay')?.remove();
+                await _ccLoadData();
+                renderClientCasesList();
+            } catch (e) {
+                alert('Ошибка: ' + (e.message || e));
+            }
+        }
+
+        // ---------- Карточка кейса ----------
+        async function openClientCase(caseId) {
+            const c = _ccState.cases.find(x => x.id === caseId);
+            if (!c) { await _ccLoadData(); }
+            const item = _ccState.cases.find(x => x.id === caseId);
+            if (!item) return;
+
+            const { data: hist } = await sb.from('client_cases')
+                .select('id, category, status, created_at, methodist_topics(name)')
+                .eq('student_id', item.student_id)
+                .neq('id', caseId)
+                .order('created_at', { ascending: false });
+
+            let ov = document.getElementById('ccViewOverlay');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'ccViewOverlay';
+                ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:10000; padding:24px; overflow-y:auto;';
+                ov.onclick = (e) => { if (e.target === ov) closeClientCase(); };
+                document.body.appendChild(ov);
+            }
+            const cat = CC_CATEGORIES[item.category] || {};
+            ov.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(680px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.3rem; font-size:1.05rem;">${cat.icon || ''} ${escapeHtml(item.student_name || '—')}${item.student_age ? ` · ${item.student_age} лет` : ''}</h3>
+                            <div style="font-size:0.82rem; color:#64748b;">
+                                ${escapeHtml(item.methodist_topics?.name || '—')} · создан ${formatDate(item.created_at)}
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="closeClientCase()">Закрыть окно</button>
+                    </div>
+
+                    <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; margin:0.9rem 0; font-size:13px; color:#475569;">
+                        ${item.lesson_format ? '🎫 ' + escapeHtml(item.lesson_format) + '<br>' : ''}
+                        ${item.teachers?.name ? '👩‍🏫 ' + escapeHtml(item.teachers.name) + '<br>' : ''}
+                        ${item.programme ? '📘 ' + escapeHtml(item.programme) : ''}
+                    </div>
+
+                    <div style="white-space:pre-wrap; font-size:14px; line-height:1.5; margin-bottom:1rem;">${escapeHtml(item.body || '')}</div>
+
+                    ${hist && hist.length ? `<div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:9px 12px; margin-bottom:1rem;">
+                        <div style="font-size:12px; font-weight:700; color:#92400e;">История по ученику: ещё ${hist.length}</div>
+                        ${hist.slice(0,5).map(h => `<div style="font-size:11px; color:#78350f; margin-top:3px; cursor:pointer;" onclick="openClientCase('${h.id}')">
+                            ${CC_CATEGORIES[h.category]?.icon || ''} ${escapeHtml(h.methodist_topics?.name || '')} · ${formatDate(h.created_at)} · ${CC_STATUSES[h.status]?.label || ''}</div>`).join('')}
+                    </div>` : ''}
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Статус</label>
+                    <select id="ccViewStatus" onchange="_ccToggleCloseFields()" style="width:100%; padding:0.5rem; border-radius:8px; font-family:inherit; margin-bottom:0.8rem; ${_ccStyle(CC_STATUSES, item.status)}">
+                        ${Object.entries(CC_STATUSES).map(([k,v]) =>
+                            `<option value="${k}" ${item.status === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+                    </select>
+
+                    <div id="ccCloseFields" style="display:${item.status === 'closed' ? 'block' : 'none'};">
+                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Исход</label>
+                        <select id="ccViewOutcome" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                            <option value="">— выбрать —</option>
+                            ${Object.entries(CC_OUTCOMES).map(([k,v]) =>
+                                `<option value="${k}" ${item.outcome === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+                        </select>
+                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Как решили</label>
+                        <textarea id="ccViewResolution" rows="3" placeholder="Кратко: что сделали и чем закончилось"
+                                  style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; resize:vertical; margin-bottom:0.8rem;">${escapeHtml(item.resolution || '')}</textarea>
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-primary btn-small" onclick="_ccSaveCase('${item.id}')">Сохранить</button>
+                    </div>
+                </div>`;
+        }
+
+        function _ccToggleCloseFields() {
+            const st = document.getElementById('ccViewStatus').value;
+            const box = document.getElementById('ccCloseFields');
+            if (box) box.style.display = (st === 'closed') ? 'block' : 'none';
+        }
+
+        function closeClientCase() {
+            document.getElementById('ccViewOverlay')?.remove();
+        }
+
+        async function _ccSaveCase(caseId) {
+            const status = document.getElementById('ccViewStatus').value;
+            const update = { status, updated_at: new Date().toISOString() };
+            if (status === 'closed') {
+                const outcome = document.getElementById('ccViewOutcome').value;
+                const resolution = document.getElementById('ccViewResolution').value.trim();
+                if (!outcome)    { alert('Укажите исход'); return; }
+                if (!resolution) { alert('Опишите, как решили'); return; }
+                update.outcome = outcome;
+                update.resolution = resolution;
+                update.closed_at = new Date().toISOString();
+                update.closed_by_user_id = currentAppUser?.id || null;
+            } else {
+                update.closed_at = null;
+                update.closed_by_user_id = null;
+            }
+            const { error } = await sb.from('client_cases').update(update).eq('id', caseId);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            closeClientCase();
+            await _ccLoadData();
+            renderClientCasesList();
+        }
+
+        // ---------- Аналитика ----------
+        async function renderClientCasesStats() {
+            const wrap = document.getElementById('clientCasesStatsWrap');
+            if (!wrap) return;
+            if (!_ccState.loaded) await _ccLoadData();
+
+            // Период по умолчанию — последние 3 месяца
+            const fromEl = document.getElementById('ccStatsFrom');
+            const toEl   = document.getElementById('ccStatsTo');
+            if (fromEl && !fromEl.value) {
+                const d = new Date(); d.setMonth(d.getMonth() - 3);
+                fromEl.value = d.toISOString().slice(0, 10);
+            }
+            if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
+            const from = fromEl?.value || '1900-01-01';
+            const to   = toEl?.value   || '2999-12-31';
+
+            const list = _ccState.cases.filter(c => {
+                const d = (c.created_at || '').slice(0, 10);
+                return d >= from && d <= to;
+            });
+
+            if (!list.length) {
+                wrap.innerHTML = '<div style="padding:2rem; text-align:center; color:#94a3b8;">За период обращений нет</div>';
+                return;
+            }
+
+            const total   = list.length;
+            const open    = list.filter(c => ['open','in_progress'].includes(c.status)).length;
+            const control = list.filter(c => c.status === 'under_control').length;
+            const closed  = list.filter(c => c.status === 'closed').length;
+            const pos     = list.filter(c => c.outcome === 'positive').length;
+            const neg     = list.filter(c => c.outcome === 'negative').length;
+            const posRate = closed ? Math.round(pos / closed * 100) : 0;
+
+            const card = (label, value, color) => `
+                <div style="flex:1; min-width:130px; background:white; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px;">
+                    <div style="font-size:24px; font-weight:800; color:${color};">${value}</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">${label}</div>
+                </div>`;
+
+            // По категориям
+            const byCat = Object.keys(CC_CATEGORIES).map(k => {
+                const sub = list.filter(c => c.category === k);
+                const sc  = sub.filter(c => c.status === 'closed');
+                return {
+                    key: k, ...CC_CATEGORIES[k],
+                    total: sub.length,
+                    open: sub.filter(c => ['open','in_progress'].includes(c.status)).length,
+                    control: sub.filter(c => c.status === 'under_control').length,
+                    pos: sub.filter(c => c.outcome === 'positive').length,
+                    neg: sub.filter(c => c.outcome === 'negative').length,
+                    closed: sc.length,
+                };
+            });
+
+            // Среднее время до закрытия
+            const avgDays = (arr) => {
+                const done = arr.filter(c => c.closed_at && c.created_at);
+                if (!done.length) return null;
+                const sum = done.reduce((s, c) =>
+                    s + (new Date(c.closed_at) - new Date(c.created_at)) / 86400000, 0);
+                return Math.round(sum / done.length * 10) / 10;
+            };
+
+            // Темы
+            const topicMap = new Map();
+            for (const c of list) {
+                const n = c.methodist_topics?.name || '—';
+                topicMap.set(n, (topicMap.get(n) || 0) + 1);
+            }
+            const topTopics = [...topicMap.entries()].sort((a,b) => b[1]-a[1]).slice(0, 10);
+
+            // Преподаватели — считаем на одного ученика, иначе загруженные всегда «худшие»
+            const tMap = new Map();
+            for (const c of list) {
+                if (!c.teacher_id) continue;
+                const cur = tMap.get(c.teacher_id) || { name: c.teachers?.name || '—', cases: 0 };
+                cur.cases++;
+                tMap.set(c.teacher_id, cur);
+            }
+            const { data: stCounts } = await sb.from('student_teachers').select('teacher_id');
+            const studPerTeacher = new Map();
+            for (const r of (stCounts || [])) {
+                studPerTeacher.set(r.teacher_id, (studPerTeacher.get(r.teacher_id) || 0) + 1);
+            }
+            const topTeachers = [...tMap.entries()]
+                .map(([id, v]) => {
+                    const students = studPerTeacher.get(id) || 0;
+                    return { ...v, students, per100: students ? Math.round(v.cases / students * 100) : null };
+                })
+                .filter(v => v.students >= 3)   // на маленькой базе показатель случаен
+                .sort((a, b) => (b.per100 ?? -1) - (a.per100 ?? -1))
+                .slice(0, 10);
+
+            // Помесячная динамика
+            const monthMap = new Map();
+            for (const c of list) {
+                const ym = (c.created_at || '').slice(0, 7);
+                if (!ym) continue;
+                if (!monthMap.has(ym)) monthMap.set(ym, { wish:0, remark:0, crisis:0 });
+                monthMap.get(ym)[c.category]++;
+            }
+            const months = [...monthMap.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+            const maxMonth = Math.max(1, ...months.map(([,v]) => v.wish + v.remark + v.crisis));
+
+            wrap.innerHTML = `
+                <div style="display:flex; gap:0.7rem; flex-wrap:wrap; margin-bottom:1.2rem;">
+                    ${card('всего обращений', total, '#0f172a')}
+                    ${card('в работе', open, '#1e40af')}
+                    ${card('на контроле', control, '#92400e')}
+                    ${card('закрыто', closed, '#166534')}
+                    ${card('положительных исходов', closed ? posRate + '%' : '—', posRate >= 70 ? '#16a34a' : '#dc2626')}
+                </div>
+
+                <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">По категориям</h4>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1.4rem;">
+                    ${byCat.map(c => {
+                        const days = avgDays(list.filter(x => x.category === c.key));
+                        const w = (n) => c.total ? (n / c.total * 100) : 0;
+                        return `<div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px;">
+                                <span style="font-weight:700; font-size:14px;">${c.icon} ${c.label}</span>
+                                <span style="font-size:13px; color:#64748b;">
+                                    ${c.total} ${_retPlural(c.total,'обращение','обращения','обращений')}${days !== null ? ` · закрытие в среднем за ${days} дн.` : ''}
+                                </span>
+                            </div>
+                            <div style="display:flex; height:9px; border-radius:5px; overflow:hidden; background:#f1f5f9;">
+                                <div style="width:${w(c.pos)}%; background:#16a34a;" title="решено положительно: ${c.pos}"></div>
+                                <div style="width:${w(c.neg)}%; background:#dc2626;" title="решено отрицательно: ${c.neg}"></div>
+                                <div style="width:${w(c.control)}%; background:#f59e0b;" title="на контроле: ${c.control}"></div>
+                                <div style="width:${w(c.open)}%; background:#94a3b8;" title="в работе: ${c.open}"></div>
+                            </div>
+                            <div style="font-size:11px; color:#64748b; margin-top:5px;">
+                                <span style="color:#16a34a;">● ${c.pos} положительно</span> ·
+                                <span style="color:#dc2626;">● ${c.neg} отрицательно</span> ·
+                                <span style="color:#f59e0b;">● ${c.control} на контроле</span> ·
+                                <span style="color:#94a3b8;">● ${c.open} в работе</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+
+                ${months.length > 1 ? `
+                <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">Динамика по месяцам</h4>
+                <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px; margin-bottom:1.4rem;">
+                    <div style="display:flex; align-items:flex-end; gap:8px; height:120px;">
+                        ${months.map(([ym, v]) => {
+                            const sum = v.wish + v.remark + v.crisis;
+                            const h = (n) => Math.round(n / maxMonth * 100);
+                            return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+                                <div style="width:100%; display:flex; flex-direction:column-reverse; height:100px; justify-content:flex-start;">
+                                    <div style="height:${h(v.wish)}%; background:#93c5fd;" title="пожелания: ${v.wish}"></div>
+                                    <div style="height:${h(v.remark)}%; background:#fcd34d;" title="замечания: ${v.remark}"></div>
+                                    <div style="height:${h(v.crisis)}%; background:#fca5a5;" title="кризисы: ${v.crisis}"></div>
+                                </div>
+                                <div style="font-size:10px; color:#94a3b8;">${ym.slice(5)}·${ym.slice(2,4)}</div>
+                                <div style="font-size:11px; font-weight:700;">${sum}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <div style="font-size:11px; color:#64748b; margin-top:8px;">
+                        <span style="color:#93c5fd;">■</span> пожелания ·
+                        <span style="color:#fcd34d;">■</span> замечания ·
+                        <span style="color:#fca5a5;">■</span> кризисы
+                    </div>
+                </div>` : ''}
+
+                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:280px;">
+                        <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">Частые темы</h4>
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                            ${topTopics.map(([name, n]) => `
+                                <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px solid #f8fafc;">
+                                    <span>${escapeHtml(name)}</span><b>${n}</b>
+                                </div>`).join('')}
+                        </div>
+                    </div>
+                    <div style="flex:1; min-width:280px;">
+                        <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">Обращений на 100 учеников</h4>
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                            ${topTeachers.length ? topTeachers.map(t => `
+                                <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px solid #f8fafc;">
+                                    <span>${escapeHtml(t.name)}</span>
+                                    <span style="color:#64748b;">${t.cases} из ${t.students} · <b style="color:#0f172a;">${t.per100}</b></span>
+                                </div>`).join('')
+                              : '<div style="font-size:12px; color:#94a3b8;">Недостаточно данных</div>'}
+                            <div style="font-size:11px; color:#94a3b8; margin-top:8px;">
+                                Показаны преподаватели с 3+ учениками. Абсолютное число обращений зависит от загрузки, поэтому считаем долю.
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
 
         // ============================================================
         //              СМЕНА ГРЕЙДА
