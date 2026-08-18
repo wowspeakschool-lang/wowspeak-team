@@ -6900,6 +6900,7 @@
                             <button class="history-type-btn" data-htype="bonus" onclick="setHistoryType('bonus')">🎁 Бонусы</button>
                             <button class="history-type-btn" data-htype="penalty" onclick="setHistoryType('penalty')">⚠️ Штрафы</button>
                             <button class="history-type-btn" data-htype="star" onclick="setHistoryType('star')">⭐ Звёзды</button>
+                            <button class="history-type-btn" data-htype="grade" onclick="setHistoryType('grade')">🎓 Грейды</button>
                         </div>
                         <input type="search" id="historyTeacherSearch" placeholder="🔍 Препод"
                                oninput="renderHistoryList()"
@@ -24075,12 +24076,15 @@
             'find_same_grade': 'Найти преподавателя того же грейда',
             'refused':         'Отказ',
         };
-        // Решение задаёт статус по умолчанию — чтобы не заполнять дважды
-        const _gradeDecisionDefaultStatus = {
-            'stay':            'recalculated',
-            'find_same_grade': 'waiting_schedule',
-            'refused':         null,
+        const _gradeDecisionColors = {
+            'stay':            { bg:'#dcfce7', border:'#86efac', color:'#166534' },  // зелёный
+            'find_same_grade': { bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },  // синий
+            'refused':         { bg:'#fee2e2', border:'#fca5a5', color:'#991b1b' },  // красный
         };
+        function _gradeDecisionStyle(decision) {
+            const c = _gradeDecisionColors[decision] || { bg:'#fff', border:'#cbd5e1', color:'#475569' };
+            return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
+        }
         // Строка считается обработанной, если ученик передан, перерасчитан или отказался
         function _gradeRowDone(r) {
             return r.decision === 'refused' || r.status === 'transferred' || r.status === 'recalculated';
@@ -24250,7 +24254,7 @@
                         <td style="padding:8px 10px; color:#64748b;">${escapeHtml(r.age_group || '—')}</td>
                         <td style="padding:8px 10px; font-size:11px; color:#475569; max-width:220px;">${escapeHtml(_gradeUniqueSlots(r.schedule).join(', ') || '—')}</td>
                         <td style="padding:8px 10px;">
-                            <select onchange="_updateGradeRow('${r.id}','decision',this.value)" style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
+                            <select onchange="_updateGradeRow('${r.id}','decision',this.value)" style="width:100%; padding:4px 6px; border-radius:6px; font-family:inherit; font-size:12px; ${_gradeDecisionStyle(r.decision || '')}">
                                 <option value="">—</option>
                                 ${Object.entries(_gradeDecisionLabels).map(([k, v]) =>
                                     `<option value="${k}" ${r.decision === k ? 'selected' : ''}>${v}</option>`).join('')}
@@ -24337,14 +24341,6 @@
 
         async function _updateGradeRow(rowId, field, value) {
             const update = { [field]: value, updated_at: new Date().toISOString() };
-            // Решение подставляет статус по умолчанию, если он ещё не выбран вручную
-            if (field === 'decision') {
-                const row = (_gradeModalState.rows || []).find(r => r.id === rowId);
-                if (row && !row.status) {
-                    const def = _gradeDecisionDefaultStatus[value];
-                    if (def) update.status = def;
-                }
-            }
             if (field === 'status') {
                 update.status_updated_by = currentAppUser?.id || null;
                 update.status_updated_at = new Date().toISOString();
@@ -24425,9 +24421,31 @@
                     r.students &&
                     !r.students.is_archived &&
                     GRADE_ACTIVE_CLIENT_STATES.includes(r.students.client_state_id));
+
+                // student_teachers не чистится при переводе ученика к другому преподу,
+                // поэтому дополнительно проверяем факт: были ли уроки с этим преподом за 90 дней
+                const since = new Date(); since.setDate(since.getDate() - 90);
+                const sinceIso = since.toISOString().slice(0, 10);
+                const { data: pastLessons } = await sb.from('mk_lessons')
+                    .select('id')
+                    .eq('primary_teacher_id', t.id)
+                    .gte('lesson_date', sinceIso)
+                    .lte('lesson_date', new Date().toISOString().slice(0, 10));
+                const pastIds = (pastLessons || []).map(l => l.id);
+                const taughtSet = new Set();
+                // in() ограничен по длине, поэтому идём порциями
+                for (let i = 0; i < pastIds.length; i += 500) {
+                    const { data: chunk } = await sb.from('mk_lesson_students')
+                        .select('student_id')
+                        .in('lesson_id', pastIds.slice(i, i + 500))
+                        .eq('visited', true);
+                    for (const x of (chunk || [])) taughtSet.add(x.student_id);
+                }
+                const realRows = activeRows.filter(r => taughtSet.has(r.student_id));
+                const stale = activeRows.length - realRows.length;
                 const skipped = stRows.length - activeRows.length;
-                if (activeRows.length === 0) {
-                    alert(`У преподавателя нет действующих учеников (отфильтровано: ${skipped})`);
+                if (realRows.length === 0) {
+                    alert(`Не нашлось учеников с уроками у этого преподавателя за последние 90 дней.\n\nОтфильтровано: не клиенты — ${skipped}, без уроков — ${stale}`);
                     return;
                 }
                 // Расписание на 30 дней вперёд — чтобы видеть слоты ученика
@@ -24459,7 +24477,7 @@
 
                 const rows = [];
                 let sortIdx = 0;
-                for (const r of activeRows) {
+                for (const r of realRows) {
                     if (!r.students) continue;
                     const studLessons = (lessonsByStudent.get(r.student_id) || []).sort((a, b) => {
                         if (a.lesson_date !== b.lesson_date) return a.lesson_date < b.lesson_date ? -1 : 1;
@@ -24486,7 +24504,9 @@
                     .select('*').eq('grade_change_id', c.id).order('sort_order');
                 _gradeModalState.rows = fresh || [];
                 renderGradeChangeModal();
-                alert(`✓ Подгружено: ${rows.length} учеников${skipped ? `\nПропущено (архив или не клиент): ${skipped}` : ''}`);
+                alert(`✓ Подгружено: ${rows.length} учеников`
+                    + (skipped ? `\nПропущено (архив или не клиент): ${skipped}` : '')
+                    + (stale ? `\nПропущено (нет уроков с преподавателем за 90 дней): ${stale}` : ''));
             } catch (e) {
                 console.error(e);
                 alert('Ошибка: ' + (e.message || e));
@@ -35401,8 +35421,8 @@
         // ============================================================
         let _historyState = {
             yearMonth: null,
-            type: 'all',  // 'all' | 'bonus' | 'penalty' | 'star'
-            data: { bonuses: [], penalties: [], stars: [] },
+            type: 'all',  // 'all' | 'bonus' | 'penalty' | 'star' | 'grade'
+            data: { bonuses: [], penalties: [], stars: [], grades: [] },
             usersMap: new Map(),  // id → name
             loaded: false
         };
@@ -35465,7 +35485,7 @@
             const endDate = new Date(y, m, 0).toISOString().slice(0, 10);
 
             try {
-                const [bonRes, penRes, starsRes, usersRes] = await Promise.all([
+                const [bonRes, penRes, starsRes, usersRes, gradeRes] = await Promise.all([
                     sb.from('bonuses')
                         .select('id, teacher_id, issued_by, bonus_type, amount, reason_text, reason_code, date, year_month, created_at')
                         .eq('year_month', ym)
@@ -35482,7 +35502,12 @@
                         .gte('date', startDate)
                         .lte('date', endDate)
                         .order('date', { ascending: false }),
-                    sb.from('users').select('id, name, roles')
+                    sb.from('users').select('id, name, roles'),
+                    sb.from('grade_changes')
+                        .select('id, teacher_id, from_grade, to_grade, effective_date, created_by, created_at')
+                        .gte('effective_date', startDate)
+                        .lte('effective_date', endDate)
+                        .order('effective_date', { ascending: false })
                 ]);
 
                 if (bonRes.error) throw bonRes.error;
@@ -35493,6 +35518,7 @@
                 _historyState.data.bonuses = bonRes.data || [];
                 _historyState.data.penalties = penRes.data || [];
                 _historyState.data.stars = starsRes.data || [];
+                _historyState.data.grades = (gradeRes && !gradeRes.error) ? (gradeRes.data || []) : [];
 
                 _historyState.usersMap = new Map((usersRes.data || []).map(u => [u.id, { name: u.name, roles: u.roles || [] }]));
 
@@ -35598,6 +35624,22 @@
                     }
                 }
 
+                // Смена грейда
+                if (typeFilter === 'all' || typeFilter === 'grade') {
+                    for (const g of (_historyState.data.grades || [])) {
+                        items.push({
+                            kind: 'grade',
+                            id: g.id,
+                            date: g.effective_date,
+                            teacher_id: g.teacher_id,
+                            issued_by: g.created_by,
+                            reason: `${g.from_grade || '—'} → ${g.to_grade}`,
+                            isAuto: false,
+                            sortKey: (g.effective_date || '') + (g.created_at || '')
+                        });
+                    }
+                }
+
                 // Применяем фильтры по преподу и сотруднику
                 let filtered = items.filter(item => {
                     if (issuerFilter && item.issued_by !== issuerFilter) return false;
@@ -35696,6 +35738,10 @@
                 icon = '⭐'; cls = 'star';
                 amountText = item.isRedeemed ? '⭐ потрачена' : '⭐';
                 amountCls = 'star';
+            } else if (item.kind === 'grade') {
+                icon = '🎓'; cls = 'bonus';
+                amountText = 'смена грейда';
+                amountCls = 'star';
             }
 
             const autoPill = item.isAuto ? '<span class="history-row-pill auto">авто</span>' : '';
@@ -35735,6 +35781,8 @@
         // { kind, id, originalRecord, canEdit, canDelete, isAuto }
 
         async function openHistoryItem(kind, id) {
+            // Смена грейда — открываем её карточку, а не редактор начислений
+            if (kind === 'grade') { openGradeChangeDetails(id); return; }
             // Загружаем актуальную запись из БД
             const tableMap = { bonus: 'bonuses', penalty: 'penalties', star: 'stars' };
             const table = tableMap[kind];
