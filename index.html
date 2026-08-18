@@ -24242,7 +24242,7 @@
                 .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
 
             const body = rows.length === 0
-                ? '<tr><td colspan="8" style="padding:1.2rem; text-align:center; color:#94a3b8;">Ученики не подгружены. Нажми «Подгрузить учеников».</td></tr>'
+                ? '<tr><td colspan="9" style="padding:1.2rem; text-align:center; color:#94a3b8;">Ученики не подгружены. Нажми «Подгрузить учеников».</td></tr>'
                 : rows.map(r => {
                     const st = r.status || '';
                     return `<tr style="border-bottom:1px solid #f1f5f9;">
@@ -24280,6 +24280,12 @@
                                    onchange="_updateGradeRow('${r.id}','comment',this.value)"
                                    style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
                         </td>
+                        <td style="padding:8px 6px; text-align:center;">
+                            <button onclick="_deleteGradeRow('${r.id}','${escapeHtml(r.student_name || '')}')"
+                                    title="Убрать ученика из списка"
+                                    style="background:none; border:none; cursor:pointer; color:#cbd5e1; font-size:15px; padding:2px 4px;"
+                                    onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#cbd5e1'">✕</button>
+                        </td>
                     </tr>`;
                 }).join('');
 
@@ -24312,6 +24318,7 @@
                                     <th style="padding:8px 10px;">Перерасчёт</th>
                                     <th style="padding:8px 10px; min-width:170px;">Новый преподаватель</th>
                                     <th style="padding:8px 10px; min-width:150px;">Комментарий</th>
+                                    <th style="padding:8px 6px;"></th>
                                 </tr>
                             </thead>
                             <tbody>${body}</tbody>
@@ -24349,6 +24356,14 @@
         // Статусы учеников из МойКласс: 20674 — Клиент, 63578 — On vacation.
         // Остальные (лиды, архив, отказы) в перерасчёт при смене грейда не идут.
         const GRADE_ACTIVE_CLIENT_STATES = [20674, 63578];
+
+        async function _deleteGradeRow(rowId, studentName) {
+            if (!confirm(`Убрать «${studentName}» из списка?\n\nСтрока удалится только здесь, на самого ученика это не влияет.`)) return;
+            const { error } = await sb.from('grade_change_students').delete().eq('id', rowId);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            _gradeModalState.rows = (_gradeModalState.rows || []).filter(r => r.id !== rowId);
+            renderGradeChangeModal();
+        }
 
         async function _gradeAutoFill() {
             const c = _gradeModalState.change;
