@@ -9260,9 +9260,12 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script>
-        // ============ SUPABASE: подключение через прокси api.wowteach.ru ============
-        // Прокси на Timeweb VPS (Москва) → Supabase Frankfurt — для стабильности из РФ
-        const SUPABASE_URL = 'https://api.wowteach.ru';
+        // ============ SUPABASE ============
+        // ВРЕМЕННО: прямое подключение в обход прокси api.wowteach.ru.
+        // 18.08.2026 у Timeweb DDoS-атака на сети, TLS до Supabase с VPS не проходит.
+        // Когда сети восстановятся — вернуть 'https://api.wowteach.ru'
+        // (прокси нужен для стабильного доступа из РФ).
+        const SUPABASE_URL = 'https://vtcxghsqymwkyiogpndf.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_nZIl9kzPNhkd9Gbsm7aAgA_cAeY1s4x';
 
         // Cookie-storage с domain=.wowteach.ru — shared session между поддоменами
@@ -24348,35 +24351,80 @@
                 .select('id, name, birth_date, level, unit').eq('id', studentId).single();
             if (!s) return;
 
-            // Преподаватель и формат занятий — из закрепления и расписания
+            // Все закреплённые преподаватели — их может быть несколько
             const { data: st } = await sb.from('student_teachers')
-                .select('teacher_id, teachers(id, name)').eq('student_id', studentId).limit(1);
-            const teacher = st?.[0]?.teachers || null;
+                .select('teacher_id, teachers(id, name)').eq('student_id', studentId);
+            const teachers = (st || []).filter(r => r.teachers).map(r => r.teachers);
 
+            // Слоты: класс на каждого препода, чтобы показать формат занятий
             const { data: sta } = await sb.from('student_teacher_assignment')
-                .select('external_class_id').eq('student_id', studentId).limit(1);
-            let format = null;
-            if (sta?.[0]?.external_class_id) {
-                const { data: cls } = await sb.from('mk_classes')
-                    .select('name').eq('external_id', sta[0].external_class_id).single();
-                format = cls?.name || null;
+                .select('teacher_id, external_class_id').eq('student_id', studentId);
+            const classIds = [...new Set((sta || []).map(x => x.external_class_id).filter(Boolean))];
+            const { data: cls } = classIds.length
+                ? await sb.from('mk_classes').select('external_id, name').in('external_id', classIds)
+                : { data: [] };
+            const clsName = new Map((cls || []).map(c => [c.external_id, c.name]));
+            const formatByTeacher = new Map();
+            for (const x of (sta || [])) {
+                if (x.teacher_id && x.external_class_id && !formatByTeacher.has(x.teacher_id)) {
+                    formatByTeacher.set(x.teacher_id, clsName.get(x.external_class_id) || null);
+                }
             }
 
             const age = _calcAgeFromBd(s.birth_date);
             const programme = [s.level, s.unit].filter(Boolean).join(' · ') || null;
 
-            // История обращений по этому ученику
             const { data: hist } = await sb.from('client_cases')
                 .select('id, category, status, created_at, methodist_topics(name)')
                 .eq('student_id', studentId)
                 .order('created_at', { ascending: false });
 
             _ccNewState.student = {
-                id: s.id, name: s.name, age,
-                teacher_id: teacher?.id || null, teacher_name: teacher?.name || null,
-                format, programme,
+                id: s.id, name: s.name, age, programme,
+                teachers, formatByTeacher,
+                teacher_id: teachers.length === 1 ? teachers[0].id : null,
+                format: teachers.length === 1 ? (formatByTeacher.get(teachers[0].id) || null) : null,
             };
             _ccNewState.history = hist || [];
+
+            // Блок выбора преподавателя
+            let teacherBlock;
+            if (teachers.length === 1) {
+                const f = formatByTeacher.get(teachers[0].id);
+                teacherBlock = `<div style="color:#64748b; margin-top:3px;">
+                    👩‍🏫 ${escapeHtml(teachers[0].name)}${f ? '<br>🎫 ' + escapeHtml(f) : ''}
+                </div>`;
+            } else if (teachers.length > 1) {
+                teacherBlock = `
+                    <div style="margin-top:8px;">
+                        <div style="font-size:12px; color:#92400e; font-weight:600; margin-bottom:4px;">
+                            ⚠️ У ученика ${teachers.length} преподавателя — выбери, о ком кейс
+                        </div>
+                        <select id="ccNewTeacher" onchange="_ccPickTeacher(this.value)"
+                                style="width:100%; padding:0.45rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                            <option value="">— выбрать —</option>
+                            ${teachers.map(t => {
+                                const f = formatByTeacher.get(t.id);
+                                return `<option value="${t.id}">${escapeHtml(t.name)}${f ? ' · ' + escapeHtml(f) : ''}</option>`;
+                            }).join('')}
+                            <option value="__none__">— кейс не о преподавателе —</option>
+                        </select>
+                    </div>`;
+            } else {
+                const all = (teachersFromDb || []).filter(t => !t.deleted_at)
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+                teacherBlock = `
+                    <div style="margin-top:8px;">
+                        <div style="font-size:12px; color:#92400e; font-weight:600; margin-bottom:4px;">
+                            ⚠️ Преподаватель не закреплён — выбери вручную, если кейс о нём
+                        </div>
+                        <select id="ccNewTeacher" onchange="_ccPickTeacher(this.value)"
+                                style="width:100%; padding:0.45rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                            <option value="__none__">— кейс не о преподавателе —</option>
+                            ${all.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+                        </select>
+                    </div>`;
+            }
 
             const histHtml = (hist && hist.length)
                 ? `<div style="margin-top:10px; padding:9px 12px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px;">
@@ -24389,12 +24437,21 @@
             document.getElementById('ccNewStudentCard').innerHTML = `
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:13px;">
                     <div style="font-weight:700;">${escapeHtml(s.name)}${age ? ` · ${age} лет` : ''}</div>
-                    <div style="color:#64748b; margin-top:3px;">
-                        ${format ? '🎫 ' + escapeHtml(format) + '<br>' : ''}
-                        ${teacher ? '👩‍🏫 ' + escapeHtml(teacher.name) + '<br>' : '👩‍🏫 преподаватель не закреплён<br>'}
-                        ${programme ? '📘 ' + escapeHtml(programme) : ''}
-                    </div>
+                    ${programme ? `<div style="color:#64748b; margin-top:3px;">📘 ${escapeHtml(programme)}</div>` : ''}
+                    ${teacherBlock}
                 </div>${histHtml}`;
+        }
+
+        function _ccPickTeacher(value) {
+            const s = _ccNewState.student;
+            if (!s) return;
+            if (!value || value === '__none__') {
+                s.teacher_id = null;
+                s.format = null;
+                return;
+            }
+            s.teacher_id = value;
+            s.format = s.formatByTeacher?.get(value) || null;
         }
 
         function _ccFillTopics() {
@@ -24421,6 +24478,10 @@
             if (!category) { alert('Выберите категорию'); return; }
             if (!topicId)  { alert('Выберите тему'); return; }
             if (!body)     { alert('Опишите суть обращения'); return; }
+            // При нескольких преподавателях выбор обязателен — иначе в кейс
+            // попадёт случайный, и аналитика по преподавателям станет неверной
+            const sel = document.getElementById('ccNewTeacher');
+            if (sel && !sel.value) { alert('Выберите преподавателя или укажите, что кейс не о нём'); return; }
 
             const topic = _ccState.topics.find(t => t.id === topicId);
             try {
