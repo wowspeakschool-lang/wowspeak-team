@@ -7669,13 +7669,28 @@
                 </div>
 
                 <div id="ccSubStats" class="ass-subtab">
-                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
-                        <label style="font-size:0.85rem; color:#64748b;">Период с</label>
-                        <input type="date" id="ccStatsFrom" onchange="renderClientCasesStats()"
-                               style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-family:inherit;">
-                        <label style="font-size:0.85rem; color:#64748b;">по</label>
-                        <input type="date" id="ccStatsTo" onchange="renderClientCasesStats()"
-                               style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-family:inherit;">
+                    <div class="analytics-toolbar" style="margin-bottom:1rem;">
+                        <div class="analytics-mode-switch" role="tablist">
+                            <button class="mode-btn active" data-ccmode="month" onclick="setCcStatsMode('month')">За месяц</button>
+                            <button class="mode-btn" data-ccmode="year" onclick="setCcStatsMode('year')">За год</button>
+                            <button class="mode-btn" data-ccmode="all" onclick="setCcStatsMode('all')">Всё время</button>
+                        </div>
+                        <div class="analytics-period-controls">
+                            <div id="ccStatsMonthControls" class="summaries-month-picker">
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsMonth(-1)" title="Предыдущий">‹</button>
+                                <input type="month" id="ccStatsMonthInput" onchange="renderClientCasesStats()">
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsMonth(+1)" title="Следующий">›</button>
+                                <button class="btn btn-small" style="background:#eef2ff;color:#4338ca;" onclick="setCcStatsMonthToday()">Текущий</button>
+                            </div>
+                            <div id="ccStatsYearControls" class="summaries-month-picker" style="display:none;">
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsYear(-1)" title="Предыдущий год">‹</button>
+                                <select id="ccStatsYearInput" onchange="renderClientCasesStats()" style="padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:8px; font:inherit; font-size:0.9rem;"></select>
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsYear(+1)" title="Следующий год">›</button>
+                            </div>
+                            <div id="ccStatsAllControls" class="summaries-month-picker" style="display:none;">
+                                <span style="color:#64748b; font-size:0.88rem;">За всё время</span>
+                            </div>
+                        </div>
                     </div>
                     <div id="clientCasesStatsWrap"><div class="analytics-loading">Загрузка…</div></div>
                 </div>
@@ -24550,21 +24565,82 @@
         }
 
         // ---------- Аналитика ----------
+        let _ccStatsMode = 'month';
+
+        function setCcStatsMode(mode) {
+            _ccStatsMode = mode;
+            document.querySelectorAll('[data-ccmode]').forEach(b =>
+                b.classList.toggle('active', b.dataset.ccmode === mode));
+            document.getElementById('ccStatsMonthControls').style.display = mode === 'month' ? '' : 'none';
+            document.getElementById('ccStatsYearControls').style.display  = mode === 'year'  ? '' : 'none';
+            document.getElementById('ccStatsAllControls').style.display   = mode === 'all'   ? '' : 'none';
+            renderClientCasesStats();
+        }
+
+        function _ccEnsurePeriodInputs() {
+            const mi = document.getElementById('ccStatsMonthInput');
+            if (mi && !mi.value) {
+                const d = new Date();
+                mi.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            }
+            const yi = document.getElementById('ccStatsYearInput');
+            if (yi && !yi.options.length) {
+                const cur = new Date().getFullYear();
+                for (let y = cur; y >= cur - 4; y--) {
+                    const o = document.createElement('option');
+                    o.value = String(y); o.textContent = String(y);
+                    yi.appendChild(o);
+                }
+                yi.value = String(cur);
+            }
+        }
+
+        function changeCcStatsMonth(delta) {
+            _ccEnsurePeriodInputs();
+            const inp = document.getElementById('ccStatsMonthInput');
+            const [y, m] = inp.value.split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            inp.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            renderClientCasesStats();
+        }
+
+        function setCcStatsMonthToday() {
+            const d = new Date();
+            const inp = document.getElementById('ccStatsMonthInput');
+            if (inp) inp.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            renderClientCasesStats();
+        }
+
+        function changeCcStatsYear(delta) {
+            _ccEnsurePeriodInputs();
+            const sel = document.getElementById('ccStatsYearInput');
+            const idx = sel.selectedIndex + (delta > 0 ? -1 : 1);   // список идёт от новых к старым
+            if (idx >= 0 && idx < sel.options.length) sel.selectedIndex = idx;
+            renderClientCasesStats();
+        }
+
+        // Границы периода строкой — без new Date().toISOString(),
+        // иначе в неполночь смещается на день
+        function _ccPeriodRange() {
+            _ccEnsurePeriodInputs();
+            if (_ccStatsMode === 'all') return { from: '1900-01-01', to: '2999-12-31' };
+            if (_ccStatsMode === 'year') {
+                const y = document.getElementById('ccStatsYearInput')?.value || String(new Date().getFullYear());
+                return { from: `${y}-01-01`, to: `${y}-12-31` };
+            }
+            const ym = document.getElementById('ccStatsMonthInput')?.value;
+            if (!ym) return { from: '1900-01-01', to: '2999-12-31' };
+            const [y, m] = ym.split('-').map(Number);
+            const lastDay = new Date(y, m, 0).getDate();
+            return { from: `${ym}-01`, to: `${ym}-${String(lastDay).padStart(2, '0')}` };
+        }
+
         async function renderClientCasesStats() {
             const wrap = document.getElementById('clientCasesStatsWrap');
             if (!wrap) return;
             if (!_ccState.loaded) await _ccLoadData();
 
-            // Период по умолчанию — последние 3 месяца
-            const fromEl = document.getElementById('ccStatsFrom');
-            const toEl   = document.getElementById('ccStatsTo');
-            if (fromEl && !fromEl.value) {
-                const d = new Date(); d.setMonth(d.getMonth() - 3);
-                fromEl.value = d.toISOString().slice(0, 10);
-            }
-            if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
-            const from = fromEl?.value || '1900-01-01';
-            const to   = toEl?.value   || '2999-12-31';
+            const { from, to } = _ccPeriodRange();
 
             const list = _ccState.cases.filter(c => {
                 const d = (c.created_at || '').slice(0, 10);
