@@ -24346,6 +24346,10 @@
             renderGradeChangeModal();
         }
 
+        // Статусы учеников из МойКласс: 20674 — Клиент, 63578 — On vacation.
+        // Остальные (лиды, архив, отказы) в перерасчёт при смене грейда не идут.
+        const GRADE_ACTIVE_CLIENT_STATES = [20674, 63578];
+
         async function _gradeAutoFill() {
             const c = _gradeModalState.change;
             const t = _gradeModalState.teacher;
@@ -24354,11 +24358,21 @@
             if (btn) { btn.disabled = true; btn.textContent = '⏳ Подгружаю…'; }
             try {
                 const { data: stRows, error: stErr } = await sb.from('student_teachers')
-                    .select('student_id, students(id, name, birth_date)')
+                    .select('student_id, students(id, name, birth_date, client_state_id, is_archived)')
                     .eq('teacher_id', t.id);
                 if (stErr) throw stErr;
                 if (!stRows || stRows.length === 0) {
                     alert('У преподавателя нет закреплённых учеников');
+                    return;
+                }
+                // Оставляем только действующих клиентов и тех, кто на паузе
+                const activeRows = stRows.filter(r =>
+                    r.students &&
+                    !r.students.is_archived &&
+                    GRADE_ACTIVE_CLIENT_STATES.includes(r.students.client_state_id));
+                const skipped = stRows.length - activeRows.length;
+                if (activeRows.length === 0) {
+                    alert(`У преподавателя нет действующих учеников (отфильтровано: ${skipped})`);
                     return;
                 }
                 // Расписание на 30 дней вперёд — чтобы видеть слоты ученика
@@ -24390,7 +24404,7 @@
 
                 const rows = [];
                 let sortIdx = 0;
-                for (const r of stRows) {
+                for (const r of activeRows) {
                     if (!r.students) continue;
                     const studLessons = (lessonsByStudent.get(r.student_id) || []).sort((a, b) => {
                         if (a.lesson_date !== b.lesson_date) return a.lesson_date < b.lesson_date ? -1 : 1;
@@ -24417,7 +24431,7 @@
                     .select('*').eq('grade_change_id', c.id).order('sort_order');
                 _gradeModalState.rows = fresh || [];
                 renderGradeChangeModal();
-                alert(`✓ Подгружено: ${rows.length} учеников`);
+                alert(`✓ Подгружено: ${rows.length} учеников${skipped ? `\nПропущено (архив или не клиент): ${skipped}` : ''}`);
             } catch (e) {
                 console.error(e);
                 alert('Ошибка: ' + (e.message || e));
