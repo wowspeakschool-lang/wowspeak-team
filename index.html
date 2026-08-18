@@ -24248,7 +24248,7 @@
                     return `<tr style="border-bottom:1px solid #f1f5f9;">
                         <td style="padding:8px 10px; font-weight:600;">${escapeHtml(r.student_name || '—')}</td>
                         <td style="padding:8px 10px; color:#64748b;">${escapeHtml(r.age_group || '—')}</td>
-                        <td style="padding:8px 10px; color:#64748b;">${escapeHtml(r.subscription_type || '—')}</td>
+                        <td style="padding:8px 10px; font-size:11px; color:#475569; max-width:220px;">${escapeHtml(_gradeUniqueSlots(r.schedule).join(', ') || '—')}</td>
                         <td style="padding:8px 10px;">
                             <select onchange="_updateGradeRow('${r.id}','decision',this.value)" style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
                                 <option value="">—</option>
@@ -24280,7 +24280,10 @@
                                    onchange="_updateGradeRow('${r.id}','comment',this.value)"
                                    style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
                         </td>
-                        <td style="padding:8px 6px; text-align:center;">
+                        <td style="padding:8px 6px; text-align:center; white-space:nowrap;">
+                            <button onclick="_copyGradeStudentInfo('${r.id}')"
+                                    title="Скопировать текст для чата"
+                                    style="background:none; border:none; cursor:pointer; color:#7c3aed; font-size:14px; padding:2px 4px;">📋</button>
                             <button onclick="_deleteGradeRow('${r.id}','${escapeHtml(r.student_name || '')}')"
                                     title="Убрать ученика из списка"
                                     style="background:none; border:none; cursor:pointer; color:#cbd5e1; font-size:15px; padding:2px 4px;"
@@ -24312,7 +24315,7 @@
                                 <tr style="background:#f8fafc; text-align:left;">
                                     <th style="padding:8px 10px;">Ученик</th>
                                     <th style="padding:8px 10px;">Возраст</th>
-                                    <th style="padding:8px 10px;">Абонемент</th>
+                                    <th style="padding:8px 10px;">Расписание</th>
                                     <th style="padding:8px 10px; min-width:180px;">Решение</th>
                                     <th style="padding:8px 10px; min-width:200px;">Статус</th>
                                     <th style="padding:8px 10px;">Перерасчёт</th>
@@ -24356,6 +24359,43 @@
         // Статусы учеников из МойКласс: 20674 — Клиент, 63578 — On vacation.
         // Остальные (лиды, архив, отказы) в перерасчёт при смене грейда не идут.
         const GRADE_ACTIVE_CLIENT_STATES = [20674, 63578];
+
+        // Из строки расписания «Пн 18.08 15:00-15:40; Ср 20.08 15:00-15:40»
+        // делаем уникальные слоты без дат: «Пн 15:00-15:40», «Ср 15:00-15:40»
+        function _gradeUniqueSlots(schedule) {
+            const items = (schedule || '').split(';').map(l => l.trim()).filter(Boolean);
+            const set = new Set();
+            for (const item of items) {
+                const m = item.match(/^(\S+)\s+\d{2}\.\d{2}\s+(\d{2}:\d{2}-\d{2}:\d{2})/);
+                set.add(m ? `${m[1]} ${m[2]}` : item);
+            }
+            return Array.from(set);
+        }
+
+        function _copyGradeStudentInfo(rowId) {
+            const r = (_gradeModalState.rows || []).find(x => x.id === rowId);
+            if (!r) return;
+            const c = _gradeModalState.change;
+            const t = _gradeModalState.teacher;
+            const slots = _gradeUniqueSlots(r.schedule);
+            const lines = [
+                'Ищу нового преподавателя!',
+                '',
+                `👤 Ученик: ${r.student_name}${r.student_age ? ` (${r.student_age} лет)` : ''}`,
+            ];
+            if (r.age_group)         lines.push(`👥 Возрастная группа: ${r.age_group}`);
+            if (r.subscription_type) lines.push(`🎫 Абонемент: ${r.subscription_type}`);
+            if (slots.length) {
+                lines.push('', '📅 Расписание:');
+                slots.forEach(s => lines.push(`   📌 ${s}`));
+            }
+            if (r.comment) lines.push('', '💬 ' + r.comment);
+            const text = lines.join('\n');
+            navigator.clipboard.writeText(text).then(
+                () => alert('✅ Скопировано:\n\n' + text),
+                () => prompt('Скопируй вручную:', text)
+            );
+        }
 
         async function _deleteGradeRow(rowId, studentName) {
             if (!confirm(`Убрать «${studentName}» из списка?\n\nСтрока удалится только здесь, на самого ученика это не влияет.`)) return;
