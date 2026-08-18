@@ -6718,6 +6718,7 @@
                     <button class="ass-main-tab active" data-summtab="finance" onclick="setSummariesSubTab('finance')">📊 Уроки (данные)</button>
                     <button class="ass-main-tab" data-summtab="vacations" onclick="setSummariesSubTab('vacations')">🌴 Отпуска</button>
                     <button class="ass-main-tab" data-summtab="dismissals" onclick="setSummariesSubTab('dismissals')">👋 Увольнения</button>
+                    <button class="ass-main-tab" data-summtab="grades" onclick="setSummariesSubTab('grades')">🎓 Смена грейда</button>
                     <button class="ass-main-tab" data-summtab="payments" onclick="setSummariesSubTab('payments')">💸 Расчёты</button>
                     <button class="ass-main-tab" data-summtab="reports" onclick="setSummariesSubTab('reports')">📄 Отчёты</button>
                     <button class="ass-main-tab" data-summtab="history" onclick="setSummariesSubTab('history')">📊 История</button>
@@ -6785,6 +6786,19 @@
                         Преподаватели в процессе увольнения. Кликни на препода, чтобы увидеть его учеников и подобрать новых преподавателей.
                     </div>
                     <div id="dismissalsListWrap">
+                        <div class="analytics-loading">Загрузка…</div>
+                    </div>
+                </div>
+
+                <!-- ===== Смена грейда ===== -->
+                <div id="summSubGrades" class="ass-subtab">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+                        <div style="color:#64748b; font-size:0.9rem;">
+                            Преподаватели, перешедшие на новый грейд. Кликни на карточку, чтобы решить, что делать с каждым учеником.
+                        </div>
+                        <button class="btn btn-small" style="background:#ede9fe; color:#5b21b6;" onclick="openNewGradeChangeDialog()">+ Смена грейда</button>
+                    </div>
+                    <div id="gradeChangesListWrap">
                         <div class="analytics-loading">Загрузка…</div>
                     </div>
                 </div>
@@ -23832,17 +23846,20 @@
             const finance = document.getElementById('summSubFinance');
             const vac = document.getElementById('summSubVacations');
             const dis = document.getElementById('summSubDismissals');
+            const grd = document.getElementById('summSubGrades');
             const pay = document.getElementById('summSubPayments');
             const rep = document.getElementById('summSubReports');
             const hist = document.getElementById('summSubHistory');
             if (finance) finance.classList.toggle('active', sub === 'finance');
             if (vac) vac.classList.toggle('active', sub === 'vacations');
             if (dis) dis.classList.toggle('active', sub === 'dismissals');
+            if (grd) grd.classList.toggle('active', sub === 'grades');
             if (pay) pay.classList.toggle('active', sub === 'payments');
             if (rep) rep.classList.toggle('active', sub === 'reports');
             if (hist) hist.classList.toggle('active', sub === 'history');
             if (sub === 'vacations') renderVacationsAdminList();
             if (sub === 'dismissals') renderDismissalsList();
+            if (sub === 'grades') renderGradeChangesList();
             if (sub === 'payments') renderPaymentsList();
             if (sub === 'reports') renderAdminTrackersList();
             if (sub === 'history') renderHistoryList();
@@ -24028,6 +24045,386 @@
             filterNotified: '',   // '' / 'yes' / 'no'
             filterMoved: ''       // '' / 'yes' / 'no'
         };
+
+        // ============================================================
+        //              СМЕНА ГРЕЙДА
+        // ============================================================
+        const _gradeStatusLabels = {
+            'waiting_schedule':  '⏳ Ждём ответа по расписанию',
+            'teachers_proposed': '📤 Предложили преподов',
+            'trial_scheduled':   '📅 Проставлен пробный урок',
+            'feedback_collected':'💬 Собрали обратную связь',
+            'transferred':       '✅ Ученик передан',
+            'recalculated':      '💜 Перерасчитан',
+        };
+        const _gradeStatusColors = {
+            'waiting_schedule':  { bg:'#fee2e2', border:'#fca5a5', color:'#991b1b' },
+            'teachers_proposed': { bg:'#fef3c7', border:'#fcd34d', color:'#92400e' },
+            'trial_scheduled':   { bg:'#d1fae5', border:'#86efac', color:'#065f46' },
+            'feedback_collected':{ bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },
+            'transferred':       { bg:'#059669', border:'#047857', color:'#ffffff' },
+            'recalculated':      { bg:'#ede9fe', border:'#c4b5fd', color:'#5b21b6' },
+        };
+        function _gradeStatusStyle(status) {
+            const c = _gradeStatusColors[status] || { bg:'#fff', border:'#cbd5e1', color:'#475569' };
+            return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
+        }
+
+        const _gradeDecisionLabels = {
+            'stay':            'Хочет остаться с преподом',
+            'find_same_grade': 'Найти преподавателя того же грейда',
+            'refused':         'Отказ',
+        };
+        // Решение задаёт статус по умолчанию — чтобы не заполнять дважды
+        const _gradeDecisionDefaultStatus = {
+            'stay':            'recalculated',
+            'find_same_grade': 'waiting_schedule',
+            'refused':         null,
+        };
+        // Строка считается обработанной, если ученик передан, перерасчитан или отказался
+        function _gradeRowDone(r) {
+            return r.decision === 'refused' || r.status === 'transferred' || r.status === 'recalculated';
+        }
+
+        function _gradeAgeGroup(age) {
+            if (age === null || age === undefined) return null;
+            if (age <= 6)  return '4-6';
+            if (age <= 9)  return '7-9';
+            if (age <= 12) return '10-12';
+            if (age <= 17) return '13-17';
+            return '18+';
+        }
+
+        let _gradeModalState = { change: null, teacher: null, rows: [] };
+
+        async function renderGradeChangesList() {
+            const wrap = document.getElementById('gradeChangesListWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+            try {
+                const { data: changes, error } = await sb.from('grade_changes')
+                    .select('*').order('effective_date', { ascending: false });
+                if (error) throw error;
+                if (!changes || changes.length === 0) {
+                    wrap.innerHTML = '<div style="padding:1rem; text-align:center; color:#94a3b8;">Пока нет записей. Нажми «+ Смена грейда», чтобы добавить.</div>';
+                    return;
+                }
+                const ids = changes.map(c => c.id);
+                const { data: rows } = await sb.from('grade_change_students')
+                    .select('grade_change_id, decision, status').in('grade_change_id', ids);
+                const total = new Map(), done = new Map();
+                for (const r of (rows || [])) {
+                    total.set(r.grade_change_id, (total.get(r.grade_change_id) || 0) + 1);
+                    if (_gradeRowDone(r)) done.set(r.grade_change_id, (done.get(r.grade_change_id) || 0) + 1);
+                }
+                wrap.innerHTML = `<div style="display:flex; flex-direction:column; gap:0.6rem;">
+                    ${changes.map(c => {
+                        const t = (teachersFromDb || []).find(x => x.id === c.teacher_id);
+                        const tot = total.get(c.id) || 0;
+                        const dn = done.get(c.id) || 0;
+                        const finished = tot > 0 && dn === tot;
+                        return `<div onclick="openGradeChangeDetails('${c.id}')" style="background:white; border:1px solid ${finished ? '#bbf7d0' : '#ddd6fe'}; border-radius:10px; padding:14px 18px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:14px;">
+                            <div style="flex:1;">
+                                <div style="font-weight:700; font-size:15px;">${escapeHtml(t ? t.name : '—')}</div>
+                                <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                                    ${escapeHtml(c.from_grade || '—')} → <b>${escapeHtml(c.to_grade)}</b>
+                                    · 📅 c ${formatDate(c.effective_date)}
+                                    ${tot ? ` · 👤 ${tot} учеников` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:13px; font-weight:600; color:${finished ? '#16a34a' : '#7c3aed'};">${dn} / ${tot} обработано</div>
+                                ${tot === 0 ? '<div style="font-size:11px; color:#94a3b8;">Не подгружено</div>' : ''}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+            } catch (e) {
+                wrap.innerHTML = `<div style="color:#dc2626;">Ошибка: ${escapeHtml(e.message || e)}</div>`;
+            }
+        }
+
+        function openNewGradeChangeDialog() {
+            const list = (teachersFromDb || [])
+                .filter(t => !t.deleted_at)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+            let overlay = document.getElementById('gradeNewOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gradeNewOverlay';
+                overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:center; justify-content:center; z-index:10000; padding:24px;';
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+                document.body.appendChild(overlay);
+            }
+            const today = new Date();
+            const iso = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            overlay.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(460px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <h3 style="margin:0 0 1rem; font-size:1.05rem;">🎓 Новая смена грейда</h3>
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Преподаватель</label>
+                    <select id="gradeNewTeacher" onchange="_gradeNewTeacherPicked()" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                        <option value="">— выбрать —</option>
+                        ${list.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+                    </select>
+                    <div id="gradeNewCurrent" style="font-size:0.82rem; color:#64748b; margin-bottom:0.8rem;"></div>
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Новый грейд</label>
+                    <select id="gradeNewTo" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                        <option value="Basic">Basic</option>
+                        <option value="Expert">Expert</option>
+                        <option value="Pro">Pro</option>
+                    </select>
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Дата перехода</label>
+                    <input type="date" id="gradeNewDate" value="${iso}" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:1rem;">
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('gradeNewOverlay').remove()">Отмена</button>
+                        <button class="btn btn-small" style="background:#ede9fe; color:#5b21b6;" onclick="_gradeNewSave()">Создать</button>
+                    </div>
+                </div>`;
+        }
+
+        function _gradeNewTeacherPicked() {
+            const id = document.getElementById('gradeNewTeacher').value;
+            const t = (teachersFromDb || []).find(x => x.id === id);
+            const box = document.getElementById('gradeNewCurrent');
+            if (box) box.textContent = t ? `Текущий грейд: ${t.grade || '—'}` : '';
+        }
+
+        async function _gradeNewSave() {
+            const teacherId = document.getElementById('gradeNewTeacher').value;
+            const toGrade   = document.getElementById('gradeNewTo').value;
+            const date      = document.getElementById('gradeNewDate').value;
+            if (!teacherId) { alert('Выберите преподавателя'); return; }
+            if (!date)      { alert('Укажите дату перехода'); return; }
+            const t = (teachersFromDb || []).find(x => x.id === teacherId);
+            try {
+                const { data, error } = await sb.from('grade_changes').insert({
+                    teacher_id: teacherId,
+                    from_grade: t?.grade || null,
+                    to_grade: toGrade,
+                    effective_date: date,
+                    created_by: currentAppUser?.id || null,
+                }).select().single();
+                if (error) throw error;
+                document.getElementById('gradeNewOverlay')?.remove();
+                await renderGradeChangesList();
+                openGradeChangeDetails(data.id);
+            } catch (e) {
+                alert('Ошибка: ' + (e.message || e));
+            }
+        }
+
+        async function openGradeChangeDetails(changeId) {
+            const { data: change, error } = await sb.from('grade_changes').select('*').eq('id', changeId).single();
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            const { data: rows } = await sb.from('grade_change_students')
+                .select('*').eq('grade_change_id', changeId).order('sort_order');
+            _gradeModalState.change  = change;
+            _gradeModalState.teacher = (teachersFromDb || []).find(x => x.id === change.teacher_id) || null;
+            _gradeModalState.rows    = rows || [];
+            renderGradeChangeModal();
+        }
+
+        function renderGradeChangeModal() {
+            const c = _gradeModalState.change;
+            const t = _gradeModalState.teacher;
+            const rows = _gradeModalState.rows || [];
+            if (!c) return;
+            let overlay = document.getElementById('gradeModalOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gradeModalOverlay';
+                overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:9999; padding:24px; overflow-y:auto;';
+                overlay.onclick = (e) => { if (e.target === overlay) closeGradeChangeModal(); };
+                document.body.appendChild(overlay);
+            }
+            const teacherOptions = (teachersFromDb || [])
+                .filter(x => !x.deleted_at && x.id !== c.teacher_id)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+
+            const body = rows.length === 0
+                ? '<tr><td colspan="8" style="padding:1.2rem; text-align:center; color:#94a3b8;">Ученики не подгружены. Нажми «Подгрузить учеников».</td></tr>'
+                : rows.map(r => {
+                    const st = r.status || '';
+                    return `<tr style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:8px 10px; font-weight:600;">${escapeHtml(r.student_name || '—')}</td>
+                        <td style="padding:8px 10px; color:#64748b;">${escapeHtml(r.age_group || '—')}</td>
+                        <td style="padding:8px 10px; color:#64748b;">${escapeHtml(r.subscription_type || '—')}</td>
+                        <td style="padding:8px 10px;">
+                            <select onchange="_updateGradeRow('${r.id}','decision',this.value)" style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
+                                <option value="">—</option>
+                                ${Object.entries(_gradeDecisionLabels).map(([k, v]) =>
+                                    `<option value="${k}" ${r.decision === k ? 'selected' : ''}>${v}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <select onchange="_updateGradeRow('${r.id}','status',this.value)" style="width:100%; padding:4px 6px; border-radius:6px; font-family:inherit; font-size:12px; ${_gradeStatusStyle(st)}">
+                                <option value="">—</option>
+                                ${Object.entries(_gradeStatusLabels).map(([k, v]) =>
+                                    `<option value="${k}" ${st === k ? 'selected' : ''}>${v}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="padding:8px 10px; text-align:center;">
+                            <input type="checkbox" ${r.recalc_done ? 'checked' : ''}
+                                   onchange="_updateGradeRow('${r.id}','recalc_done',this.checked)"
+                                   style="width:16px; height:16px; cursor:pointer;">
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <select onchange="_updateGradeRow('${r.id}','new_teacher_id',this.value || null)" style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
+                                <option value="">—</option>
+                                ${teacherOptions.map(x =>
+                                    `<option value="${x.id}" ${r.new_teacher_id === x.id ? 'selected' : ''}>${escapeHtml(x.name)}${x.grade ? ' · ' + escapeHtml(x.grade) : ''}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <input type="text" value="${escapeHtml(r.comment || '')}" placeholder="комментарий"
+                                   onchange="_updateGradeRow('${r.id}','comment',this.value)"
+                                   style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
+                        </td>
+                    </tr>`;
+                }).join('');
+
+            const done = rows.filter(_gradeRowDone).length;
+            overlay.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(1180px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.3rem; font-size:1.1rem;">🎓 ${escapeHtml(t ? t.name : '—')}</h3>
+                            <div style="font-size:0.85rem; color:#64748b;">
+                                ${escapeHtml(c.from_grade || '—')} → <b>${escapeHtml(c.to_grade)}</b>
+                                · с ${formatDate(c.effective_date)}
+                                · обработано ${done} из ${rows.length}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.4rem;">
+                            <button id="gradeAutoFillBtn" class="btn btn-small" style="background:#eff6ff; color:#1e40af;" onclick="_gradeAutoFill()">Подгрузить учеников</button>
+                            <button class="btn btn-secondary btn-small" onclick="closeGradeChangeModal()">Закрыть</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="background:#f8fafc; text-align:left;">
+                                    <th style="padding:8px 10px;">Ученик</th>
+                                    <th style="padding:8px 10px;">Возраст</th>
+                                    <th style="padding:8px 10px;">Абонемент</th>
+                                    <th style="padding:8px 10px; min-width:180px;">Решение</th>
+                                    <th style="padding:8px 10px; min-width:200px;">Статус</th>
+                                    <th style="padding:8px 10px;">Перерасчёт</th>
+                                    <th style="padding:8px 10px; min-width:170px;">Новый преподаватель</th>
+                                    <th style="padding:8px 10px; min-width:150px;">Комментарий</th>
+                                </tr>
+                            </thead>
+                            <tbody>${body}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        function closeGradeChangeModal() {
+            document.getElementById('gradeModalOverlay')?.remove();
+            renderGradeChangesList();
+        }
+
+        async function _updateGradeRow(rowId, field, value) {
+            const update = { [field]: value, updated_at: new Date().toISOString() };
+            // Решение подставляет статус по умолчанию, если он ещё не выбран вручную
+            if (field === 'decision') {
+                const row = (_gradeModalState.rows || []).find(r => r.id === rowId);
+                if (row && !row.status) {
+                    const def = _gradeDecisionDefaultStatus[value];
+                    if (def) update.status = def;
+                }
+            }
+            if (field === 'status') {
+                update.status_updated_by = currentAppUser?.id || null;
+                update.status_updated_at = new Date().toISOString();
+            }
+            const { error } = await sb.from('grade_change_students').update(update).eq('id', rowId);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            const row = (_gradeModalState.rows || []).find(r => r.id === rowId);
+            if (row) Object.assign(row, update);
+            renderGradeChangeModal();
+        }
+
+        async function _gradeAutoFill() {
+            const c = _gradeModalState.change;
+            const t = _gradeModalState.teacher;
+            if (!c || !t) return;
+            const btn = document.getElementById('gradeAutoFillBtn');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Подгружаю…'; }
+            try {
+                const { data: stRows, error: stErr } = await sb.from('student_teachers')
+                    .select('student_id, students(id, name, birth_date)')
+                    .eq('teacher_id', t.id);
+                if (stErr) throw stErr;
+                if (!stRows || stRows.length === 0) {
+                    alert('У преподавателя нет закреплённых учеников');
+                    return;
+                }
+                // Расписание на 30 дней вперёд — чтобы видеть слоты ученика
+                const today = new Date().toISOString().slice(0, 10);
+                const in30 = new Date(); in30.setDate(in30.getDate() + 30);
+                const to = in30.toISOString().slice(0, 10);
+                const { data: lessons } = await sb.from('mk_lessons')
+                    .select('id, lesson_date, begin_time, end_time, external_class_id')
+                    .eq('primary_teacher_id', t.id)
+                    .gte('lesson_date', today)
+                    .lte('lesson_date', to);
+                const lessonIds = (lessons || []).map(l => l.id);
+                const lessonById = new Map((lessons || []).map(l => [l.id, l]));
+                const { data: ls } = lessonIds.length
+                    ? await sb.from('mk_lesson_students').select('lesson_id, student_id').in('lesson_id', lessonIds)
+                    : { data: [] };
+                const lessonsByStudent = new Map();
+                for (const r of (ls || [])) {
+                    if (!lessonsByStudent.has(r.student_id)) lessonsByStudent.set(r.student_id, []);
+                    const l = lessonById.get(r.lesson_id);
+                    if (l) lessonsByStudent.get(r.student_id).push(l);
+                }
+                // Тип абонемента — из названия класса
+                const classIds = [...new Set((lessons || []).map(l => l.external_class_id).filter(Boolean))];
+                const { data: classes } = classIds.length
+                    ? await sb.from('mk_classes').select('external_id, name').in('external_id', classIds)
+                    : { data: [] };
+                const className = new Map((classes || []).map(c2 => [c2.external_id, c2.name]));
+
+                const rows = [];
+                let sortIdx = 0;
+                for (const r of stRows) {
+                    if (!r.students) continue;
+                    const studLessons = (lessonsByStudent.get(r.student_id) || []).sort((a, b) => {
+                        if (a.lesson_date !== b.lesson_date) return a.lesson_date < b.lesson_date ? -1 : 1;
+                        return (a.begin_time || '') < (b.begin_time || '') ? -1 : 1;
+                    });
+                    const age = _calcAgeFromBd(r.students.birth_date);
+                    const firstClass = studLessons.length ? className.get(studLessons[0].external_class_id) : null;
+                    rows.push({
+                        grade_change_id: c.id,
+                        student_id: r.student_id,
+                        student_name: r.students.name,
+                        student_age: age,
+                        age_group: _gradeAgeGroup(age),
+                        subscription_type: firstClass || null,
+                        schedule: studLessons.map(_fmtLessonShort).join('; '),
+                        sort_order: sortIdx++,
+                    });
+                }
+                if (rows.length === 0) { alert('Не удалось собрать данные'); return; }
+                const { error: upErr } = await sb.from('grade_change_students')
+                    .upsert(rows, { onConflict: 'grade_change_id,student_id', ignoreDuplicates: true });
+                if (upErr) throw upErr;
+                const { data: fresh } = await sb.from('grade_change_students')
+                    .select('*').eq('grade_change_id', c.id).order('sort_order');
+                _gradeModalState.rows = fresh || [];
+                renderGradeChangeModal();
+                alert(`✓ Подгружено: ${rows.length} учеников`);
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка: ' + (e.message || e));
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Подгрузить учеников'; }
+            }
+        }
 
         // ============================================================
         //              УВОЛЬНЕНИЯ
@@ -32966,6 +33363,14 @@
                 alert(_trackerState.language === 'en'
                     ? 'Please enter student first and last name'
                     : 'Введите имя и фамилию ученика');
+                return;
+            }
+
+            // Без привязки к карточке отчёт не найдут ни сертификат, ни история ученика
+            if (!_trackerState.studentId) {
+                alert(_trackerState.language === 'en'
+                    ? 'Please select the student from the database using the search field above — otherwise the tracker will not be linked to their profile.'
+                    : 'Выберите ученика из базы через поиск выше — иначе трекер не привяжется к карточке и оценка не попадёт в сертификат.');
                 return;
             }
 
