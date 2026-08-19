@@ -9261,12 +9261,82 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script>
         // ============ SUPABASE ============
-        // ВРЕМЕННО: прямое подключение в обход прокси api.wowteach.ru.
-        // 18.08.2026 у Timeweb DDoS-атака на сети, TLS до Supabase с VPS не проходит.
-        // Когда сети восстановятся — вернуть 'https://api.wowteach.ru'
-        // (прокси нужен для стабильного доступа из РФ).
-        const SUPABASE_URL = 'https://vtcxghsqymwkyiogpndf.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_nZIl9kzPNhkd9Gbsm7aAgA_cAeY1s4x';
+        // Прокси на Timeweb VPS (Москва) → Supabase Frankfurt — для стабильности из РФ.
+        // Если прокси недоступен (сбой хостинга, блокировка), запросы автоматически
+        // уходят напрямую в Supabase. Переключение прозрачное, править код не нужно.
+        const SUPABASE_PROXY  = 'https://api.wowteach.ru';
+        const SUPABASE_DIRECT = 'https://vtcxghsqymwkyiogpndf.supabase.co';
+        const SUPABASE_URL    = SUPABASE_PROXY;
+        const SUPABASE_KEY    = 'sb_publishable_nZIl9kzPNhkd9Gbsm7aAgA_cAeY1s4x';
+        const SB_PROXY_TIMEOUT_MS = 3000;
+
+        let _sbUseDirect = false;   // true — прокси лежит, идём напрямую
+
+        function _sbSwapHost(url) {
+            return url.startsWith(SUPABASE_PROXY)
+                ? SUPABASE_DIRECT + url.slice(SUPABASE_PROXY.length)
+                : url;
+        }
+
+        function _sbMarkProxyDown(reason) {
+            if (_sbUseDirect) return;
+            _sbUseDirect = true;
+            console.warn('[supabase] прокси недоступен, переключаюсь на прямое подключение:', reason);
+        }
+
+        // Проба при загрузке: узнаём о проблеме до того, как пользователь
+        // попробует что-то сохранить. Не блокирует запуск страницы.
+        (async function _sbProbeProxy() {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), SB_PROXY_TIMEOUT_MS);
+            try {
+                const res = await fetch(`${SUPABASE_PROXY}/rest/v1/`, {
+                    method: 'HEAD',
+                    headers: { apikey: SUPABASE_KEY },
+                    signal: ctrl.signal,
+                });
+                if (res.status >= 500) _sbMarkProxyDown('HTTP ' + res.status);
+            } catch (e) {
+                _sbMarkProxyDown(e.name === 'AbortError' ? 'таймаут' : (e.message || e));
+            } finally {
+                clearTimeout(timer);
+            }
+        })();
+
+        async function _sbFetch(input, init = {}) {
+            const urlStr = typeof input === 'string' ? input : (input?.url || String(input));
+            if (_sbUseDirect) return fetch(_sbSwapHost(urlStr), init);
+
+            const method = (init.method || 'GET').toUpperCase();
+            // Повторять можно только то, что безопасно повторить: чтение и авторизацию.
+            // Запись не переотправляем — иначе при таймауте после реального сохранения
+            // получили бы дубль. Флаг всё равно переключится, и следующий запрос пойдёт напрямую.
+            const canRetry = method === 'GET' || method === 'HEAD' || urlStr.includes('/auth/v1/');
+
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), SB_PROXY_TIMEOUT_MS);
+            const onOuterAbort = () => ctrl.abort();
+            if (init.signal) init.signal.addEventListener('abort', onOuterAbort, { once: true });
+
+            try {
+                const res = await fetch(urlStr, { ...init, signal: ctrl.signal });
+                clearTimeout(timer);
+                // 502/503/504 — прокси не достучался до Supabase
+                if (res.status >= 502 && res.status <= 504) {
+                    _sbMarkProxyDown('HTTP ' + res.status);
+                    if (canRetry) return fetch(_sbSwapHost(urlStr), init);
+                }
+                return res;
+            } catch (e) {
+                clearTimeout(timer);
+                if (init.signal?.aborted) throw e;   // отменил вызывающий код — не наш случай
+                _sbMarkProxyDown(e.name === 'AbortError' ? 'таймаут' : (e.message || e));
+                if (canRetry) return fetch(_sbSwapHost(urlStr), init);
+                throw e;
+            } finally {
+                if (init.signal) init.signal.removeEventListener('abort', onOuterAbort);
+            }
+        }
 
         // Cookie-storage с domain=.wowteach.ru — shared session между поддоменами
         // (нужно чтобы train.wowteach.ru видел вход без повторного логина)
@@ -9285,7 +9355,8 @@
         };
 
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { storage: sharedCookieStorage }
+            auth: { storage: sharedCookieStorage },
+            global: { fetch: _sbFetch }
         });
 
         // Текущий пользователь приложения (запись из нашей таблицы users)
