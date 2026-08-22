@@ -31334,10 +31334,15 @@
         //                    WOW-МОНЕТКИ
         // ============================================================
         const WOW_PRESETS = [
-            { reason:'behaved_well',  amount:1, label:'Хорошо вёл себя',      icon:'😊' },
-            { reason:'spoke_english', amount:1, label:'Говорил по-английски', icon:'🗣️' },
-            { reason:'hard_task',     amount:2, label:'Сложное задание',      icon:'💪' },
+            { reason:'behaved_well',  amount:1, label:'Хорошо вёл себя',      short:'Поведение',  icon:'😊' },
+            { reason:'spoke_english', amount:1, label:'Говорил по-английски', short:'Английский', icon:'🗣️' },
+            { reason:'hard_task',     amount:2, label:'Сложное задание',      short:'Сложное',    icon:'💪' },
         ];
+        // Отдельная кнопка: ДЗ выполнено. Вне дневного лимита — это учебное
+        // действие, а не поощрение за поведение.
+        const WOW_HOMEWORK = { reason:'homework_accepted', amount:4,
+                               label:'ДЗ выполнено', short:'ДЗ', icon:'📚' };
+        const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason).concat([WOW_HOMEWORK.reason]);
         const WOW_MANUAL_REASONS = WOW_PRESETS.map(p => p.reason);
         const WOW_DAILY_LIMIT = 10;
 
@@ -31358,12 +31363,16 @@
                         .select('amount, reason')
                         .eq('student_id', studentId)
                         .eq('award_date', _wowToday())
-                        .in('reason', WOW_MANUAL_REASONS),
+                        .in('reason', WOW_ALL_REASONS),
                 ]);
                 const balance = (balR.data || []).reduce((s, r) => s + (r.amount || 0), 0);
-                const today   = (todayR.data || []).reduce((s, r) => s + (r.amount || 0), 0);
-                const doneToday = new Set((todayR.data || []).map(r => r.reason));
+                const rowsToday = todayR.data || [];
+                // В лимит идут только пресеты; ДЗ считается отдельно
+                const today = rowsToday.filter(r => WOW_MANUAL_REASONS.includes(r.reason))
+                                       .reduce((s, r) => s + (r.amount || 0), 0);
+                const doneToday = new Set(rowsToday.map(r => r.reason));
                 const limitLeft = WOW_DAILY_LIMIT - today;
+                const hwDone = doneToday.has(WOW_HOMEWORK.reason);
 
                 box.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
@@ -31389,8 +31398,18 @@
                                 ${done ? '✓' : p.icon} ${escapeHtml(p.label)} +${p.amount}
                             </button>`;
                         }).join('')}
+                        <button ${hwDone ? 'disabled' : ''}
+                            title="${hwDone ? 'Уже начислено сегодня' : 'Не входит в дневной лимит'}"
+                            onclick="awardWowHomework('${studentId}', null)"
+                            style="padding:8px 12px; border-radius:9px; font-family:inherit; font-size:13px;
+                                   border:1px solid ${hwDone ? '#86efac' : '#bfdbfe'};
+                                   background:${hwDone ? '#dcfce7' : '#eff6ff'};
+                                   color:${hwDone ? '#166534' : '#1e40af'};
+                                   cursor:${hwDone ? 'default' : 'pointer'};">
+                            ${hwDone ? '✓' : WOW_HOMEWORK.icon} ${escapeHtml(WOW_HOMEWORK.label)} +${WOW_HOMEWORK.amount}
+                        </button>
                     </div>
-                    ${limitLeft <= 0 ? '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Лимит на сегодня исчерпан</div>' : ''}`;
+                    ${limitLeft <= 0 ? '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Лимит на поощрения исчерпан. Кнопка «ДЗ выполнено» работает вне лимита.</div>' : ''}`;
             } catch (e) {
                 box.innerHTML = `<div style="font-size:12px; color:#dc2626;">Не удалось загрузить монетки: ${escapeHtml(e.message || e)}</div>`;
             }
@@ -31437,7 +31456,7 @@
                     .select('student_id, amount, reason')
                     .in('student_id', studentIds)
                     .eq('award_date', today)
-                    .in('reason', WOW_MANUAL_REASONS);
+                    .in('reason', WOW_ALL_REASONS);
                 rows = data || [];
             } catch (e) {
                 console.error('[wow] не удалось загрузить монетки урока', e);
@@ -31448,9 +31467,12 @@
                 const box = document.getElementById('wowLesson_' + sid);
                 if (!box) continue;
                 const mine = rows.filter(r => r.student_id === sid);
-                const today_ = mine.reduce((s, r) => s + (r.amount || 0), 0);
+                // В лимит идут только пресеты, ДЗ считается вне его
+                const today_ = mine.filter(r => WOW_MANUAL_REASONS.includes(r.reason))
+                                   .reduce((s, r) => s + (r.amount || 0), 0);
                 const done = new Set(mine.map(r => r.reason));
                 const left = WOW_DAILY_LIMIT - today_;
+                const hwDone = done.has(WOW_HOMEWORK.reason);
 
                 box.innerHTML = `
                     <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -31461,14 +31483,24 @@
                             return `<button ${off ? 'disabled' : ''}
                                 title="${isDone ? 'Уже начислено сегодня' : (noRoom ? 'Лимит на сегодня исчерпан' : '')}"
                                 onclick="awardWowLesson('${lessonId}','${sid}','${p.reason}')"
-                                style="padding:5px 9px; border-radius:8px; font-family:inherit; font-size:12px;
+                                style="padding:5px 10px; border-radius:8px; font-family:inherit; font-size:12px;
                                        border:1px solid ${isDone ? '#86efac' : '#e5e7eb'};
                                        background:${isDone ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
                                        color:${isDone ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
                                        cursor:${off ? 'default' : 'pointer'};">
-                                ${isDone ? '✓' : p.icon} +${p.amount}
+                                ${isDone ? '✓' : p.icon} ${escapeHtml(p.short)} +${p.amount}
                             </button>`;
                         }).join('')}
+                        <button ${hwDone ? 'disabled' : ''}
+                            title="${hwDone ? 'Уже начислено сегодня' : 'Не входит в дневной лимит'}"
+                            onclick="awardWowHomework('${sid}','${lessonId}')"
+                            style="padding:5px 10px; border-radius:8px; font-family:inherit; font-size:12px;
+                                   border:1px solid ${hwDone ? '#86efac' : '#bfdbfe'};
+                                   background:${hwDone ? '#dcfce7' : '#eff6ff'};
+                                   color:${hwDone ? '#166534' : '#1e40af'};
+                                   cursor:${hwDone ? 'default' : 'pointer'};">
+                            ${hwDone ? '✓' : WOW_HOMEWORK.icon} ${escapeHtml(WOW_HOMEWORK.short)} +${WOW_HOMEWORK.amount}
+                        </button>
                         <span style="font-size:11px; color:#94a3b8;">💰 ${today_} / ${WOW_DAILY_LIMIT}</span>
                     </div>`;
             }
@@ -31503,6 +31535,36 @@
 
             const ids = (_lessonModalState?.students || []).map(s => s.student_id);
             renderWowLesson(lessonId, ids);
+        }
+
+        // ДЗ выполнено → +4. Вне дневного лимита: это учебное действие,
+        // а не поощрение. Повторное нажатие за день не задвоит — ловит unique-индекс.
+        // lessonId передаётся из карточки урока, из карточки ученика — null.
+        async function awardWowHomework(studentId, lessonId) {
+            const teacherId = await resolveMyTeacherId();
+            const awardedBy = teacherId || currentAppUser?.id;
+            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+
+            let lessonExtId = null;
+            if (lessonId && _lessonModalState?.lesson?.id === lessonId) {
+                lessonExtId = _lessonModalState.lesson.external_id || null;
+            }
+
+            const { error } = await sb.from('wow_coins_ledger').insert({
+                student_id: studentId,
+                amount: WOW_HOMEWORK.amount,
+                reason: WOW_HOMEWORK.reason,
+                lesson_id: lessonExtId,
+                awarded_by: String(awardedBy),
+            });
+            if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
+
+            if (lessonId) {
+                const ids = (_lessonModalState?.students || []).map(s => s.student_id).filter(Boolean);
+                renderWowLesson(lessonId, ids);
+            } else {
+                renderWowCoins(studentId);
+            }
         }
 
         // ========== Карточка ученика ==========
