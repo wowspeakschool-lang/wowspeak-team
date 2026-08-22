@@ -28991,6 +28991,7 @@
                                         <div style="text-align:center;">${markInput(ds, 'home')}</div>
                                     </div>
                                     ${studentNoteBox(ds)}
+                                    <div id="wowLesson_${ds.student_id}" style="margin-top:8px;"></div>
                                 </div>`;
                             }).join('')}
                         </div>
@@ -29002,6 +29003,7 @@
                 let attendanceSection = '';
                 let lessonMarkSection = '';
                 let homeMarkSection = '';
+                let coinsSection = '';
                 if (ds) {
                     const st = attendanceState(ds);
                     const stateLabel = {present:'Был на уроке', absent:'Пропустил', good_reason:'Пропустил по уважительной причине'}[st] || 'Не отмечено';
@@ -29024,6 +29026,11 @@
                             ${markInput(ds, 'home')}
                             ${canEdit ? markHint : ''}
                         </div>`;
+                    coinsSection = `
+                        <div style="${sectionStyle}">
+                            <div style="${labelStyle}">💰 WOW-монетки</div>
+                            <div id="wowLesson_${ds.student_id}"></div>
+                        </div>`;
                 }
                 if (students.length === 0) {
                     mainContent = `
@@ -29042,7 +29049,8 @@
                         ${topicSection}
                         ${lessonMarkSection}
                         ${homeworkSection}
-                        ${homeMarkSection}`;
+                        ${homeMarkSection}
+                        ${coinsSection}`;
                 }
             }
 
@@ -29070,6 +29078,7 @@
                 ${footer}
             `;
             updateSaveButtonState();
+            renderWowLesson(lesson.id, students.map(s => s.student_id).filter(Boolean));
         }
 
         function attendanceState(ds) {
@@ -31414,6 +31423,86 @@
             // 23505 — повтор того же повода за день. Не ошибка, просто уже начислено
             if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
             renderWowCoins(studentId);
+        }
+
+        // ---------- Монетки внутри урока ----------
+        // Отрисовываются после сборки модалки: данные грузятся одним запросом
+        // на всех учеников урока, чтобы не дёргать базу по одному.
+        async function renderWowLesson(lessonId, studentIds) {
+            if (!studentIds || !studentIds.length) return;
+            const today = _wowToday();
+            let rows = [];
+            try {
+                const { data } = await sb.from('wow_coins_ledger')
+                    .select('student_id, amount, reason')
+                    .in('student_id', studentIds)
+                    .eq('award_date', today)
+                    .in('reason', WOW_MANUAL_REASONS);
+                rows = data || [];
+            } catch (e) {
+                console.error('[wow] не удалось загрузить монетки урока', e);
+                return;
+            }
+
+            for (const sid of studentIds) {
+                const box = document.getElementById('wowLesson_' + sid);
+                if (!box) continue;
+                const mine = rows.filter(r => r.student_id === sid);
+                const today_ = mine.reduce((s, r) => s + (r.amount || 0), 0);
+                const done = new Set(mine.map(r => r.reason));
+                const left = WOW_DAILY_LIMIT - today_;
+
+                box.innerHTML = `
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        ${WOW_PRESETS.map(p => {
+                            const isDone = done.has(p.reason);
+                            const noRoom = !isDone && p.amount > left;
+                            const off = isDone || noRoom;
+                            return `<button ${off ? 'disabled' : ''}
+                                title="${isDone ? 'Уже начислено сегодня' : (noRoom ? 'Лимит на сегодня исчерпан' : '')}"
+                                onclick="awardWowLesson('${lessonId}','${sid}','${p.reason}')"
+                                style="padding:5px 9px; border-radius:8px; font-family:inherit; font-size:12px;
+                                       border:1px solid ${isDone ? '#86efac' : '#e5e7eb'};
+                                       background:${isDone ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
+                                       color:${isDone ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
+                                       cursor:${off ? 'default' : 'pointer'};">
+                                ${isDone ? '✓' : p.icon} +${p.amount}
+                            </button>`;
+                        }).join('')}
+                        <span style="font-size:11px; color:#94a3b8;">💰 ${today_} / ${WOW_DAILY_LIMIT}</span>
+                    </div>`;
+            }
+        }
+
+        async function awardWowLesson(lessonId, studentId, reason) {
+            const preset = WOW_PRESETS.find(p => p.reason === reason);
+            if (!preset) return;
+            const teacherId = await resolveMyTeacherId();
+            const awardedBy = teacherId || currentAppUser?.id;
+            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+
+            const { data: todayRows } = await sb.from('wow_coins_ledger')
+                .select('amount').eq('student_id', studentId)
+                .eq('award_date', _wowToday()).in('reason', WOW_MANUAL_REASONS);
+            const today = (todayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
+            if (today + preset.amount > WOW_DAILY_LIMIT) {
+                alert(`Лимит на сегодня исчерпан: начислено ${today} из ${WOW_DAILY_LIMIT}`);
+                return;
+            }
+
+            // external_id урока — bigint, как и ждёт колонка lesson_id
+            const lessonExtId = _lessonModalState?.lesson?.external_id || null;
+            const { error } = await sb.from('wow_coins_ledger').insert({
+                student_id: studentId,
+                amount: preset.amount,
+                reason: reason,
+                lesson_id: lessonExtId,
+                awarded_by: String(awardedBy),
+            });
+            if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
+
+            const ids = (_lessonModalState?.students || []).map(s => s.student_id);
+            renderWowLesson(lessonId, ids);
         }
 
         // ========== Карточка ученика ==========
