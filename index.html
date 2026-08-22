@@ -31321,6 +31321,101 @@
             if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        // ============================================================
+        //                    WOW-МОНЕТКИ
+        // ============================================================
+        const WOW_PRESETS = [
+            { reason:'behaved_well',  amount:1, label:'Хорошо вёл себя',      icon:'😊' },
+            { reason:'spoke_english', amount:1, label:'Говорил по-английски', icon:'🗣️' },
+            { reason:'hard_task',     amount:2, label:'Сложное задание',      icon:'💪' },
+        ];
+        const WOW_MANUAL_REASONS = WOW_PRESETS.map(p => p.reason);
+        const WOW_DAILY_LIMIT = 10;
+
+        // Дата по Москве — тем же правилом, что и award_date в базе,
+        // иначе вечером платформа и база считали бы разные сутки
+        function _wowToday() {
+            const d = new Date(Date.now() + 3 * 3600 * 1000);
+            return d.toISOString().slice(0, 10);
+        }
+
+        async function renderWowCoins(studentId) {
+            const box = document.getElementById('wowCoinsBox');
+            if (!box) return;
+            try {
+                const [balR, todayR] = await Promise.all([
+                    sb.from('wow_coins_ledger').select('amount').eq('student_id', studentId),
+                    sb.from('wow_coins_ledger')
+                        .select('amount, reason')
+                        .eq('student_id', studentId)
+                        .eq('award_date', _wowToday())
+                        .in('reason', WOW_MANUAL_REASONS),
+                ]);
+                const balance = (balR.data || []).reduce((s, r) => s + (r.amount || 0), 0);
+                const today   = (todayR.data || []).reduce((s, r) => s + (r.amount || 0), 0);
+                const doneToday = new Set((todayR.data || []).map(r => r.reason));
+                const limitLeft = WOW_DAILY_LIMIT - today;
+
+                box.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                        <div style="font-size:13px; font-weight:600; color:#475569;">🪙 WOW-монетки</div>
+                        <div style="font-size:12px; color:#94a3b8;">
+                            баланс <b style="color:#b45309;">${balance}</b> · сегодня начислено ${today} из ${WOW_DAILY_LIMIT}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        ${WOW_PRESETS.map(p => {
+                            const done = doneToday.has(p.reason);
+                            const noRoom = !done && p.amount > limitLeft;
+                            const off = done || noRoom;
+                            const title = done ? 'Уже начислено сегодня'
+                                        : noRoom ? 'Лимит на сегодня исчерпан' : '';
+                            return `<button ${off ? 'disabled' : ''} title="${title}"
+                                onclick="awardWowCoins('${studentId}','${p.reason}')"
+                                style="padding:8px 12px; border-radius:9px; font-family:inherit; font-size:13px;
+                                       border:1px solid ${done ? '#86efac' : '#e5e7eb'};
+                                       background:${done ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
+                                       color:${done ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
+                                       cursor:${off ? 'default' : 'pointer'};">
+                                ${done ? '✓' : p.icon} ${escapeHtml(p.label)} +${p.amount}
+                            </button>`;
+                        }).join('')}
+                    </div>
+                    ${limitLeft <= 0 ? '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Лимит на сегодня исчерпан</div>' : ''}`;
+            } catch (e) {
+                box.innerHTML = `<div style="font-size:12px; color:#dc2626;">Не удалось загрузить монетки: ${escapeHtml(e.message || e)}</div>`;
+            }
+        }
+
+        async function awardWowCoins(studentId, reason) {
+            const preset = WOW_PRESETS.find(p => p.reason === reason);
+            if (!preset) return;
+            const teacherId = await resolveMyTeacherId();
+            const awardedBy = teacherId || currentAppUser?.id;
+            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+
+            // Проверяем лимит перед вставкой: unique-индекс ловит только повтор
+            // того же повода, а сумму за день он не контролирует
+            const { data: todayRows } = await sb.from('wow_coins_ledger')
+                .select('amount').eq('student_id', studentId)
+                .eq('award_date', _wowToday()).in('reason', WOW_MANUAL_REASONS);
+            const today = (todayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
+            if (today + preset.amount > WOW_DAILY_LIMIT) {
+                alert(`Лимит на сегодня исчерпан: начислено ${today} из ${WOW_DAILY_LIMIT}`);
+                return;
+            }
+
+            const { error } = await sb.from('wow_coins_ledger').insert({
+                student_id: studentId,
+                amount: preset.amount,
+                reason: reason,
+                awarded_by: String(awardedBy),
+            });
+            // 23505 — повтор того же повода за день. Не ошибка, просто уже начислено
+            if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
+            renderWowCoins(studentId);
+        }
+
         // ========== Карточка ученика ==========
         async function openStudentDetail(studentId) {
             const modal = document.getElementById('studentDetailModal');
@@ -31408,6 +31503,10 @@
                         </div>
                     </div>
 
+                    <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:1.25rem;">
+                        <div id="wowCoinsBox"><div style="font-size:12px; color:#94a3b8;">Загружаю монетки…</div></div>
+                    </div>
+
                     ${!isOnlyTeacher ? `
                     <div style="margin-bottom:1.25rem;">
                         <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:8px;">Закреплённые преподаватели</div>
@@ -31453,6 +31552,7 @@
                         ${reportsHtml}
                     </div>
                 `;
+                renderWowCoins(stu.id);
             } catch (e) {
                 body.innerHTML = '<div style="padding:1rem; color:#dc2626;">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
             }
