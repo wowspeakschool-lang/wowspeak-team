@@ -28988,7 +28988,10 @@
                                         <div style="font-weight:600; color:#0f172a; font-size:14px;">${escapeHtml(orig?.student_name || '')}${studentNoteBtn(ds)}</div>
                                         <div>${attendanceButtons(ds)}</div>
                                         <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
-                                        <div style="text-align:center;">${markInput(ds, 'home')}</div>
+                                        <div style="text-align:center;">
+                                            <div id="wowHw_${ds.student_id}" style="margin-bottom:4px;"></div>
+                                            ${markInput(ds, 'home')}
+                                        </div>
                                     </div>
                                     ${studentNoteBox(ds)}
                                     <div id="wowLesson_${ds.student_id}" style="margin-top:8px;"></div>
@@ -29022,7 +29025,8 @@
                         </div>`;
                     homeMarkSection = `
                         <div style="${sectionStyle}">
-                            <div style="${labelStyle}">⭐ Оценка за ДЗ</div>
+                            <div style="${labelStyle}">⭐ Домашнее задание</div>
+                            <div id="wowHw_${ds.student_id}" style="margin-bottom:10px;"></div>
                             ${markInput(ds, 'home')}
                             ${canEdit ? markHint : ''}
                         </div>`;
@@ -29139,6 +29143,13 @@
             if (anyVisited) {
                 if (!(d.topic || '').trim()) return 'Заполните тему урока (хотя бы один ученик отмечен как присутствовавший)';
                 if (!(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
+                // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет
+                const notMarked = d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
+                if (notMarked.length) {
+                    return notMarked.length === 1
+                        ? 'Отметьте, сделал ли ученик домашнее задание'
+                        : `Отметьте домашнее задание у ${notMarked.length} учеников`;
+                }
             }
             return null;
         }
@@ -31342,7 +31353,11 @@
         // действие, а не поощрение за поведение.
         const WOW_HOMEWORK = { reason:'homework_accepted', amount:4,
                                label:'ДЗ выполнено', short:'ДЗ', icon:'📚' };
-        const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason).concat([WOW_HOMEWORK.reason]);
+        // Отметка «не сделал» — без монеток, но фиксируется в журнале,
+        // чтобы отметка пережила закрытие урока и не блокировала сохранение
+        const WOW_HW_NOT_DONE = { reason:'homework_not_done', amount:0 };
+        const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason)
+            .concat([WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason]);
         const WOW_MANUAL_REASONS = WOW_PRESETS.map(p => p.reason);
         const WOW_DAILY_LIMIT = 10;
 
@@ -31372,7 +31387,8 @@
                                        .reduce((s, r) => s + (r.amount || 0), 0);
                 const doneToday = new Set(rowsToday.map(r => r.reason));
                 const limitLeft = WOW_DAILY_LIMIT - today;
-                const hwDone = doneToday.has(WOW_HOMEWORK.reason);
+                const hwState = doneToday.has(WOW_HOMEWORK.reason) ? 'done'
+                              : doneToday.has(WOW_HW_NOT_DONE.reason) ? 'not_done' : null;
 
                 box.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
@@ -31398,18 +31414,9 @@
                                 ${done ? '✓' : p.icon} ${escapeHtml(p.label)} +${p.amount}
                             </button>`;
                         }).join('')}
-                        <button ${hwDone ? 'disabled' : ''}
-                            title="${hwDone ? 'Уже начислено сегодня' : 'Не входит в дневной лимит'}"
-                            onclick="awardWowHomework('${studentId}', null)"
-                            style="padding:8px 12px; border-radius:9px; font-family:inherit; font-size:13px;
-                                   border:1px solid ${hwDone ? '#86efac' : '#bfdbfe'};
-                                   background:${hwDone ? '#dcfce7' : '#eff6ff'};
-                                   color:${hwDone ? '#166534' : '#1e40af'};
-                                   cursor:${hwDone ? 'default' : 'pointer'};">
-                            ${hwDone ? '✓' : WOW_HOMEWORK.icon} ${escapeHtml(WOW_HOMEWORK.label)} +${WOW_HOMEWORK.amount}
-                        </button>
                     </div>
-                    ${limitLeft <= 0 ? '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Лимит на поощрения исчерпан. Кнопка «ДЗ выполнено» работает вне лимита.</div>' : ''}`;
+                    <div style="margin-top:8px;">${wowHomeworkButtons(studentId, null, hwState)}</div>
+                    ${limitLeft <= 0 ? '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Лимит на поощрения исчерпан. Отметка о домашке работает вне лимита.</div>' : ''}`;
             } catch (e) {
                 box.innerHTML = `<div style="font-size:12px; color:#dc2626;">Не удалось загрузить монетки: ${escapeHtml(e.message || e)}</div>`;
             }
@@ -31449,6 +31456,7 @@
         // на всех учеников урока, чтобы не дёргать базу по одному.
         async function renderWowLesson(lessonId, studentIds) {
             if (!studentIds || !studentIds.length) return;
+            _wowHwState = {};   // состояние от прошлого урока не должно тянуться
             const today = _wowToday();
             let rows = [];
             try {
@@ -31472,7 +31480,8 @@
                                    .reduce((s, r) => s + (r.amount || 0), 0);
                 const done = new Set(mine.map(r => r.reason));
                 const left = WOW_DAILY_LIMIT - today_;
-                const hwDone = done.has(WOW_HOMEWORK.reason);
+                const hwState = done.has(WOW_HOMEWORK.reason) ? 'done'
+                              : done.has(WOW_HW_NOT_DONE.reason) ? 'not_done' : null;
 
                 box.innerHTML = `
                     <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -31491,73 +31500,85 @@
                                 ${isDone ? '✓' : p.icon} ${escapeHtml(p.short)} +${p.amount}
                             </button>`;
                         }).join('')}
-                        <button ${hwDone ? 'disabled' : ''}
-                            title="${hwDone ? 'Уже начислено сегодня' : 'Не входит в дневной лимит'}"
-                            onclick="awardWowHomework('${sid}','${lessonId}')"
-                            style="padding:5px 10px; border-radius:8px; font-family:inherit; font-size:12px;
-                                   border:1px solid ${hwDone ? '#86efac' : '#bfdbfe'};
-                                   background:${hwDone ? '#dcfce7' : '#eff6ff'};
-                                   color:${hwDone ? '#166534' : '#1e40af'};
-                                   cursor:${hwDone ? 'default' : 'pointer'};">
-                            ${hwDone ? '✓' : WOW_HOMEWORK.icon} ${escapeHtml(WOW_HOMEWORK.short)} +${WOW_HOMEWORK.amount}
-                        </button>
                         <span style="font-size:11px; color:#94a3b8;">💰 ${today_} / ${WOW_DAILY_LIMIT}</span>
                     </div>`;
+
+                // Кнопка «ДЗ сделал» живёт в секции оценки за ДЗ, а не в ряду поощрений
+                const hwBox = document.getElementById('wowHw_' + sid);
+                if (hwBox) hwBox.innerHTML = wowHomeworkButtons(sid, lessonId, hwState);
+                _wowHwState[sid] = !!hwState;
+                updateSaveButtonState();
             }
         }
 
-        async function awardWowLesson(lessonId, studentId, reason) {
-            const preset = WOW_PRESETS.find(p => p.reason === reason);
-            if (!preset) return;
-            const teacherId = await resolveMyTeacherId();
-            const awardedBy = teacherId || currentAppUser?.id;
-            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+        // Состояние «ДЗ отмечено» по ученикам — нужно, чтобы не дать
+        // завершить урок, пока преподаватель не отметил домашку
+        let _wowHwState = {};
 
-            const { data: todayRows } = await sb.from('wow_coins_ledger')
-                .select('amount').eq('student_id', studentId)
-                .eq('award_date', _wowToday()).in('reason', WOW_MANUAL_REASONS);
-            const today = (todayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
-            if (today + preset.amount > WOW_DAILY_LIMIT) {
-                alert(`Лимит на сегодня исчерпан: начислено ${today} из ${WOW_DAILY_LIMIT}`);
-                return;
-            }
-
-            // external_id урока — bigint, как и ждёт колонка lesson_id
-            const lessonExtId = _lessonModalState?.lesson?.external_id || null;
-            const { error } = await sb.from('wow_coins_ledger').insert({
-                student_id: studentId,
-                amount: preset.amount,
-                reason: reason,
-                lesson_id: lessonExtId,
-                awarded_by: String(awardedBy),
-            });
-            if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
-
-            const ids = (_lessonModalState?.students || []).map(s => s.student_id);
-            renderWowLesson(lessonId, ids);
+        function wowHomeworkButtons(studentId, lessonId, state) {
+            const lid = lessonId ? "'" + lessonId + "'" : 'null';
+            const btn = (val, text, activeBg, activeBd, activeColor) => {
+                const on = state === val;
+                return `<button onclick="setWowHomework('${studentId}', ${lid}, '${val}')"
+                    title="${on ? 'Нажми, чтобы снять отметку' : ''}"
+                    style="padding:6px 12px; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600;
+                           border:1px solid ${on ? activeBd : '#e5e7eb'};
+                           background:${on ? activeBg : '#fff'};
+                           color:${on ? activeColor : '#64748b'};
+                           cursor:pointer;">
+                    ${on ? '✓ ' : ''}${text}
+                </button>`;
+            };
+            return `<div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${btn('done', 'Сделал +' + WOW_HOMEWORK.amount, '#dcfce7', '#86efac', '#166534')}
+                ${btn('not_done', 'Не сделал', '#fee2e2', '#fca5a5', '#991b1b')}
+            </div>`;
         }
 
-        // ДЗ выполнено → +4. Вне дневного лимита: это учебное действие,
-        // а не поощрение. Повторное нажатие за день не задвоит — ловит unique-индекс.
-        // lessonId передаётся из карточки урока, из карточки ученика — null.
-        async function awardWowHomework(studentId, lessonId) {
+        // Отметка о домашке: «сделал» даёт +4, «не сделал» — 0 монеток,
+        // но фиксируется в журнале, иначе отметка терялась бы при закрытии урока.
+        // Повторное нажатие активной кнопки снимает отметку.
+        async function setWowHomework(studentId, lessonId, value) {
             const teacherId = await resolveMyTeacherId();
             const awardedBy = teacherId || currentAppUser?.id;
-            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+            if (!awardedBy) { alert('Не удалось определить, кто отмечает'); return; }
 
-            let lessonExtId = null;
-            if (lessonId && _lessonModalState?.lesson?.id === lessonId) {
-                lessonExtId = _lessonModalState.lesson.external_id || null;
+            const today = _wowToday();
+            const target = value === 'done' ? WOW_HOMEWORK : WOW_HW_NOT_DONE;
+
+            // Что уже стоит по этому ученику за сегодня
+            const { data: existing } = await sb.from('wow_coins_ledger')
+                .select('id, reason')
+                .eq('student_id', studentId)
+                .eq('award_date', today)
+                .in('reason', [WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason]);
+
+            const already = (existing || []).find(r => r.reason === target.reason);
+            const other   = (existing || []).filter(r => r.reason !== target.reason);
+
+            // Нажали на активную кнопку — снимаем отметку
+            if (already) {
+                const { error } = await sb.from('wow_coins_ledger').delete().eq('id', already.id);
+                if (error) { alert('Не удалось снять отметку: ' + error.message); return; }
+            } else {
+                // Переключение: сначала убираем противоположную отметку
+                for (const r of other) {
+                    const { error } = await sb.from('wow_coins_ledger').delete().eq('id', r.id);
+                    if (error) { alert('Не удалось сменить отметку: ' + error.message); return; }
+                }
+                let lessonExtId = null;
+                if (lessonId && _lessonModalState?.lesson?.id === lessonId) {
+                    lessonExtId = _lessonModalState.lesson.external_id || null;
+                }
+                const { error } = await sb.from('wow_coins_ledger').insert({
+                    student_id: studentId,
+                    amount: target.amount,
+                    reason: target.reason,
+                    lesson_id: lessonExtId,
+                    awarded_by: String(awardedBy),
+                });
+                if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
             }
-
-            const { error } = await sb.from('wow_coins_ledger').insert({
-                student_id: studentId,
-                amount: WOW_HOMEWORK.amount,
-                reason: WOW_HOMEWORK.reason,
-                lesson_id: lessonExtId,
-                awarded_by: String(awardedBy),
-            });
-            if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
 
             if (lessonId) {
                 const ids = (_lessonModalState?.students || []).map(s => s.student_id).filter(Boolean);
