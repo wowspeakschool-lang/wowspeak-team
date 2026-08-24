@@ -6443,6 +6443,9 @@
         <button class="side-nav-item" data-snav="unit_requests" onclick="sideNavGo('unit_requests')" style="display:none;">
             <span class="snav-icon">📥</span><span>Запросы<span id="unitRequestsBadge" style="display:none; background:#ef4444; color:white; border-radius:9px; padding:1px 6px; font-size:11px; margin-left:6px;"></span></span>
         </button>
+        <button class="side-nav-item" data-snav="client_cases" onclick="sideNavGo('client_cases')" style="display:none;">
+            <span class="snav-icon">🎯</span><span>Кейсы<span id="clientCasesBadge" style="display:none; background:#ef4444; color:white; border-radius:9px; padding:1px 6px; font-size:11px; margin-left:6px;"></span></span>
+        </button>
         <button class="side-nav-item" data-snav="trash" onclick="sideNavGo('trash')" style="display:none;">
             <span class="snav-icon">🗑</span><span>Корзина</span>
         </button>
@@ -6718,6 +6721,7 @@
                     <button class="ass-main-tab active" data-summtab="finance" onclick="setSummariesSubTab('finance')">📊 Уроки (данные)</button>
                     <button class="ass-main-tab" data-summtab="vacations" onclick="setSummariesSubTab('vacations')">🌴 Отпуска</button>
                     <button class="ass-main-tab" data-summtab="dismissals" onclick="setSummariesSubTab('dismissals')">👋 Увольнения</button>
+                    <button class="ass-main-tab" data-summtab="grades" onclick="setSummariesSubTab('grades')">🎓 Смена грейда</button>
                     <button class="ass-main-tab" data-summtab="payments" onclick="setSummariesSubTab('payments')">💸 Расчёты</button>
                     <button class="ass-main-tab" data-summtab="reports" onclick="setSummariesSubTab('reports')">📄 Отчёты</button>
                     <button class="ass-main-tab" data-summtab="history" onclick="setSummariesSubTab('history')">📊 История</button>
@@ -6785,6 +6789,19 @@
                         Преподаватели в процессе увольнения. Кликни на препода, чтобы увидеть его учеников и подобрать новых преподавателей.
                     </div>
                     <div id="dismissalsListWrap">
+                        <div class="analytics-loading">Загрузка…</div>
+                    </div>
+                </div>
+
+                <!-- ===== Смена грейда ===== -->
+                <div id="summSubGrades" class="ass-subtab">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+                        <div style="color:#64748b; font-size:0.9rem;">
+                            Преподаватели, перешедшие на новый грейд. Кликни на карточку, чтобы решить, что делать с каждым учеником.
+                        </div>
+                        <button class="btn btn-small" style="background:#ede9fe; color:#5b21b6;" onclick="openNewGradeChangeDialog()">+ Смена грейда</button>
+                    </div>
+                    <div id="gradeChangesListWrap">
                         <div class="analytics-loading">Загрузка…</div>
                     </div>
                 </div>
@@ -6886,6 +6903,7 @@
                             <button class="history-type-btn" data-htype="bonus" onclick="setHistoryType('bonus')">🎁 Бонусы</button>
                             <button class="history-type-btn" data-htype="penalty" onclick="setHistoryType('penalty')">⚠️ Штрафы</button>
                             <button class="history-type-btn" data-htype="star" onclick="setHistoryType('star')">⭐ Звёзды</button>
+                            <button class="history-type-btn" data-htype="grade" onclick="setHistoryType('grade')">🎓 Грейды</button>
                         </div>
                         <input type="search" id="historyTeacherSearch" placeholder="🔍 Препод"
                                oninput="renderHistoryList()"
@@ -7607,6 +7625,74 @@
 
                 <div id="unitRequestsListWrap">
                     <div class="analytics-loading">Загрузка запросов…</div>
+                </div>
+            </div>
+
+            <!-- 🎯 Кейсы: пожелания, замечания, кризисы -->
+            <div id="client_casesSection" class="content-section">
+                <div class="section-header" style="margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+                    <div>
+                        <h2 style="margin:0;">🎯 Кейсы</h2>
+                        <p style="color:#64748b; font-size:0.9rem; margin:0.25rem 0 0;">Пожелания, замечания и кризисные ситуации по ученикам</p>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="openNewClientCaseModal()">+ Новый кейс</button>
+                </div>
+
+                <div class="ass-main-tabs" style="margin-bottom:1rem;">
+                    <button class="ass-main-tab active" data-cctab="list" onclick="setClientCasesTab('list')">📋 Список</button>
+                    <button class="ass-main-tab" data-cctab="stats" onclick="setClientCasesTab('stats')">📊 Аналитика</button>
+                </div>
+
+                <div id="ccSubList" class="ass-subtab active">
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <button class="ur-tab active" data-ccfilter="open"   onclick="setClientCasesFilter('open')">⏳ В работе</button>
+                        <button class="ur-tab" data-ccfilter="control"      onclick="setClientCasesFilter('control')">👁 На контроле</button>
+                        <button class="ur-tab" data-ccfilter="closed"       onclick="setClientCasesFilter('closed')">✅ Закрытые</button>
+                        <button class="ur-tab" data-ccfilter="all"          onclick="setClientCasesFilter('all')">📋 Все</button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+                        <input id="ccSearch" type="text" placeholder="🔍 Поиск по ученику или тексту…" oninput="renderClientCasesList()"
+                               style="padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; min-width:240px;">
+                        <select id="ccFilterCategory" onchange="renderClientCasesList()"
+                                style="padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white;">
+                            <option value="">🗂 Все категории</option>
+                            <option value="wish">📝 Пожелания</option>
+                            <option value="remark">⚠️ Замечания</option>
+                            <option value="crisis">🚨 Кризисные кейсы</option>
+                        </select>
+                        <select id="ccFilterAssignee" onchange="renderClientCasesList()"
+                                style="padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white;">
+                            <option value="">👤 Все ответственные</option>
+                        </select>
+                    </div>
+                    <div id="clientCasesListWrap"><div class="analytics-loading">Загрузка…</div></div>
+                </div>
+
+                <div id="ccSubStats" class="ass-subtab">
+                    <div class="analytics-toolbar" style="margin-bottom:1rem;">
+                        <div class="analytics-mode-switch" role="tablist">
+                            <button class="mode-btn active" data-ccmode="month" onclick="setCcStatsMode('month')">За месяц</button>
+                            <button class="mode-btn" data-ccmode="year" onclick="setCcStatsMode('year')">За год</button>
+                            <button class="mode-btn" data-ccmode="all" onclick="setCcStatsMode('all')">Всё время</button>
+                        </div>
+                        <div class="analytics-period-controls">
+                            <div id="ccStatsMonthControls" class="summaries-month-picker">
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsMonth(-1)" title="Предыдущий">‹</button>
+                                <input type="month" id="ccStatsMonthInput" onchange="renderClientCasesStats()">
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsMonth(+1)" title="Следующий">›</button>
+                                <button class="btn btn-small" style="background:#eef2ff;color:#4338ca;" onclick="setCcStatsMonthToday()">Текущий</button>
+                            </div>
+                            <div id="ccStatsYearControls" class="summaries-month-picker" style="display:none;">
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsYear(-1)" title="Предыдущий год">‹</button>
+                                <select id="ccStatsYearInput" onchange="renderClientCasesStats()" style="padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:8px; font:inherit; font-size:0.9rem;"></select>
+                                <button class="btn btn-secondary btn-small" onclick="changeCcStatsYear(+1)" title="Следующий год">›</button>
+                            </div>
+                            <div id="ccStatsAllControls" class="summaries-month-picker" style="display:none;">
+                                <span style="color:#64748b; font-size:0.88rem;">За всё время</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="clientCasesStatsWrap"><div class="analytics-loading">Загрузка…</div></div>
                 </div>
             </div>
 
@@ -9156,6 +9242,7 @@
                 <div id="dashboardSalaryContent" style="max-width:780px;">
                     <div class="analytics-loading">Загружаю расчёт…</div>
                 </div>
+                <div id="dashboardRetentionContent" style="max-width:780px; margin-top:1.2rem;"></div>
             </div>
         </div>
     </div>
@@ -9173,10 +9260,91 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script>
-        // ============ SUPABASE: подключение через прокси api.wowteach.ru ============
-        // Прокси на Timeweb VPS (Москва) → Supabase Frankfurt — для стабильности из РФ
-        const SUPABASE_URL = 'https://api.wowteach.ru';
-        const SUPABASE_KEY = 'sb_publishable_nZIl9kzPNhkd9Gbsm7aAgA_cAeY1s4x';
+        // ============ SUPABASE ============
+        // Три пути до базы: основной прокси, запасной у другого провайдера,
+        // и прямое подключение. Если один недоступен, запросы сами уходят
+        // на следующий — править код при аварии не нужно.
+        const SUPABASE_HOSTS = [
+            'https://api.wowteach.ru',                      // Timeweb
+            'https://api2.wowteach.ru',                     // VDSina, запасной
+            'https://vtcxghsqymwkyiogpndf.supabase.co',     // напрямую
+        ];
+        const SUPABASE_PROXY  = SUPABASE_HOSTS[0];
+        const SUPABASE_URL    = SUPABASE_PROXY;
+        const SUPABASE_KEY    = 'sb_publishable_nZIl9kzPNhkd9Gbsm7aAgA_cAeY1s4x';
+        const SB_PROXY_TIMEOUT_MS = 3000;
+
+        let _sbHostIdx = 0;   // какой адрес сейчас рабочий
+
+        function _sbSwapHost(url) {
+            return url.startsWith(SUPABASE_PROXY)
+                ? SUPABASE_HOSTS[_sbHostIdx] + url.slice(SUPABASE_PROXY.length)
+                : url;
+        }
+
+        function _sbNextHost(reason) {
+            if (_sbHostIdx >= SUPABASE_HOSTS.length - 1) return false;
+            _sbHostIdx++;
+            console.warn('[supabase] переключаюсь на ' + SUPABASE_HOSTS[_sbHostIdx] + ':', reason);
+            return true;
+        }
+
+        // Проба при загрузке: узнаём о проблеме до того, как пользователь
+        // попробует что-то сохранить. Не блокирует запуск страницы.
+        (async function _sbProbe() {
+            while (_sbHostIdx < SUPABASE_HOSTS.length - 1) {
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), SB_PROXY_TIMEOUT_MS);
+                try {
+                    const res = await fetch(`${SUPABASE_HOSTS[_sbHostIdx]}/rest/v1/`, {
+                        method: 'HEAD',
+                        headers: { apikey: SUPABASE_KEY },
+                        signal: ctrl.signal,
+                    });
+                    if (res.status < 500) return;            // жив
+                    _sbNextHost('HTTP ' + res.status);
+                } catch (e) {
+                    _sbNextHost(e.name === 'AbortError' ? 'таймаут' : (e.message || e));
+                } finally {
+                    clearTimeout(timer);
+                }
+            }
+        })();
+
+        async function _sbFetch(input, init = {}) {
+            const urlStr = typeof input === 'string' ? input : (input?.url || String(input));
+            const method = (init.method || 'GET').toUpperCase();
+            // Повторять можно только то, что безопасно повторить: чтение и авторизацию.
+            // Запись не переотправляем — иначе при таймауте после реального сохранения
+            // получили бы дубль. Адрес всё равно переключится для следующего запроса.
+            const canRetry = method === 'GET' || method === 'HEAD' || urlStr.includes('/auth/v1/');
+
+            while (true) {
+                const target = _sbSwapHost(urlStr);
+                const isLast = _sbHostIdx >= SUPABASE_HOSTS.length - 1;
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), SB_PROXY_TIMEOUT_MS);
+                const onAbort = () => ctrl.abort();
+                if (init.signal) init.signal.addEventListener('abort', onAbort, { once: true });
+                try {
+                    const res = await fetch(target, { ...init, signal: ctrl.signal });
+                    clearTimeout(timer);
+                    if (!isLast && res.status >= 502 && res.status <= 504) {
+                        if (_sbNextHost('HTTP ' + res.status) && canRetry) continue;
+                    }
+                    return res;
+                } catch (e) {
+                    clearTimeout(timer);
+                    if (init.signal?.aborted) throw e;   // отменил вызывающий код
+                    if (isLast) throw e;
+                    const moved = _sbNextHost(e.name === 'AbortError' ? 'таймаут' : (e.message || e));
+                    if (moved && canRetry) continue;
+                    throw e;
+                } finally {
+                    if (init.signal) init.signal.removeEventListener('abort', onAbort);
+                }
+            }
+        }
 
         // Cookie-storage с domain=.wowteach.ru — shared session между поддоменами
         // (нужно чтобы train.wowteach.ru видел вход без повторного логина)
@@ -9195,7 +9363,8 @@
         };
 
         const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { storage: sharedCookieStorage }
+            auth: { storage: sharedCookieStorage },
+            global: { fetch: _sbFetch }
         });
 
         // Текущий пользователь приложения (запись из нашей таблицы users)
@@ -10945,6 +11114,7 @@
                 setSideNavVisible('team',        isSuper);
                 setSideNavVisible('students',    canManageStudents());
                 setSideNavVisible('unit_requests', hasAnyRole(['super_admin', 'admin', 'methodist', 'assistant', 'teacher']));
+                setSideNavVisible('client_cases', hasAnyRole(['super_admin', 'methodist', 'assistant', 'curator', 'manager']));
                 setSideNavVisible('groups',      true);
                 setSideNavVisible('schedule',    true);
                 const scheduleSyncBtn = document.getElementById('scheduleSyncBtn');
@@ -13333,6 +13503,7 @@
             if (tab === 'notifications') renderNotificationsList();
             if (tab === 'students') renderStudentsSection();
             if (tab === 'unit_requests') renderUnitRequestsSection();
+            if (tab === 'client_cases') renderClientCasesSection();
             if (tab === 'groups') renderGroupsSection();
             if (tab === 'schedule') renderScheduleSection();
             if (tab === 'wiki') renderWikiSection();
@@ -14403,8 +14574,7 @@
             }
             // value === '' — снять закрепление
 
-            // Пропуск месяца (assessment_skip_month) — всегда в глобальном поле, как раньше.
-            // Ассессор: с сентября 2026 — помесячно, раньше — глобально.
+            // Ассессор: с сентября 2026 — помесячно, раньше — глобально (историю не трогаем).
             const monthly = month && month >= ASSESSOR_MONTHLY_FROM;
 
             if (monthly && !skipMonth) {
@@ -14414,7 +14584,6 @@
                         .upsert({ teacher_id: teacherId, year_month: month, assessor_user_id: assignedUserId, updated_at: new Date().toISOString() },
                                 { onConflict: 'teacher_id,year_month' });
                     if (error) throw error;
-                    // локальный кэш назначений месяца
                     window._assessorMonthMap = window._assessorMonthMap || {};
                     window._assessorMonthMap[teacherId + '|' + month] = assignedUserId;
                 } catch (e) { alert('Не удалось сохранить: ' + (e.message || e)); return; }
@@ -23429,6 +23598,93 @@
                 console.error('Ошибка расчёта зарплаты:', e);
                 wrap.innerHTML = `<div class="analytics-empty">Не удалось посчитать: ${escapeHtml(e.message || String(e))}</div>`;
             }
+
+            loadDashboardRetention();
+        }
+
+        // ============================================================
+        //         УДЕРЖАНИЕ УЧЕНИКОВ (блок в табе "Зарплата")
+        // ============================================================
+        function _retPlural(n, one, few, many) {
+            const m10 = n % 10, m100 = n % 100;
+            if (m10 === 1 && m100 !== 11) return one;
+            if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+            return many;
+        }
+
+        async function loadDashboardRetention() {
+            const wrap = document.getElementById('dashboardRetentionContent');
+            if (!wrap) return;
+
+            const teacher = window._currentTeacherObj;
+            if (!teacher) { wrap.innerHTML = ''; return; }
+
+            wrap.innerHTML = '<div class="analytics-loading">Загружаю удержание…</div>';
+
+            try {
+                const { data, error } = await sb.rpc('retention_progress', { p_teacher_id: teacher.id });
+                if (error) throw error;
+
+                // Защита от RLS — оставляем только свои серии
+                const all = data || [];
+                const rows = all.filter(r => r.teacher_id === teacher.id);
+                if (rows.length !== all.length) {
+                    console.warn('[retention] RLS вернула чужие серии! Отфильтровано', all.length - rows.length, 'для teacherId', teacher.id);
+                }
+
+                const head = '<h3 style="margin:0 0 0.7rem; font-size:1rem;">🎯 Удержание учеников</h3>';
+
+                if (!rows.length) {
+                    wrap.innerHTML = head + `
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:0.85rem 1rem; color:#64748b; font-size:0.85rem;">
+                            Пока нет учеников в зачёте. Счётчик начнёт заполняться с уроков после старта вашей когорты.
+                        </div>`;
+                    return;
+                }
+
+                const nearest = rows[0];
+                const totalNext = rows.reduce((s, r) => s + (r.next_amount || 0), 0);
+
+                const cards = rows.map(r => {
+                    const pct = Math.min(100, Math.round(r.lessons_count / r.next_milestone * 100));
+                    const frozen = r.status === 'frozen';
+                    return `
+                        <div style="border:1px solid ${frozen ? '#fed7aa' : '#e2e8f0'}; background:${frozen ? '#fffbeb' : '#fff'}; border-radius:10px; padding:0.7rem 0.9rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:0.5rem;">
+                                <span style="font-weight:600;">${escapeHtml(r.student_name)}</span>
+                                <span style="font-size:0.8rem; color:#64748b; white-space:nowrap;">${r.lessons_count} / ${r.next_milestone}</span>
+                            </div>
+                            <div style="height:6px; background:#e2e8f0; border-radius:3px; margin:0.45rem 0 0.35rem; overflow:hidden;">
+                                <div style="height:100%; width:${pct}%; background:${frozen ? '#f59e0b' : 'linear-gradient(90deg,#34d399,#10b981)'};"></div>
+                            </div>
+                            <div style="font-size:0.78rem; color:#64748b;">
+                                ${frozen
+                                    ? '⏸ на паузе — сейчас ученика ведёт другой преподаватель'
+                                    : `до бонуса ${r.lessons_left} ${_retPlural(r.lessons_left, 'урок', 'урока', 'уроков')} · ${(r.next_amount || 0).toLocaleString('ru-RU')} ₽`}
+                            </div>
+                        </div>`;
+                }).join('');
+
+                wrap.innerHTML = head + `
+                    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5); border:1px solid #6ee7b7; border-radius:10px; padding:0.85rem 1rem; margin-bottom:0.9rem;">
+                        <div style="font-weight:600; margin-bottom:0.2rem;">
+                            Ближайший бонус — ${nearest.lessons_left} ${_retPlural(nearest.lessons_left, 'урок', 'урока', 'уроков')}
+                        </div>
+                        <div style="font-size:0.82rem; color:#065f46;">
+                            ${escapeHtml(nearest.student_name)} · ${(nearest.next_amount || 0).toLocaleString('ru-RU')} ₽ ·
+                            учеников в зачёте: ${rows.length} · потенциал ближайших рубежей ${totalNext.toLocaleString('ru-RU')} ₽
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:0.6rem;">
+                        ${cards}
+                    </div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:0.7rem;">
+                        Считаются проведённые уроки с закреплёнными за вами учениками. Обновляется раз в сутки.
+                    </div>`;
+            } catch (e) {
+                console.error('Ошибка загрузки удержания:', e);
+                wrap.innerHTML = `<div class="analytics-empty">Не удалось загрузить удержание: ${escapeHtml(e.message || String(e))}</div>`;
+            }
         }
 
         async function loadDashboardVacations() {
@@ -23796,17 +24052,20 @@
             const finance = document.getElementById('summSubFinance');
             const vac = document.getElementById('summSubVacations');
             const dis = document.getElementById('summSubDismissals');
+            const grd = document.getElementById('summSubGrades');
             const pay = document.getElementById('summSubPayments');
             const rep = document.getElementById('summSubReports');
             const hist = document.getElementById('summSubHistory');
             if (finance) finance.classList.toggle('active', sub === 'finance');
             if (vac) vac.classList.toggle('active', sub === 'vacations');
             if (dis) dis.classList.toggle('active', sub === 'dismissals');
+            if (grd) grd.classList.toggle('active', sub === 'grades');
             if (pay) pay.classList.toggle('active', sub === 'payments');
             if (rep) rep.classList.toggle('active', sub === 'reports');
             if (hist) hist.classList.toggle('active', sub === 'history');
             if (sub === 'vacations') renderVacationsAdminList();
             if (sub === 'dismissals') renderDismissalsList();
+            if (sub === 'grades') renderGradeChangesList();
             if (sub === 'payments') renderPaymentsList();
             if (sub === 'reports') renderAdminTrackersList();
             if (sub === 'history') renderHistoryList();
@@ -23992,6 +24251,1232 @@
             filterNotified: '',   // '' / 'yes' / 'no'
             filterMoved: ''       // '' / 'yes' / 'no'
         };
+
+        // ============================================================
+        //          КЕЙСЫ: пожелания / замечания / кризисы
+        // ============================================================
+        const CC_CATEGORIES = {
+            wish:   { label: 'Пожелание',      icon: '📝', bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },
+            remark: { label: 'Замечание',      icon: '⚠️', bg:'#fef3c7', border:'#fcd34d', color:'#92400e' },
+            crisis: { label: 'Кризисный кейс', icon: '🚨', bg:'#fee2e2', border:'#fca5a5', color:'#991b1b' },
+        };
+        const CC_STATUSES = {
+            open:          { label: 'Открыт',      bg:'#f1f5f9', border:'#cbd5e1', color:'#475569' },
+            in_progress:   { label: 'В процессе',  bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },
+            under_control: { label: 'На контроле', bg:'#fef3c7', border:'#fcd34d', color:'#92400e' },
+            closed:        { label: 'Закрыт',      bg:'#dcfce7', border:'#86efac', color:'#166534' },
+        };
+        const CC_OUTCOMES = {
+            positive:  { label: '✅ Решено положительно', color:'#16a34a' },
+            negative:  { label: '❌ Решено отрицательно', color:'#dc2626' },
+            no_result: { label: '➖ Без результата',      color:'#64748b' },
+        };
+        // Подсказки, чтобы куратор не гадал, какую тему выбрать
+        const CC_TOPIC_HINTS = {
+            'Сообщили, что хотят прекратить занятия': 'сказали «мы уходим», денег пока не требуют',
+            'Требуют вернуть деньги':                 'прозвучало слово «возврат»',
+            'Требуют сменить преподавателя':          'просят замену, уходить не собираются',
+            'Конфликт с преподавателем':              'претензия лично к преподавателю',
+            'Нет результата, не сдал экзамен':        'претензия к итогу обучения',
+            'Формат не подошёл':                      'онлайн, длительность, группа',
+            'Жалоба на школу':                        'организация, деньги, сервис',
+        };
+
+        let _ccState = { tab: 'list', filter: 'open', cases: [], topics: [], loaded: false };
+
+        function _ccStyle(map, key) {
+            const c = map[key] || { bg:'#fff', border:'#cbd5e1', color:'#475569' };
+            return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
+        }
+
+        function setClientCasesTab(tab) {
+            _ccState.tab = tab;
+            document.querySelectorAll('[data-cctab]').forEach(b =>
+                b.classList.toggle('active', b.dataset.cctab === tab));
+            const list = document.getElementById('ccSubList');
+            const stats = document.getElementById('ccSubStats');
+            if (list)  list.classList.toggle('active', tab === 'list');
+            if (stats) stats.classList.toggle('active', tab === 'stats');
+            if (tab === 'stats') renderClientCasesStats();
+        }
+
+        function setClientCasesFilter(f) {
+            _ccState.filter = f;
+            document.querySelectorAll('[data-ccfilter]').forEach(b =>
+                b.classList.toggle('active', b.dataset.ccfilter === f));
+            renderClientCasesList();
+        }
+
+        async function renderClientCasesSection() {
+            await _ccLoadData();
+            renderClientCasesList();
+        }
+
+        async function _ccLoadData() {
+            const [casesRes, topicsRes] = await Promise.all([
+                sb.from('client_cases')
+                    .select('*, students(id, name), teachers(id, name), methodist_topics(id, name, category)')
+                    .order('created_at', { ascending: false }),
+                sb.from('methodist_topics')
+                    .select('id, name, category, default_assignee_user_id')
+                    .not('category', 'is', null)
+                    .eq('is_archived', false)
+                    .order('sort_order'),
+            ]);
+            _ccState.cases  = casesRes.data || [];
+            _ccState.topics = topicsRes.data || [];
+            _ccState.loaded = true;
+
+            // Наполняем фильтр по ответственным
+            const sel = document.getElementById('ccFilterAssignee');
+            if (sel) {
+                const ids = [...new Set(_ccState.cases.map(c => c.assignee_user_id).filter(Boolean))];
+                const cur = sel.value;
+                const { data: us } = ids.length
+                    ? await sb.from('users').select('id, name').in('id', ids)
+                    : { data: [] };
+                sel.innerHTML = '<option value="">👤 Все ответственные</option>' +
+                    (us || []).sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ru'))
+                        .map(u => `<option value="${u.id}"${u.id === cur ? ' selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+            }
+            _ccUpdateBadge();
+        }
+
+        function _ccUpdateBadge() {
+            const badge = document.getElementById('clientCasesBadge');
+            if (!badge) return;
+            const n = _ccState.cases.filter(c => c.status === 'open').length;
+            badge.textContent = n;
+            badge.style.display = n ? '' : 'none';
+        }
+
+        function renderClientCasesList() {
+            const wrap = document.getElementById('clientCasesListWrap');
+            if (!wrap) return;
+            const search = (document.getElementById('ccSearch')?.value || '').trim().toLowerCase();
+            const catF   = document.getElementById('ccFilterCategory')?.value || '';
+            const asgF   = document.getElementById('ccFilterAssignee')?.value || '';
+
+            let list = _ccState.cases.filter(c => {
+                if (_ccState.filter === 'open'    && !['open','in_progress'].includes(c.status)) return false;
+                if (_ccState.filter === 'control' && c.status !== 'under_control') return false;
+                if (_ccState.filter === 'closed'  && c.status !== 'closed') return false;
+                if (catF && c.category !== catF) return false;
+                if (asgF && c.assignee_user_id !== asgF) return false;
+                if (search) {
+                    const hay = `${c.student_name || ''} ${c.body || ''} ${c.methodist_topics?.name || ''}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                return true;
+            });
+
+            if (!list.length) {
+                wrap.innerHTML = '<div style="padding:2rem; text-align:center; color:#94a3b8;">Ничего не найдено</div>';
+                return;
+            }
+
+            wrap.innerHTML = `<div style="display:flex; flex-direction:column; gap:0.6rem;">
+                ${list.map(c => {
+                    const cat = CC_CATEGORIES[c.category] || {};
+                    const teacher = c.teachers?.name || '—';
+                    const days = c.created_at
+                        ? Math.floor((Date.now() - new Date(c.created_at)) / 86400000) : 0;
+                    const outcome = c.outcome ? CC_OUTCOMES[c.outcome] : null;
+                    return `<div onclick="openClientCase('${c.id}')" style="background:white; border:1px solid #e2e8f0; border-left:4px solid ${cat.border || '#cbd5e1'}; border-radius:10px; padding:12px 16px; cursor:pointer;">
+                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; font-size:14px;">
+                                    ${cat.icon || ''} ${escapeHtml(c.student_name || '—')}
+                                    ${c.student_age ? `<span style="color:#94a3b8; font-weight:400;"> · ${c.student_age} лет</span>` : ''}
+                                </div>
+                                <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                                    ${escapeHtml(c.methodist_topics?.name || '—')} · 👩‍🏫 ${escapeHtml(teacher)}
+                                </div>
+                                <div style="font-size:13px; color:#334155; margin-top:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                                    ${escapeHtml(c.body || '')}
+                                </div>
+                            </div>
+                            <div style="text-align:right; white-space:nowrap;">
+                                <span style="padding:3px 9px; border-radius:99px; font-size:11px; ${_ccStyle(CC_STATUSES, c.status)}">${CC_STATUSES[c.status]?.label || c.status}</span>
+                                <div style="font-size:11px; color:#94a3b8; margin-top:5px;">${days === 0 ? 'сегодня' : days + ' дн. назад'}</div>
+                                ${outcome ? `<div style="font-size:11px; margin-top:3px; color:${outcome.color};">${outcome.label}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
+        // ---------- Создание ----------
+        let _ccNewState = { student: null, history: [] };
+
+        function openNewClientCaseModal() {
+            _ccNewState = { student: null, history: [] };
+            let ov = document.getElementById('ccNewOverlay');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'ccNewOverlay';
+                ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:10000; padding:24px; overflow-y:auto;';
+                ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+                document.body.appendChild(ov);
+            }
+            ov.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(640px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <h3 style="margin:0 0 1rem; font-size:1.05rem;">🎯 Новый кейс</h3>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Ученик</label>
+                    <input id="ccNewStudentSearch" type="text" placeholder="Начни вводить имя…" autocomplete="off"
+                           oninput="_ccSearchStudent(this.value)"
+                           style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+                    <div id="ccNewStudentResults" style="margin-top:4px;"></div>
+                    <div id="ccNewStudentCard" style="margin:0.8rem 0;"></div>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Категория</label>
+                    <select id="ccNewCategory" onchange="_ccFillTopics()" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                        <option value="">— выбрать —</option>
+                        <option value="wish">📝 Пожелание</option>
+                        <option value="remark">⚠️ Замечание</option>
+                        <option value="crisis">🚨 Кризисный кейс</option>
+                    </select>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Тема</label>
+                    <select id="ccNewTopic" onchange="_ccShowTopicHint()" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit;">
+                        <option value="">— сначала выбери категорию —</option>
+                    </select>
+                    <div id="ccNewTopicHint" style="font-size:0.78rem; color:#94a3b8; margin:4px 0 0.8rem; min-height:1em;"></div>
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Суть обращения</label>
+                    <textarea id="ccNewBody" rows="5" placeholder="Что сказал клиент, что уже сделано…"
+                              style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; resize:vertical; margin-bottom:1rem;"></textarea>
+
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('ccNewOverlay').remove()">Отмена</button>
+                        <button class="btn btn-primary btn-small" onclick="_ccSaveNew()">Создать</button>
+                    </div>
+                </div>`;
+        }
+
+        let _ccSearchTimer = null;
+        function _ccSearchStudent(q) {
+            clearTimeout(_ccSearchTimer);
+            const box = document.getElementById('ccNewStudentResults');
+            if (!box) return;
+            if (!q || q.trim().length < 2) { box.innerHTML = ''; return; }
+            _ccSearchTimer = setTimeout(async () => {
+                const { data } = await sb.from('students')
+                    .select('id, name, birth_date, level, unit, client_state_id')
+                    .ilike('name', `%${q.trim()}%`)
+                    .limit(8);
+                box.innerHTML = (data || []).map(s => `
+                    <div onclick="_ccPickStudent('${s.id}')" style="padding:7px 10px; border:1px solid #e2e8f0; border-radius:8px; margin-top:3px; cursor:pointer; font-size:13px;">
+                        ${escapeHtml(s.name)}
+                    </div>`).join('') || '<div style="font-size:12px; color:#94a3b8; padding:4px;">Не найдено</div>';
+            }, 300);
+        }
+
+        async function _ccPickStudent(studentId) {
+            document.getElementById('ccNewStudentResults').innerHTML = '';
+            const { data: s } = await sb.from('students')
+                .select('id, name, birth_date, level, unit').eq('id', studentId).single();
+            if (!s) return;
+
+            // Все закреплённые преподаватели — их может быть несколько
+            const { data: st } = await sb.from('student_teachers')
+                .select('teacher_id, teachers(id, name)').eq('student_id', studentId);
+            const teachers = (st || []).filter(r => r.teachers).map(r => r.teachers);
+
+            // Слоты: класс на каждого препода, чтобы показать формат занятий
+            const { data: sta } = await sb.from('student_teacher_assignment')
+                .select('teacher_id, external_class_id').eq('student_id', studentId);
+            const classIds = [...new Set((sta || []).map(x => x.external_class_id).filter(Boolean))];
+            const { data: cls } = classIds.length
+                ? await sb.from('mk_classes').select('external_id, name').in('external_id', classIds)
+                : { data: [] };
+            const clsName = new Map((cls || []).map(c => [c.external_id, c.name]));
+            const formatByTeacher = new Map();
+            for (const x of (sta || [])) {
+                if (x.teacher_id && x.external_class_id && !formatByTeacher.has(x.teacher_id)) {
+                    formatByTeacher.set(x.teacher_id, clsName.get(x.external_class_id) || null);
+                }
+            }
+
+            const age = _calcAgeFromBd(s.birth_date);
+            const programme = [s.level, s.unit].filter(Boolean).join(' · ') || null;
+
+            const { data: hist } = await sb.from('client_cases')
+                .select('id, category, status, created_at, methodist_topics(name)')
+                .eq('student_id', studentId)
+                .order('created_at', { ascending: false });
+
+            _ccNewState.student = {
+                id: s.id, name: s.name, age, programme,
+                teachers, formatByTeacher,
+                teacher_id: teachers.length === 1 ? teachers[0].id : null,
+                format: teachers.length === 1 ? (formatByTeacher.get(teachers[0].id) || null) : null,
+            };
+            _ccNewState.history = hist || [];
+
+            // Блок выбора преподавателя
+            let teacherBlock;
+            if (teachers.length === 1) {
+                const f = formatByTeacher.get(teachers[0].id);
+                teacherBlock = `<div style="color:#64748b; margin-top:3px;">
+                    👩‍🏫 ${escapeHtml(teachers[0].name)}${f ? '<br>🎫 ' + escapeHtml(f) : ''}
+                </div>`;
+            } else if (teachers.length > 1) {
+                teacherBlock = `
+                    <div style="margin-top:8px;">
+                        <div style="font-size:12px; color:#92400e; font-weight:600; margin-bottom:4px;">
+                            ⚠️ У ученика ${teachers.length} преподавателя — выбери, о ком кейс
+                        </div>
+                        <select id="ccNewTeacher" onchange="_ccPickTeacher(this.value)"
+                                style="width:100%; padding:0.45rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                            <option value="">— выбрать —</option>
+                            ${teachers.map(t => {
+                                const f = formatByTeacher.get(t.id);
+                                return `<option value="${t.id}">${escapeHtml(t.name)}${f ? ' · ' + escapeHtml(f) : ''}</option>`;
+                            }).join('')}
+                            <option value="__none__">— кейс не о преподавателе —</option>
+                        </select>
+                    </div>`;
+            } else {
+                const all = (teachersFromDb || []).filter(t => !t.deleted_at)
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+                teacherBlock = `
+                    <div style="margin-top:8px;">
+                        <div style="font-size:12px; color:#92400e; font-weight:600; margin-bottom:4px;">
+                            ⚠️ Преподаватель не закреплён — выбери вручную, если кейс о нём
+                        </div>
+                        <select id="ccNewTeacher" onchange="_ccPickTeacher(this.value)"
+                                style="width:100%; padding:0.45rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                            <option value="__none__">— кейс не о преподавателе —</option>
+                            ${all.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+                        </select>
+                    </div>`;
+            }
+
+            const histHtml = (hist && hist.length)
+                ? `<div style="margin-top:10px; padding:9px 12px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px;">
+                     <div style="font-size:12px; font-weight:700; color:#92400e;">⚠️ По этому ученику уже ${hist.length} ${_retPlural(hist.length,'обращение','обращения','обращений')}</div>
+                     ${hist.slice(0,4).map(h => `<div style="font-size:11px; color:#78350f; margin-top:3px; cursor:pointer;" onclick="document.getElementById('ccNewOverlay').remove(); openClientCase('${h.id}')">
+                        ${CC_CATEGORIES[h.category]?.icon || ''} ${escapeHtml(h.methodist_topics?.name || '')} · ${formatDate(h.created_at)} · ${CC_STATUSES[h.status]?.label || ''}</div>`).join('')}
+                   </div>`
+                : '';
+
+            document.getElementById('ccNewStudentCard').innerHTML = `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; font-size:13px;">
+                    <div style="font-weight:700;">${escapeHtml(s.name)}${age ? ` · ${age} лет` : ''}</div>
+                    ${programme ? `<div style="color:#64748b; margin-top:3px;">📘 ${escapeHtml(programme)}</div>` : ''}
+                    ${teacherBlock}
+                </div>${histHtml}`;
+        }
+
+        function _ccPickTeacher(value) {
+            const s = _ccNewState.student;
+            if (!s) return;
+            if (!value || value === '__none__') {
+                s.teacher_id = null;
+                s.format = null;
+                return;
+            }
+            s.teacher_id = value;
+            s.format = s.formatByTeacher?.get(value) || null;
+        }
+
+        function _ccFillTopics() {
+            const cat = document.getElementById('ccNewCategory').value;
+            const sel = document.getElementById('ccNewTopic');
+            const list = _ccState.topics.filter(t => t.category === cat);
+            sel.innerHTML = '<option value="">— выбрать —</option>' +
+                list.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+            document.getElementById('ccNewTopicHint').textContent = '';
+        }
+
+        function _ccShowTopicHint() {
+            const sel = document.getElementById('ccNewTopic');
+            const name = sel.options[sel.selectedIndex]?.text || '';
+            document.getElementById('ccNewTopicHint').textContent = CC_TOPIC_HINTS[name] || '';
+        }
+
+        async function _ccSaveNew() {
+            const s = _ccNewState.student;
+            const category = document.getElementById('ccNewCategory').value;
+            const topicId  = document.getElementById('ccNewTopic').value;
+            const body     = document.getElementById('ccNewBody').value.trim();
+            if (!s)        { alert('Выберите ученика'); return; }
+            if (!category) { alert('Выберите категорию'); return; }
+            if (!topicId)  { alert('Выберите тему'); return; }
+            if (!body)     { alert('Опишите суть обращения'); return; }
+            // При нескольких преподавателях выбор обязателен — иначе в кейс
+            // попадёт случайный, и аналитика по преподавателям станет неверной
+            const sel = document.getElementById('ccNewTeacher');
+            if (sel && !sel.value) { alert('Выберите преподавателя или укажите, что кейс не о нём'); return; }
+
+            const topic = _ccState.topics.find(t => t.id === topicId);
+            try {
+                const { data, error } = await sb.from('client_cases').insert({
+                    student_id: s.id,
+                    student_name: s.name,
+                    student_age: s.age,
+                    lesson_format: s.format,
+                    teacher_id: s.teacher_id,
+                    programme: s.programme,
+                    category, topic_id: topicId, body,
+                    assignee_user_id: topic?.default_assignee_user_id || null,
+                    status: 'open',
+                    created_by: currentAppUser?.id || null,
+                }).select().single();
+                if (error) throw error;
+
+                // Уведомление ответственному, иначе всем методистам
+                const cat = CC_CATEGORIES[category];
+                const title = `${cat.icon} ${cat.label}: ${s.name}`;
+                const msg = `${topic?.name || ''}\n\n${body}`;
+                if (topic?.default_assignee_user_id) {
+                    await createNotification(topic.default_assignee_user_id, 'teacher_question',
+                        title, msg, '#section/client_cases', { case_id: data.id });
+                } else {
+                    const { data: mRoles } = await sb.from('users').select('id').contains('roles', ['methodist']);
+                    const ids = (mRoles || []).map(r => r.id);
+                    if (ids.length) await createNotificationsBatch(ids, 'teacher_question',
+                        title, msg, '#section/client_cases', { case_id: data.id });
+                }
+                document.getElementById('ccNewOverlay')?.remove();
+                await _ccLoadData();
+                renderClientCasesList();
+            } catch (e) {
+                alert('Ошибка: ' + (e.message || e));
+            }
+        }
+
+        // ---------- Карточка кейса ----------
+        async function openClientCase(caseId) {
+            const c = _ccState.cases.find(x => x.id === caseId);
+            if (!c) { await _ccLoadData(); }
+            const item = _ccState.cases.find(x => x.id === caseId);
+            if (!item) return;
+
+            const { data: hist } = await sb.from('client_cases')
+                .select('id, category, status, created_at, methodist_topics(name)')
+                .eq('student_id', item.student_id)
+                .neq('id', caseId)
+                .order('created_at', { ascending: false });
+
+            let ov = document.getElementById('ccViewOverlay');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'ccViewOverlay';
+                ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:10000; padding:24px; overflow-y:auto;';
+                ov.onclick = (e) => { if (e.target === ov) closeClientCase(); };
+                document.body.appendChild(ov);
+            }
+            const cat = CC_CATEGORIES[item.category] || {};
+            ov.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(680px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.3rem; font-size:1.05rem;">${cat.icon || ''} ${escapeHtml(item.student_name || '—')}${item.student_age ? ` · ${item.student_age} лет` : ''}</h3>
+                            <div style="font-size:0.82rem; color:#64748b;">
+                                ${escapeHtml(item.methodist_topics?.name || '—')} · создан ${formatDate(item.created_at)}
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="closeClientCase()">Закрыть окно</button>
+                    </div>
+
+                    <div style="background:#f8fafc; border-radius:8px; padding:10px 12px; margin:0.9rem 0; font-size:13px; color:#475569;">
+                        ${item.lesson_format ? '🎫 ' + escapeHtml(item.lesson_format) + '<br>' : ''}
+                        ${item.teachers?.name ? '👩‍🏫 ' + escapeHtml(item.teachers.name) + '<br>' : ''}
+                        ${item.programme ? '📘 ' + escapeHtml(item.programme) : ''}
+                    </div>
+
+                    <div style="white-space:pre-wrap; font-size:14px; line-height:1.5; margin-bottom:1rem;">${escapeHtml(item.body || '')}</div>
+
+                    ${hist && hist.length ? `<div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:9px 12px; margin-bottom:1rem;">
+                        <div style="font-size:12px; font-weight:700; color:#92400e;">История по ученику: ещё ${hist.length}</div>
+                        ${hist.slice(0,5).map(h => `<div style="font-size:11px; color:#78350f; margin-top:3px; cursor:pointer;" onclick="openClientCase('${h.id}')">
+                            ${CC_CATEGORIES[h.category]?.icon || ''} ${escapeHtml(h.methodist_topics?.name || '')} · ${formatDate(h.created_at)} · ${CC_STATUSES[h.status]?.label || ''}</div>`).join('')}
+                    </div>` : ''}
+
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Статус</label>
+                    <select id="ccViewStatus" onchange="_ccToggleCloseFields()" style="width:100%; padding:0.5rem; border-radius:8px; font-family:inherit; margin-bottom:0.8rem; ${_ccStyle(CC_STATUSES, item.status)}">
+                        ${Object.entries(CC_STATUSES).map(([k,v]) =>
+                            `<option value="${k}" ${item.status === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+                    </select>
+
+                    <div id="ccCloseFields" style="display:${item.status === 'closed' ? 'block' : 'none'};">
+                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Исход</label>
+                        <select id="ccViewOutcome" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                            <option value="">— выбрать —</option>
+                            ${Object.entries(CC_OUTCOMES).map(([k,v]) =>
+                                `<option value="${k}" ${item.outcome === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+                        </select>
+                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Как решили</label>
+                        <textarea id="ccViewResolution" rows="3" placeholder="Кратко: что сделали и чем закончилось"
+                                  style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; resize:vertical; margin-bottom:0.8rem;">${escapeHtml(item.resolution || '')}</textarea>
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-primary btn-small" onclick="_ccSaveCase('${item.id}')">Сохранить</button>
+                    </div>
+                </div>`;
+        }
+
+        function _ccToggleCloseFields() {
+            const st = document.getElementById('ccViewStatus').value;
+            const box = document.getElementById('ccCloseFields');
+            if (box) box.style.display = (st === 'closed') ? 'block' : 'none';
+        }
+
+        function closeClientCase() {
+            document.getElementById('ccViewOverlay')?.remove();
+        }
+
+        async function _ccSaveCase(caseId) {
+            const status = document.getElementById('ccViewStatus').value;
+            const update = { status, updated_at: new Date().toISOString() };
+            if (status === 'closed') {
+                const outcome = document.getElementById('ccViewOutcome').value;
+                const resolution = document.getElementById('ccViewResolution').value.trim();
+                if (!outcome)    { alert('Укажите исход'); return; }
+                if (!resolution) { alert('Опишите, как решили'); return; }
+                update.outcome = outcome;
+                update.resolution = resolution;
+                update.closed_at = new Date().toISOString();
+                update.closed_by_user_id = currentAppUser?.id || null;
+            } else {
+                update.closed_at = null;
+                update.closed_by_user_id = null;
+            }
+            const { error } = await sb.from('client_cases').update(update).eq('id', caseId);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            closeClientCase();
+            await _ccLoadData();
+            renderClientCasesList();
+        }
+
+        // ---------- Аналитика ----------
+        let _ccStatsMode = 'month';
+
+        function setCcStatsMode(mode) {
+            _ccStatsMode = mode;
+            document.querySelectorAll('[data-ccmode]').forEach(b =>
+                b.classList.toggle('active', b.dataset.ccmode === mode));
+            document.getElementById('ccStatsMonthControls').style.display = mode === 'month' ? '' : 'none';
+            document.getElementById('ccStatsYearControls').style.display  = mode === 'year'  ? '' : 'none';
+            document.getElementById('ccStatsAllControls').style.display   = mode === 'all'   ? '' : 'none';
+            renderClientCasesStats();
+        }
+
+        function _ccEnsurePeriodInputs() {
+            const mi = document.getElementById('ccStatsMonthInput');
+            if (mi && !mi.value) {
+                const d = new Date();
+                mi.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            }
+            const yi = document.getElementById('ccStatsYearInput');
+            if (yi && !yi.options.length) {
+                const cur = new Date().getFullYear();
+                for (let y = cur; y >= cur - 4; y--) {
+                    const o = document.createElement('option');
+                    o.value = String(y); o.textContent = String(y);
+                    yi.appendChild(o);
+                }
+                yi.value = String(cur);
+            }
+        }
+
+        function changeCcStatsMonth(delta) {
+            _ccEnsurePeriodInputs();
+            const inp = document.getElementById('ccStatsMonthInput');
+            const [y, m] = inp.value.split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            inp.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            renderClientCasesStats();
+        }
+
+        function setCcStatsMonthToday() {
+            const d = new Date();
+            const inp = document.getElementById('ccStatsMonthInput');
+            if (inp) inp.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            renderClientCasesStats();
+        }
+
+        function changeCcStatsYear(delta) {
+            _ccEnsurePeriodInputs();
+            const sel = document.getElementById('ccStatsYearInput');
+            const idx = sel.selectedIndex + (delta > 0 ? -1 : 1);   // список идёт от новых к старым
+            if (idx >= 0 && idx < sel.options.length) sel.selectedIndex = idx;
+            renderClientCasesStats();
+        }
+
+        // Границы периода строкой — без new Date().toISOString(),
+        // иначе в неполночь смещается на день
+        function _ccPeriodRange() {
+            _ccEnsurePeriodInputs();
+            if (_ccStatsMode === 'all') return { from: '1900-01-01', to: '2999-12-31' };
+            if (_ccStatsMode === 'year') {
+                const y = document.getElementById('ccStatsYearInput')?.value || String(new Date().getFullYear());
+                return { from: `${y}-01-01`, to: `${y}-12-31` };
+            }
+            const ym = document.getElementById('ccStatsMonthInput')?.value;
+            if (!ym) return { from: '1900-01-01', to: '2999-12-31' };
+            const [y, m] = ym.split('-').map(Number);
+            const lastDay = new Date(y, m, 0).getDate();
+            return { from: `${ym}-01`, to: `${ym}-${String(lastDay).padStart(2, '0')}` };
+        }
+
+        async function renderClientCasesStats() {
+            const wrap = document.getElementById('clientCasesStatsWrap');
+            if (!wrap) return;
+            if (!_ccState.loaded) await _ccLoadData();
+
+            const { from, to } = _ccPeriodRange();
+
+            const list = _ccState.cases.filter(c => {
+                const d = (c.created_at || '').slice(0, 10);
+                return d >= from && d <= to;
+            });
+
+            if (!list.length) {
+                wrap.innerHTML = '<div style="padding:2rem; text-align:center; color:#94a3b8;">За период обращений нет</div>';
+                return;
+            }
+
+            const total   = list.length;
+            const open    = list.filter(c => ['open','in_progress'].includes(c.status)).length;
+            const control = list.filter(c => c.status === 'under_control').length;
+            const closed  = list.filter(c => c.status === 'closed').length;
+            const pos     = list.filter(c => c.outcome === 'positive').length;
+            const neg     = list.filter(c => c.outcome === 'negative').length;
+            const posRate = closed ? Math.round(pos / closed * 100) : 0;
+
+            const card = (label, value, color) => `
+                <div style="flex:1; min-width:130px; background:white; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px;">
+                    <div style="font-size:24px; font-weight:800; color:${color};">${value}</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">${label}</div>
+                </div>`;
+
+            // По категориям
+            const byCat = Object.keys(CC_CATEGORIES).map(k => {
+                const sub = list.filter(c => c.category === k);
+                const sc  = sub.filter(c => c.status === 'closed');
+                return {
+                    key: k, ...CC_CATEGORIES[k],
+                    total: sub.length,
+                    open: sub.filter(c => ['open','in_progress'].includes(c.status)).length,
+                    control: sub.filter(c => c.status === 'under_control').length,
+                    pos: sub.filter(c => c.outcome === 'positive').length,
+                    neg: sub.filter(c => c.outcome === 'negative').length,
+                    closed: sc.length,
+                };
+            });
+
+            // Среднее время до закрытия
+            const avgDays = (arr) => {
+                const done = arr.filter(c => c.closed_at && c.created_at);
+                if (!done.length) return null;
+                const sum = done.reduce((s, c) =>
+                    s + (new Date(c.closed_at) - new Date(c.created_at)) / 86400000, 0);
+                return Math.round(sum / done.length * 10) / 10;
+            };
+
+            // Темы
+            const topicMap = new Map();
+            for (const c of list) {
+                const n = c.methodist_topics?.name || '—';
+                topicMap.set(n, (topicMap.get(n) || 0) + 1);
+            }
+            const topTopics = [...topicMap.entries()].sort((a,b) => b[1]-a[1]).slice(0, 10);
+
+            // Преподаватели — считаем на одного ученика, иначе загруженные всегда «худшие»
+            const tMap = new Map();
+            for (const c of list) {
+                if (!c.teacher_id) continue;
+                const cur = tMap.get(c.teacher_id) || { name: c.teachers?.name || '—', cases: 0 };
+                cur.cases++;
+                tMap.set(c.teacher_id, cur);
+            }
+            const { data: stCounts } = await sb.from('student_teachers').select('teacher_id');
+            const studPerTeacher = new Map();
+            for (const r of (stCounts || [])) {
+                studPerTeacher.set(r.teacher_id, (studPerTeacher.get(r.teacher_id) || 0) + 1);
+            }
+            const topTeachers = [...tMap.entries()]
+                .map(([id, v]) => {
+                    const students = studPerTeacher.get(id) || 0;
+                    return { ...v, students, per100: students ? Math.round(v.cases / students * 100) : null };
+                })
+                .filter(v => v.students >= 3)   // на маленькой базе показатель случаен
+                .sort((a, b) => (b.per100 ?? -1) - (a.per100 ?? -1))
+                .slice(0, 10);
+
+            // Помесячная динамика
+            const monthMap = new Map();
+            for (const c of list) {
+                const ym = (c.created_at || '').slice(0, 7);
+                if (!ym) continue;
+                if (!monthMap.has(ym)) monthMap.set(ym, { wish:0, remark:0, crisis:0 });
+                monthMap.get(ym)[c.category]++;
+            }
+            const months = [...monthMap.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+            const maxMonth = Math.max(1, ...months.map(([,v]) => v.wish + v.remark + v.crisis));
+
+            wrap.innerHTML = `
+                <div style="display:flex; gap:0.7rem; flex-wrap:wrap; margin-bottom:1.2rem;">
+                    ${card('всего обращений', total, '#0f172a')}
+                    ${card('в работе', open, '#1e40af')}
+                    ${card('на контроле', control, '#92400e')}
+                    ${card('закрыто', closed, '#166534')}
+                    ${card('положительных исходов', closed ? posRate + '%' : '—', posRate >= 70 ? '#16a34a' : '#dc2626')}
+                </div>
+
+                <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">По категориям</h4>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:1.4rem;">
+                    ${byCat.map(c => {
+                        const days = avgDays(list.filter(x => x.category === c.key));
+                        const w = (n) => c.total ? (n / c.total * 100) : 0;
+                        return `<div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px;">
+                                <span style="font-weight:700; font-size:14px;">${c.icon} ${c.label}</span>
+                                <span style="font-size:13px; color:#64748b;">
+                                    ${c.total} ${_retPlural(c.total,'обращение','обращения','обращений')}${days !== null ? ` · закрытие в среднем за ${days} дн.` : ''}
+                                </span>
+                            </div>
+                            <div style="display:flex; height:9px; border-radius:5px; overflow:hidden; background:#f1f5f9;">
+                                <div style="width:${w(c.pos)}%; background:#16a34a;" title="решено положительно: ${c.pos}"></div>
+                                <div style="width:${w(c.neg)}%; background:#dc2626;" title="решено отрицательно: ${c.neg}"></div>
+                                <div style="width:${w(c.control)}%; background:#f59e0b;" title="на контроле: ${c.control}"></div>
+                                <div style="width:${w(c.open)}%; background:#94a3b8;" title="в работе: ${c.open}"></div>
+                            </div>
+                            <div style="font-size:11px; color:#64748b; margin-top:5px;">
+                                <span style="color:#16a34a;">● ${c.pos} положительно</span> ·
+                                <span style="color:#dc2626;">● ${c.neg} отрицательно</span> ·
+                                <span style="color:#f59e0b;">● ${c.control} на контроле</span> ·
+                                <span style="color:#94a3b8;">● ${c.open} в работе</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+
+                ${months.length > 1 ? `
+                <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">Динамика по месяцам</h4>
+                <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px; margin-bottom:1.4rem;">
+                    <div style="display:flex; align-items:flex-end; gap:8px; height:120px;">
+                        ${months.map(([ym, v]) => {
+                            const sum = v.wish + v.remark + v.crisis;
+                            const h = (n) => Math.round(n / maxMonth * 100);
+                            return `<div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+                                <div style="width:100%; display:flex; flex-direction:column-reverse; height:100px; justify-content:flex-start;">
+                                    <div style="height:${h(v.wish)}%; background:#93c5fd;" title="пожелания: ${v.wish}"></div>
+                                    <div style="height:${h(v.remark)}%; background:#fcd34d;" title="замечания: ${v.remark}"></div>
+                                    <div style="height:${h(v.crisis)}%; background:#fca5a5;" title="кризисы: ${v.crisis}"></div>
+                                </div>
+                                <div style="font-size:10px; color:#94a3b8;">${ym.slice(5)}·${ym.slice(2,4)}</div>
+                                <div style="font-size:11px; font-weight:700;">${sum}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <div style="font-size:11px; color:#64748b; margin-top:8px;">
+                        <span style="color:#93c5fd;">■</span> пожелания ·
+                        <span style="color:#fcd34d;">■</span> замечания ·
+                        <span style="color:#fca5a5;">■</span> кризисы
+                    </div>
+                </div>` : ''}
+
+                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:280px;">
+                        <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">Частые темы</h4>
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                            ${topTopics.map(([name, n]) => `
+                                <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px solid #f8fafc;">
+                                    <span>${escapeHtml(name)}</span><b>${n}</b>
+                                </div>`).join('')}
+                        </div>
+                    </div>
+                    <div style="flex:1; min-width:280px;">
+                        <h4 style="margin:0 0 0.6rem; font-size:0.95rem;">Обращений на 100 учеников</h4>
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+                            ${topTeachers.length ? topTeachers.map(t => `
+                                <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px solid #f8fafc;">
+                                    <span>${escapeHtml(t.name)}</span>
+                                    <span style="color:#64748b;">${t.cases} из ${t.students} · <b style="color:#0f172a;">${t.per100}</b></span>
+                                </div>`).join('')
+                              : '<div style="font-size:12px; color:#94a3b8;">Недостаточно данных</div>'}
+                            <div style="font-size:11px; color:#94a3b8; margin-top:8px;">
+                                Показаны преподаватели с 3+ учениками. Абсолютное число обращений зависит от загрузки, поэтому считаем долю.
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        // ============================================================
+        //              СМЕНА ГРЕЙДА
+        // ============================================================
+        const _gradeStatusLabels = {
+            'waiting_schedule':  '⏳ Ждём ответа по расписанию',
+            'teachers_proposed': '📤 Предложили преподов',
+            'trial_scheduled':   '📅 Проставлен пробный урок',
+            'feedback_collected':'💬 Собрали обратную связь',
+            'transferred':       '✅ Ученик передан',
+            'recalculated':      '💜 Перерасчитан',
+        };
+        const _gradeStatusColors = {
+            'waiting_schedule':  { bg:'#fee2e2', border:'#fca5a5', color:'#991b1b' },
+            'teachers_proposed': { bg:'#fef3c7', border:'#fcd34d', color:'#92400e' },
+            'trial_scheduled':   { bg:'#d1fae5', border:'#86efac', color:'#065f46' },
+            'feedback_collected':{ bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },
+            'transferred':       { bg:'#059669', border:'#047857', color:'#ffffff' },
+            'recalculated':      { bg:'#ede9fe', border:'#c4b5fd', color:'#5b21b6' },
+        };
+        function _gradeStatusStyle(status) {
+            const c = _gradeStatusColors[status] || { bg:'#fff', border:'#cbd5e1', color:'#475569' };
+            return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
+        }
+
+        const _gradeDecisionLabels = {
+            'stay':            'Хочет остаться с преподом',
+            'find_same_grade': 'Найти преподавателя того же грейда',
+            'refused':         'Отказ',
+        };
+        const _gradeDecisionColors = {
+            'stay':            { bg:'#dcfce7', border:'#86efac', color:'#166534' },  // зелёный
+            'find_same_grade': { bg:'#dbeafe', border:'#93c5fd', color:'#1e40af' },  // синий
+            'refused':         { bg:'#fee2e2', border:'#fca5a5', color:'#991b1b' },  // красный
+        };
+        function _gradeDecisionStyle(decision) {
+            const c = _gradeDecisionColors[decision] || { bg:'#fff', border:'#cbd5e1', color:'#475569' };
+            return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
+        }
+        // Строка считается обработанной, если ученик передан, перерасчитан или отказался
+        function _gradeRowDone(r) {
+            return r.decision === 'refused' || r.status === 'transferred' || r.status === 'recalculated';
+        }
+
+        function _gradeAgeGroup(age) {
+            if (age === null || age === undefined) return null;
+            if (age <= 6)  return '4-6';
+            if (age <= 9)  return '7-9';
+            if (age <= 12) return '10-12';
+            if (age <= 17) return '13-17';
+            return '18+';
+        }
+
+        let _gradeModalState = { change: null, teacher: null, rows: [] };
+
+        async function renderGradeChangesList() {
+            const wrap = document.getElementById('gradeChangesListWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+            try {
+                const { data: changes, error } = await sb.from('grade_changes')
+                    .select('*').order('effective_date', { ascending: false });
+                if (error) throw error;
+                if (!changes || changes.length === 0) {
+                    wrap.innerHTML = '<div style="padding:1rem; text-align:center; color:#94a3b8;">Пока нет записей. Нажми «+ Смена грейда», чтобы добавить.</div>';
+                    return;
+                }
+                const ids = changes.map(c => c.id);
+                const { data: rows } = await sb.from('grade_change_students')
+                    .select('grade_change_id, decision, status').in('grade_change_id', ids);
+                const total = new Map(), done = new Map();
+                for (const r of (rows || [])) {
+                    total.set(r.grade_change_id, (total.get(r.grade_change_id) || 0) + 1);
+                    if (_gradeRowDone(r)) done.set(r.grade_change_id, (done.get(r.grade_change_id) || 0) + 1);
+                }
+                wrap.innerHTML = `<div style="display:flex; flex-direction:column; gap:0.6rem;">
+                    ${changes.map(c => {
+                        const t = (teachersFromDb || []).find(x => x.id === c.teacher_id);
+                        const tot = total.get(c.id) || 0;
+                        const dn = done.get(c.id) || 0;
+                        const finished = tot > 0 && dn === tot;
+                        return `<div onclick="openGradeChangeDetails('${c.id}')" style="background:white; border:1px solid ${finished ? '#bbf7d0' : '#ddd6fe'}; border-radius:10px; padding:14px 18px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:14px;">
+                            <div style="flex:1;">
+                                <div style="font-weight:700; font-size:15px;">${escapeHtml(t ? t.name : '—')}</div>
+                                <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                                    ${escapeHtml(c.from_grade || '—')} → <b>${escapeHtml(c.to_grade)}</b>
+                                    · 📅 c ${formatDate(c.effective_date)}
+                                    ${tot ? ` · 👤 ${tot} учеников` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:13px; font-weight:600; color:${finished ? '#16a34a' : '#7c3aed'};">${dn} / ${tot} обработано</div>
+                                ${tot === 0 ? '<div style="font-size:11px; color:#94a3b8;">Не подгружено</div>' : ''}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+            } catch (e) {
+                wrap.innerHTML = `<div style="color:#dc2626;">Ошибка: ${escapeHtml(e.message || e)}</div>`;
+            }
+        }
+
+        function openNewGradeChangeDialog() {
+            const list = (teachersFromDb || [])
+                .filter(t => !t.deleted_at)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+            let overlay = document.getElementById('gradeNewOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gradeNewOverlay';
+                overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:center; justify-content:center; z-index:10000; padding:24px;';
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+                document.body.appendChild(overlay);
+            }
+            const today = new Date();
+            const iso = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            overlay.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(460px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <h3 style="margin:0 0 1rem; font-size:1.05rem;">🎓 Новая смена грейда</h3>
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Преподаватель</label>
+                    <select id="gradeNewTeacher" onchange="_gradeNewTeacherPicked()" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                        <option value="">— выбрать —</option>
+                        ${list.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+                    </select>
+                    <div id="gradeNewCurrent" style="font-size:0.82rem; color:#64748b; margin-bottom:0.8rem;"></div>
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Новый грейд</label>
+                    <select id="gradeNewTo" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:0.8rem;">
+                        <option value="Basic">Basic</option>
+                        <option value="Expert">Expert</option>
+                        <option value="Pro">Pro</option>
+                    </select>
+                    <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Дата перехода</label>
+                    <input type="date" id="gradeNewDate" value="${iso}" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; margin-bottom:1rem;">
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('gradeNewOverlay').remove()">Отмена</button>
+                        <button class="btn btn-small" style="background:#ede9fe; color:#5b21b6;" onclick="_gradeNewSave()">Создать</button>
+                    </div>
+                </div>`;
+        }
+
+        function _gradeNewTeacherPicked() {
+            const id = document.getElementById('gradeNewTeacher').value;
+            const t = (teachersFromDb || []).find(x => x.id === id);
+            const box = document.getElementById('gradeNewCurrent');
+            if (box) box.textContent = t ? `Текущий грейд: ${t.grade || '—'}` : '';
+        }
+
+        async function _gradeNewSave() {
+            const teacherId = document.getElementById('gradeNewTeacher').value;
+            const toGrade   = document.getElementById('gradeNewTo').value;
+            const date      = document.getElementById('gradeNewDate').value;
+            if (!teacherId) { alert('Выберите преподавателя'); return; }
+            if (!date)      { alert('Укажите дату перехода'); return; }
+            const t = (teachersFromDb || []).find(x => x.id === teacherId);
+            try {
+                const { data, error } = await sb.from('grade_changes').insert({
+                    teacher_id: teacherId,
+                    from_grade: t?.grade || null,
+                    to_grade: toGrade,
+                    effective_date: date,
+                    created_by: currentAppUser?.id || null,
+                }).select().single();
+                if (error) throw error;
+                document.getElementById('gradeNewOverlay')?.remove();
+                await renderGradeChangesList();
+                openGradeChangeDetails(data.id);
+            } catch (e) {
+                alert('Ошибка: ' + (e.message || e));
+            }
+        }
+
+        async function openGradeChangeDetails(changeId) {
+            const { data: change, error } = await sb.from('grade_changes').select('*').eq('id', changeId).single();
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            const { data: rows } = await sb.from('grade_change_students')
+                .select('*').eq('grade_change_id', changeId).order('sort_order');
+            _gradeModalState.change  = change;
+            _gradeModalState.teacher = (teachersFromDb || []).find(x => x.id === change.teacher_id) || null;
+            _gradeModalState.rows    = rows || [];
+            renderGradeChangeModal();
+        }
+
+        function renderGradeChangeModal() {
+            const c = _gradeModalState.change;
+            const t = _gradeModalState.teacher;
+            const rows = _gradeModalState.rows || [];
+            if (!c) return;
+            let overlay = document.getElementById('gradeModalOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gradeModalOverlay';
+                overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:9999; padding:24px; overflow-y:auto;';
+                overlay.onclick = (e) => { if (e.target === overlay) closeGradeChangeModal(); };
+                document.body.appendChild(overlay);
+            }
+            const teacherOptions = (teachersFromDb || [])
+                .filter(x => !x.deleted_at && x.id !== c.teacher_id)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+
+            const body = rows.length === 0
+                ? '<tr><td colspan="9" style="padding:1.2rem; text-align:center; color:#94a3b8;">Ученики не подгружены. Нажми «Подгрузить учеников».</td></tr>'
+                : rows.map(r => {
+                    const st = r.status || '';
+                    return `<tr style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:8px 10px; font-weight:600;">${escapeHtml(r.student_name || '—')}</td>
+                        <td style="padding:8px 10px; color:#64748b;">${escapeHtml(r.age_group || '—')}</td>
+                        <td style="padding:8px 10px; font-size:11px; color:#475569; max-width:220px;">${escapeHtml(_gradeUniqueSlots(r.schedule).join(', ') || '—')}</td>
+                        <td style="padding:8px 10px;">
+                            <select onchange="_updateGradeRow('${r.id}','decision',this.value)" style="width:100%; padding:4px 6px; border-radius:6px; font-family:inherit; font-size:12px; ${_gradeDecisionStyle(r.decision || '')}">
+                                <option value="">—</option>
+                                ${Object.entries(_gradeDecisionLabels).map(([k, v]) =>
+                                    `<option value="${k}" ${r.decision === k ? 'selected' : ''}>${v}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <select onchange="_updateGradeRow('${r.id}','status',this.value)" style="width:100%; padding:4px 6px; border-radius:6px; font-family:inherit; font-size:12px; ${_gradeStatusStyle(st)}">
+                                <option value="">—</option>
+                                ${Object.entries(_gradeStatusLabels).map(([k, v]) =>
+                                    `<option value="${k}" ${st === k ? 'selected' : ''}>${v}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="padding:8px 10px; text-align:center;">
+                            <input type="checkbox" ${r.recalc_done ? 'checked' : ''}
+                                   onchange="_updateGradeRow('${r.id}','recalc_done',this.checked)"
+                                   style="width:16px; height:16px; cursor:pointer;">
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <select onchange="_updateGradeRow('${r.id}','new_teacher_id',this.value || null)" style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
+                                <option value="">—</option>
+                                ${teacherOptions.map(x =>
+                                    `<option value="${x.id}" ${r.new_teacher_id === x.id ? 'selected' : ''}>${escapeHtml(x.name)}${x.grade ? ' · ' + escapeHtml(x.grade) : ''}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <input type="text" value="${escapeHtml(r.comment || '')}" placeholder="комментарий"
+                                   onchange="_updateGradeRow('${r.id}','comment',this.value)"
+                                   style="width:100%; padding:4px 6px; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:12px;">
+                        </td>
+                        <td style="padding:8px 6px; text-align:center; white-space:nowrap;">
+                            <button onclick="_copyGradeStudentInfo('${r.id}')"
+                                    title="Скопировать текст для чата"
+                                    style="background:none; border:none; cursor:pointer; color:#7c3aed; font-size:14px; padding:2px 4px;">📋</button>
+                            <button onclick="_deleteGradeRow('${r.id}','${escapeHtml(r.student_name || '')}')"
+                                    title="Убрать ученика из списка"
+                                    style="background:none; border:none; cursor:pointer; color:#cbd5e1; font-size:15px; padding:2px 4px;"
+                                    onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#cbd5e1'">✕</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+
+            const done = rows.filter(_gradeRowDone).length;
+            overlay.innerHTML = `
+                <div style="background:white; border-radius:14px; padding:22px; width:min(1180px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.3rem; font-size:1.1rem;">🎓 ${escapeHtml(t ? t.name : '—')}</h3>
+                            <div style="font-size:0.85rem; color:#64748b;">
+                                ${escapeHtml(c.from_grade || '—')} → <b>${escapeHtml(c.to_grade)}</b>
+                                · с ${formatDate(c.effective_date)}
+                                · обработано ${done} из ${rows.length}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.4rem;">
+                            <button id="gradeAutoFillBtn" class="btn btn-small" style="background:#eff6ff; color:#1e40af;" onclick="_gradeAutoFill()">Подгрузить учеников</button>
+                            <button class="btn btn-secondary btn-small" onclick="closeGradeChangeModal()">Закрыть</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead>
+                                <tr style="background:#f8fafc; text-align:left;">
+                                    <th style="padding:8px 10px;">Ученик</th>
+                                    <th style="padding:8px 10px;">Возраст</th>
+                                    <th style="padding:8px 10px;">Расписание</th>
+                                    <th style="padding:8px 10px; min-width:180px;">Решение</th>
+                                    <th style="padding:8px 10px; min-width:200px;">Статус</th>
+                                    <th style="padding:8px 10px;">Перерасчёт</th>
+                                    <th style="padding:8px 10px; min-width:170px;">Новый преподаватель</th>
+                                    <th style="padding:8px 10px; min-width:150px;">Комментарий</th>
+                                    <th style="padding:8px 6px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>${body}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        function closeGradeChangeModal() {
+            document.getElementById('gradeModalOverlay')?.remove();
+            renderGradeChangesList();
+        }
+
+        async function _updateGradeRow(rowId, field, value) {
+            const update = { [field]: value, updated_at: new Date().toISOString() };
+            if (field === 'status') {
+                update.status_updated_by = currentAppUser?.id || null;
+                update.status_updated_at = new Date().toISOString();
+            }
+            const { error } = await sb.from('grade_change_students').update(update).eq('id', rowId);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            const row = (_gradeModalState.rows || []).find(r => r.id === rowId);
+            if (row) Object.assign(row, update);
+            renderGradeChangeModal();
+        }
+
+        // Статусы учеников из МойКласс: 20674 — Клиент, 63578 — On vacation.
+        // Остальные (лиды, архив, отказы) в перерасчёт при смене грейда не идут.
+        const GRADE_ACTIVE_CLIENT_STATES = [20674, 63578];
+
+        // Из строки расписания «Пн 18.08 15:00-15:40; Ср 20.08 15:00-15:40»
+        // делаем уникальные слоты без дат: «Пн 15:00-15:40», «Ср 15:00-15:40»
+        function _gradeUniqueSlots(schedule) {
+            const items = (schedule || '').split(';').map(l => l.trim()).filter(Boolean);
+            const set = new Set();
+            for (const item of items) {
+                const m = item.match(/^(\S+)\s+\d{2}\.\d{2}\s+(\d{2}:\d{2}-\d{2}:\d{2})/);
+                set.add(m ? `${m[1]} ${m[2]}` : item);
+            }
+            return Array.from(set);
+        }
+
+        function _copyGradeStudentInfo(rowId) {
+            const r = (_gradeModalState.rows || []).find(x => x.id === rowId);
+            if (!r) return;
+            const c = _gradeModalState.change;
+            const t = _gradeModalState.teacher;
+            const slots = _gradeUniqueSlots(r.schedule);
+            const lines = [
+                'Ищу нового преподавателя!',
+                '',
+                `👤 Ученик: ${r.student_name}${r.student_age ? ` (${r.student_age} лет)` : ''}`,
+            ];
+            if (r.age_group)         lines.push(`👥 Возрастная группа: ${r.age_group}`);
+            if (r.subscription_type) lines.push(`🎫 Абонемент: ${r.subscription_type}`);
+            if (slots.length) {
+                lines.push('', '📅 Расписание:');
+                slots.forEach(s => lines.push(`   📌 ${s}`));
+            }
+            if (r.comment) lines.push('', '💬 ' + r.comment);
+            const text = lines.join('\n');
+            navigator.clipboard.writeText(text).then(
+                () => alert('✅ Скопировано:\n\n' + text),
+                () => prompt('Скопируй вручную:', text)
+            );
+        }
+
+        async function _deleteGradeRow(rowId, studentName) {
+            if (!confirm(`Убрать «${studentName}» из списка?\n\nСтрока удалится только здесь, на самого ученика это не влияет.`)) return;
+            const { error } = await sb.from('grade_change_students').delete().eq('id', rowId);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            _gradeModalState.rows = (_gradeModalState.rows || []).filter(r => r.id !== rowId);
+            renderGradeChangeModal();
+        }
+
+        async function _gradeAutoFill() {
+            const c = _gradeModalState.change;
+            const t = _gradeModalState.teacher;
+            if (!c || !t) return;
+            const btn = document.getElementById('gradeAutoFillBtn');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Подгружаю…'; }
+            try {
+                const { data: stRows, error: stErr } = await sb.from('student_teachers')
+                    .select('student_id, students(id, name, birth_date, client_state_id, is_archived)')
+                    .eq('teacher_id', t.id);
+                if (stErr) throw stErr;
+                if (!stRows || stRows.length === 0) {
+                    alert('У преподавателя нет закреплённых учеников');
+                    return;
+                }
+                // Оставляем только действующих клиентов и тех, кто на паузе
+                const activeRows = stRows.filter(r =>
+                    r.students &&
+                    !r.students.is_archived &&
+                    GRADE_ACTIVE_CLIENT_STATES.includes(r.students.client_state_id));
+
+                // student_teachers не чистится при переводе ученика к другому преподу,
+                // поэтому дополнительно проверяем факт: были ли уроки с этим преподом за 90 дней
+                const since = new Date(); since.setDate(since.getDate() - 90);
+                const sinceIso = since.toISOString().slice(0, 10);
+                const { data: pastLessons } = await sb.from('mk_lessons')
+                    .select('id')
+                    .eq('primary_teacher_id', t.id)
+                    .gte('lesson_date', sinceIso)
+                    .lte('lesson_date', new Date().toISOString().slice(0, 10));
+                const pastIds = (pastLessons || []).map(l => l.id);
+                const taughtSet = new Set();
+                // in() ограничен по длине, поэтому идём порциями
+                for (let i = 0; i < pastIds.length; i += 500) {
+                    const { data: chunk } = await sb.from('mk_lesson_students')
+                        .select('student_id')
+                        .in('lesson_id', pastIds.slice(i, i + 500))
+                        .eq('visited', true);
+                    for (const x of (chunk || [])) taughtSet.add(x.student_id);
+                }
+                const realRows = activeRows.filter(r => taughtSet.has(r.student_id));
+                const stale = activeRows.length - realRows.length;
+                const skipped = stRows.length - activeRows.length;
+                if (realRows.length === 0) {
+                    alert(`Не нашлось учеников с уроками у этого преподавателя за последние 90 дней.\n\nОтфильтровано: не клиенты — ${skipped}, без уроков — ${stale}`);
+                    return;
+                }
+                // Расписание на 30 дней вперёд — чтобы видеть слоты ученика
+                const today = new Date().toISOString().slice(0, 10);
+                const in30 = new Date(); in30.setDate(in30.getDate() + 30);
+                const to = in30.toISOString().slice(0, 10);
+                const { data: lessons } = await sb.from('mk_lessons')
+                    .select('id, lesson_date, begin_time, end_time, external_class_id')
+                    .eq('primary_teacher_id', t.id)
+                    .gte('lesson_date', today)
+                    .lte('lesson_date', to);
+                const lessonIds = (lessons || []).map(l => l.id);
+                const lessonById = new Map((lessons || []).map(l => [l.id, l]));
+                const { data: ls } = lessonIds.length
+                    ? await sb.from('mk_lesson_students').select('lesson_id, student_id').in('lesson_id', lessonIds)
+                    : { data: [] };
+                const lessonsByStudent = new Map();
+                for (const r of (ls || [])) {
+                    if (!lessonsByStudent.has(r.student_id)) lessonsByStudent.set(r.student_id, []);
+                    const l = lessonById.get(r.lesson_id);
+                    if (l) lessonsByStudent.get(r.student_id).push(l);
+                }
+                // Тип абонемента — из названия класса
+                const classIds = [...new Set((lessons || []).map(l => l.external_class_id).filter(Boolean))];
+                const { data: classes } = classIds.length
+                    ? await sb.from('mk_classes').select('external_id, name').in('external_id', classIds)
+                    : { data: [] };
+                const className = new Map((classes || []).map(c2 => [c2.external_id, c2.name]));
+
+                const rows = [];
+                let sortIdx = 0;
+                for (const r of realRows) {
+                    if (!r.students) continue;
+                    const studLessons = (lessonsByStudent.get(r.student_id) || []).sort((a, b) => {
+                        if (a.lesson_date !== b.lesson_date) return a.lesson_date < b.lesson_date ? -1 : 1;
+                        return (a.begin_time || '') < (b.begin_time || '') ? -1 : 1;
+                    });
+                    const age = _calcAgeFromBd(r.students.birth_date);
+                    const firstClass = studLessons.length ? className.get(studLessons[0].external_class_id) : null;
+                    rows.push({
+                        grade_change_id: c.id,
+                        student_id: r.student_id,
+                        student_name: r.students.name,
+                        student_age: age,
+                        age_group: _gradeAgeGroup(age),
+                        subscription_type: firstClass || null,
+                        schedule: studLessons.map(_fmtLessonShort).join('; '),
+                        sort_order: sortIdx++,
+                    });
+                }
+                if (rows.length === 0) { alert('Не удалось собрать данные'); return; }
+                const { error: upErr } = await sb.from('grade_change_students')
+                    .upsert(rows, { onConflict: 'grade_change_id,student_id', ignoreDuplicates: true });
+                if (upErr) throw upErr;
+                const { data: fresh } = await sb.from('grade_change_students')
+                    .select('*').eq('grade_change_id', c.id).order('sort_order');
+                _gradeModalState.rows = fresh || [];
+                renderGradeChangeModal();
+                alert(`✓ Подгружено: ${rows.length} учеников`
+                    + (skipped ? `\nПропущено (архив или не клиент): ${skipped}` : '')
+                    + (stale ? `\nПропущено (нет уроков с преподавателем за 90 дней): ${stale}` : ''));
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка: ' + (e.message || e));
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Подгрузить учеников'; }
+            }
+        }
 
         // ============================================================
         //              УВОЛЬНЕНИЯ
@@ -27553,9 +29038,13 @@
                                         <div style="font-weight:600; color:#0f172a; font-size:14px;">${escapeHtml(orig?.student_name || '')}${studentNoteBtn(ds)}</div>
                                         <div>${attendanceButtons(ds)}</div>
                                         <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
-                                        <div style="text-align:center;">${markInput(ds, 'home')}</div>
+                                        <div style="text-align:center;">
+                                            <div id="wowHw_${ds.student_id}" style="margin-bottom:4px;"></div>
+                                            ${markInput(ds, 'home')}
+                                        </div>
                                     </div>
                                     ${studentNoteBox(ds)}
+                                    <div id="wowLesson_${ds.student_id}" style="margin-top:8px;"></div>
                                 </div>`;
                             }).join('')}
                         </div>
@@ -27567,6 +29056,7 @@
                 let attendanceSection = '';
                 let lessonMarkSection = '';
                 let homeMarkSection = '';
+                let coinsSection = '';
                 if (ds) {
                     const st = attendanceState(ds);
                     const stateLabel = {present:'Был на уроке', absent:'Пропустил', good_reason:'Пропустил по уважительной причине'}[st] || 'Не отмечено';
@@ -27585,9 +29075,15 @@
                         </div>`;
                     homeMarkSection = `
                         <div style="${sectionStyle}">
-                            <div style="${labelStyle}">⭐ Оценка за ДЗ</div>
+                            <div style="${labelStyle}">⭐ Домашнее задание</div>
+                            <div id="wowHw_${ds.student_id}" style="margin-bottom:10px;"></div>
                             ${markInput(ds, 'home')}
                             ${canEdit ? markHint : ''}
+                        </div>`;
+                    coinsSection = `
+                        <div style="${sectionStyle}">
+                            <div style="${labelStyle}">💰 WOW-монетки</div>
+                            <div id="wowLesson_${ds.student_id}"></div>
                         </div>`;
                 }
                 if (students.length === 0) {
@@ -27607,7 +29103,8 @@
                         ${topicSection}
                         ${lessonMarkSection}
                         ${homeworkSection}
-                        ${homeMarkSection}`;
+                        ${homeMarkSection}
+                        ${coinsSection}`;
                 }
             }
 
@@ -27635,6 +29132,7 @@
                 ${footer}
             `;
             updateSaveButtonState();
+            renderWowLesson(lesson.id, students.map(s => s.student_id).filter(Boolean));
         }
 
         function attendanceState(ds) {
@@ -27695,6 +29193,13 @@
             if (anyVisited) {
                 if (!(d.topic || '').trim()) return 'Заполните тему урока (хотя бы один ученик отмечен как присутствовавший)';
                 if (!(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
+                // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет
+                const notMarked = d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
+                if (notMarked.length) {
+                    return notMarked.length === 1
+                        ? 'Отметьте, сделал ли ученик домашнее задание'
+                        : `Отметьте домашнее задание у ${notMarked.length} учеников`;
+                }
             }
             return null;
         }
@@ -29515,7 +31020,8 @@
                                     .map(s => parseFloat(s)).filter(v => !isNaN(v));
                                 if (scores.length) {
                                     avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-                                    grade = avg >= 90 ? 'A' : avg >= 80 ? 'B' : avg >= 70 ? 'C' : avg >= 60 ? 'D' : null;
+                                    // Шкала школы: A 85+, B 70–84, C 60–69, D ниже 60
+                                    grade = avg >= 85 ? 'A' : avg >= 70 ? 'B' : avg >= 60 ? 'C' : 'D';
                                 }
                             }
                         } catch (scoreErr) { console.warn('score calc failed:', scoreErr); }
@@ -29885,6 +31391,253 @@
             if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        // ============================================================
+        //                    WOW-МОНЕТКИ
+        // ============================================================
+        const WOW_PRESETS = [
+            { reason:'behaved_well',  amount:1, label:'Хорошо вёл себя',      short:'Поведение',  icon:'😊' },
+            { reason:'spoke_english', amount:1, label:'Говорил по-английски', short:'Английский', icon:'🗣️' },
+            { reason:'hard_task',     amount:2, label:'Сложное задание',      short:'Сложное',    icon:'💪' },
+        ];
+        // Отдельная кнопка: ДЗ выполнено. Вне дневного лимита — это учебное
+        // действие, а не поощрение за поведение.
+        const WOW_HOMEWORK = { reason:'homework_accepted', amount:4,
+                               label:'ДЗ выполнено', short:'ДЗ', icon:'📚' };
+        // Отметка «не сделал» — без монеток, но фиксируется в журнале,
+        // чтобы отметка пережила закрытие урока и не блокировала сохранение
+        const WOW_HW_NOT_DONE = { reason:'homework_not_done', amount:0 };
+        const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason)
+            .concat([WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason]);
+        const WOW_MANUAL_REASONS = WOW_PRESETS.map(p => p.reason);
+        const WOW_DAILY_LIMIT = 10;
+
+        // Дата по Москве — тем же правилом, что и award_date в базе,
+        // иначе вечером платформа и база считали бы разные сутки
+        function _wowToday() {
+            const d = new Date(Date.now() + 3 * 3600 * 1000);
+            return d.toISOString().slice(0, 10);
+        }
+
+        async function renderWowCoins(studentId) {
+            const box = document.getElementById('wowCoinsBox');
+            if (!box) return;
+            try {
+                const [balR, todayR] = await Promise.all([
+                    sb.from('wow_coins_ledger').select('amount').eq('student_id', studentId),
+                    sb.from('wow_coins_ledger')
+                        .select('amount, reason')
+                        .eq('student_id', studentId)
+                        .eq('award_date', _wowToday())
+                        .in('reason', WOW_ALL_REASONS),
+                ]);
+                const balance = (balR.data || []).reduce((s, r) => s + (r.amount || 0), 0);
+                const rowsToday = todayR.data || [];
+                // В лимит идут только пресеты; ДЗ считается отдельно
+                const today = rowsToday.filter(r => WOW_MANUAL_REASONS.includes(r.reason))
+                                       .reduce((s, r) => s + (r.amount || 0), 0);
+                const doneToday = new Set(rowsToday.map(r => r.reason));
+                const limitLeft = WOW_DAILY_LIMIT - today;
+                const hwState = doneToday.has(WOW_HOMEWORK.reason) ? 'done'
+                              : doneToday.has(WOW_HW_NOT_DONE.reason) ? 'not_done' : null;
+
+                box.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                        <div style="font-size:13px; font-weight:600; color:#475569;">💰 WOW-монетки</div>
+                        <div style="font-size:12px; color:#94a3b8;">
+                            баланс <b style="color:#b45309;">${balance}</b> · сегодня начислено ${today} из ${WOW_DAILY_LIMIT}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        ${WOW_PRESETS.map(p => {
+                            const done = doneToday.has(p.reason);
+                            const noRoom = !done && p.amount > limitLeft;
+                            const off = done || noRoom;
+                            const title = done ? 'Уже начислено сегодня'
+                                        : noRoom ? 'Лимит на сегодня исчерпан' : '';
+                            return `<button ${off ? 'disabled' : ''} title="${title}"
+                                onclick="awardWowCoins('${studentId}','${p.reason}')"
+                                style="padding:8px 12px; border-radius:9px; font-family:inherit; font-size:13px;
+                                       border:1px solid ${done ? '#86efac' : '#e5e7eb'};
+                                       background:${done ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
+                                       color:${done ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
+                                       cursor:${off ? 'default' : 'pointer'};">
+                                ${done ? '✓' : p.icon} ${escapeHtml(p.label)} +${p.amount}
+                            </button>`;
+                        }).join('')}
+                    </div>
+                    <div style="margin-top:8px;">${wowHomeworkButtons(studentId, null, hwState)}</div>
+                    ${limitLeft <= 0 ? '<div style="font-size:11px; color:#94a3b8; margin-top:6px;">Лимит на поощрения исчерпан. Отметка о домашке работает вне лимита.</div>' : ''}`;
+            } catch (e) {
+                box.innerHTML = `<div style="font-size:12px; color:#dc2626;">Не удалось загрузить монетки: ${escapeHtml(e.message || e)}</div>`;
+            }
+        }
+
+        async function awardWowCoins(studentId, reason) {
+            const preset = WOW_PRESETS.find(p => p.reason === reason);
+            if (!preset) return;
+            const teacherId = await resolveMyTeacherId();
+            const awardedBy = teacherId || currentAppUser?.id;
+            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+
+            // Проверяем лимит перед вставкой: unique-индекс ловит только повтор
+            // того же повода, а сумму за день он не контролирует
+            const { data: todayRows } = await sb.from('wow_coins_ledger')
+                .select('amount').eq('student_id', studentId)
+                .eq('award_date', _wowToday()).in('reason', WOW_MANUAL_REASONS);
+            const today = (todayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
+            if (today + preset.amount > WOW_DAILY_LIMIT) {
+                alert(`Лимит на сегодня исчерпан: начислено ${today} из ${WOW_DAILY_LIMIT}`);
+                return;
+            }
+
+            const { error } = await sb.from('wow_coins_ledger').insert({
+                student_id: studentId,
+                amount: preset.amount,
+                reason: reason,
+                awarded_by: String(awardedBy),
+            });
+            // 23505 — повтор того же повода за день. Не ошибка, просто уже начислено
+            if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
+            renderWowCoins(studentId);
+        }
+
+        // ---------- Монетки внутри урока ----------
+        // Отрисовываются после сборки модалки: данные грузятся одним запросом
+        // на всех учеников урока, чтобы не дёргать базу по одному.
+        async function renderWowLesson(lessonId, studentIds) {
+            if (!studentIds || !studentIds.length) return;
+            _wowHwState = {};   // состояние от прошлого урока не должно тянуться
+            const today = _wowToday();
+            let rows = [];
+            try {
+                const { data } = await sb.from('wow_coins_ledger')
+                    .select('student_id, amount, reason')
+                    .in('student_id', studentIds)
+                    .eq('award_date', today)
+                    .in('reason', WOW_ALL_REASONS);
+                rows = data || [];
+            } catch (e) {
+                console.error('[wow] не удалось загрузить монетки урока', e);
+                return;
+            }
+
+            for (const sid of studentIds) {
+                const box = document.getElementById('wowLesson_' + sid);
+                if (!box) continue;
+                const mine = rows.filter(r => r.student_id === sid);
+                // В лимит идут только пресеты, ДЗ считается вне его
+                const today_ = mine.filter(r => WOW_MANUAL_REASONS.includes(r.reason))
+                                   .reduce((s, r) => s + (r.amount || 0), 0);
+                const done = new Set(mine.map(r => r.reason));
+                const left = WOW_DAILY_LIMIT - today_;
+                const hwState = done.has(WOW_HOMEWORK.reason) ? 'done'
+                              : done.has(WOW_HW_NOT_DONE.reason) ? 'not_done' : null;
+
+                box.innerHTML = `
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        ${WOW_PRESETS.map(p => {
+                            const isDone = done.has(p.reason);
+                            const noRoom = !isDone && p.amount > left;
+                            const off = isDone || noRoom;
+                            return `<button ${off ? 'disabled' : ''}
+                                title="${isDone ? 'Уже начислено сегодня' : (noRoom ? 'Лимит на сегодня исчерпан' : '')}"
+                                onclick="awardWowLesson('${lessonId}','${sid}','${p.reason}')"
+                                style="padding:5px 10px; border-radius:8px; font-family:inherit; font-size:12px;
+                                       border:1px solid ${isDone ? '#86efac' : '#e5e7eb'};
+                                       background:${isDone ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
+                                       color:${isDone ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
+                                       cursor:${off ? 'default' : 'pointer'};">
+                                ${isDone ? '✓' : p.icon} ${escapeHtml(p.short)} +${p.amount}
+                            </button>`;
+                        }).join('')}
+                        <span style="font-size:11px; color:#94a3b8;">💰 ${today_} / ${WOW_DAILY_LIMIT}</span>
+                    </div>`;
+
+                // Кнопка «ДЗ сделал» живёт в секции оценки за ДЗ, а не в ряду поощрений
+                const hwBox = document.getElementById('wowHw_' + sid);
+                if (hwBox) hwBox.innerHTML = wowHomeworkButtons(sid, lessonId, hwState);
+                _wowHwState[sid] = !!hwState;
+                updateSaveButtonState();
+            }
+        }
+
+        // Состояние «ДЗ отмечено» по ученикам — нужно, чтобы не дать
+        // завершить урок, пока преподаватель не отметил домашку
+        let _wowHwState = {};
+
+        function wowHomeworkButtons(studentId, lessonId, state) {
+            const lid = lessonId ? "'" + lessonId + "'" : 'null';
+            const btn = (val, text, activeBg, activeBd, activeColor) => {
+                const on = state === val;
+                return `<button onclick="setWowHomework('${studentId}', ${lid}, '${val}')"
+                    title="${on ? 'Нажми, чтобы снять отметку' : ''}"
+                    style="padding:6px 12px; border-radius:8px; font-family:inherit; font-size:12px; font-weight:600;
+                           border:1px solid ${on ? activeBd : '#e5e7eb'};
+                           background:${on ? activeBg : '#fff'};
+                           color:${on ? activeColor : '#64748b'};
+                           cursor:pointer;">
+                    ${on ? '✓ ' : ''}${text}
+                </button>`;
+            };
+            return `<div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${btn('done', 'Сделал +' + WOW_HOMEWORK.amount, '#dcfce7', '#86efac', '#166534')}
+                ${btn('not_done', 'Не сделал', '#fee2e2', '#fca5a5', '#991b1b')}
+            </div>`;
+        }
+
+        // Отметка о домашке: «сделал» даёт +4, «не сделал» — 0 монеток,
+        // но фиксируется в журнале, иначе отметка терялась бы при закрытии урока.
+        // Повторное нажатие активной кнопки снимает отметку.
+        async function setWowHomework(studentId, lessonId, value) {
+            const teacherId = await resolveMyTeacherId();
+            const awardedBy = teacherId || currentAppUser?.id;
+            if (!awardedBy) { alert('Не удалось определить, кто отмечает'); return; }
+
+            const today = _wowToday();
+            const target = value === 'done' ? WOW_HOMEWORK : WOW_HW_NOT_DONE;
+
+            // Что уже стоит по этому ученику за сегодня
+            const { data: existing } = await sb.from('wow_coins_ledger')
+                .select('id, reason')
+                .eq('student_id', studentId)
+                .eq('award_date', today)
+                .in('reason', [WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason]);
+
+            const already = (existing || []).find(r => r.reason === target.reason);
+            const other   = (existing || []).filter(r => r.reason !== target.reason);
+
+            // Нажали на активную кнопку — снимаем отметку
+            if (already) {
+                const { error } = await sb.from('wow_coins_ledger').delete().eq('id', already.id);
+                if (error) { alert('Не удалось снять отметку: ' + error.message); return; }
+            } else {
+                // Переключение: сначала убираем противоположную отметку
+                for (const r of other) {
+                    const { error } = await sb.from('wow_coins_ledger').delete().eq('id', r.id);
+                    if (error) { alert('Не удалось сменить отметку: ' + error.message); return; }
+                }
+                let lessonExtId = null;
+                if (lessonId && _lessonModalState?.lesson?.id === lessonId) {
+                    lessonExtId = _lessonModalState.lesson.external_id || null;
+                }
+                const { error } = await sb.from('wow_coins_ledger').insert({
+                    student_id: studentId,
+                    amount: target.amount,
+                    reason: target.reason,
+                    lesson_id: lessonExtId,
+                    awarded_by: String(awardedBy),
+                });
+                if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
+            }
+
+            if (lessonId) {
+                const ids = (_lessonModalState?.students || []).map(s => s.student_id).filter(Boolean);
+                renderWowLesson(lessonId, ids);
+            } else {
+                renderWowCoins(studentId);
+            }
+        }
+
         // ========== Карточка ученика ==========
         async function openStudentDetail(studentId) {
             const modal = document.getElementById('studentDetailModal');
@@ -29972,6 +31725,10 @@
                         </div>
                     </div>
 
+                    <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:1.25rem;">
+                        <div id="wowCoinsBox"><div style="font-size:12px; color:#94a3b8;">Загружаю монетки…</div></div>
+                    </div>
+
                     ${!isOnlyTeacher ? `
                     <div style="margin-bottom:1.25rem;">
                         <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:8px;">Закреплённые преподаватели</div>
@@ -30017,6 +31774,7 @@
                         ${reportsHtml}
                     </div>
                 `;
+                renderWowCoins(stu.id);
             } catch (e) {
                 body.innerHTML = '<div style="padding:1rem; color:#dc2626;">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
             }
@@ -32932,6 +34690,14 @@
                 return;
             }
 
+            // Без привязки к карточке отчёт не найдут ни сертификат, ни история ученика
+            if (!_trackerState.studentId) {
+                alert(_trackerState.language === 'en'
+                    ? 'Please select the student from the database using the search field above — otherwise the tracker will not be linked to their profile.'
+                    : 'Выберите ученика из базы через поиск выше — иначе трекер не привяжется к карточке и оценка не попадёт в сертификат.');
+                return;
+            }
+
             // Программа — берём label выбранного учебника
             let program = '';
             const tbSel = document.getElementById('textbookSelect');
@@ -33184,12 +34950,16 @@
         progs:["Super Minds Starter","Super Minds 1","Super Minds 2","Super Minds 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
         progInfo:{"Super Minds Starter":"Pre-A1.2 · 7-9 лет","Super Minds 1":"Pre-A1.3 · 7-9 лет","Super Minds 2":"Pre-A1.4–A1.1 · 7-9 лет","Super Minds 3":"A1.2 · 7-9 лет"},
         topics:[
-        {mod:"SM1 — Модуль 1",items:[{id:"sm1_greet",ru:"Приветствие и знакомство",t:"lex"},{id:"sm1_class",ru:"Школьные предметы",t:"lex"},{id:"sm1_colors",ru:"Цвета и числа 1-20",t:"lex"}]},
-        {mod:"SM1 — Модуль 2",items:[{id:"sm1_family",ru:"Члены семьи",t:"lex"},{id:"sm1_pets",ru:"Питомцы и животные",t:"lex"},{id:"sm1_body",ru:"Части тела",t:"lex"}]},
-        {mod:"SM1 — Модуль 3",items:[{id:"sm1_food",ru:"Еда и напитки",t:"lex"},{id:"sm1_daily",ru:"Распорядок дня",t:"gram"},{id:"sm1_time",ru:"Telling the time",t:"gram"}]},
-        {mod:"SM2 — Модуль 1",items:[{id:"sm2_house",ru:"Дом и комнаты",t:"lex"},{id:"sm2_furn",ru:"Мебель",t:"lex"},{id:"sm2_preps",ru:"Предлоги места",t:"gram"}]},
-        {mod:"SM2 — Модуль 2",items:[{id:"sm2_clothes",ru:"Одежда и погода",t:"lex"},{id:"sm2_seasons",ru:"Времена года",t:"lex"},{id:"sm2_presCont",ru:"Present Continuous",t:"gram"}]},
-        {mod:"SM2 — Модуль 3",items:[{id:"sm2_transport",ru:"Транспорт",t:"lex"},{id:"sm2_direct",ru:"Направления",t:"lex"},{id:"sm2_pastReg",ru:"Past Simple (regular)",t:"gram"}]}],
+        {mod:"SM1 · Unit 0",prog:"Super Minds 1",unit:"Unit 0",items:[{id:"sm1_read",ru:"Читает самые простые слова",t:"lex"},{id:"sm1_colors",ru:"Названия цветов",t:"lex"},{id:"sm1_count10",ru:"Счёт 1-10",t:"lex"}]},
+        {mod:"SM1 · Unit 1-3",prog:"Super Minds 1",unit:"Unit 1",items:[{id:"sm1_school",ru:"Школьные вещи, игрушки",t:"lex"},{id:"sm1_preps",ru:"In / on / under",t:"gram"},{id:"sm1_like",ru:"I like / I don't like",t:"gram"}]},
+        {mod:"SM1 · Unit 4-6",prog:"Super Minds 1",unit:"Unit 4",items:[{id:"sm1_count20",ru:"Числа 11-20",t:"lex"},{id:"sm1_pressim",ru:"Present Simple (I, you)",t:"gram"},{id:"sm1_thereis",ru:"There is / are, have got",t:"gram"}]},
+        {mod:"SM1 · Unit 7-9",prog:"Super Minds 1",unit:"Unit 7",items:[{id:"sm1_hasgot",ru:"Has got, одежда",t:"gram"},{id:"sm1_prescont",ru:"Present Continuous",t:"gram"},{id:"sm1_body",ru:"Части тела",t:"lex"}]},
+        {mod:"SM2 · Unit 0-3",prog:"Super Minds 2",unit:"Unit 0",items:[{id:"sm2_daily",ru:"Повседневные дела, can / can't",t:"gram"},{id:"sm2_pressim3",ru:"Present Simple (he, she, it)",t:"gram"},{id:"sm2_city",ru:"Места в городе",t:"lex"}]},
+        {mod:"SM2 · Unit 4-6",prog:"Super Minds 2",unit:"Unit 4",items:[{id:"sm2_furn",ru:"Мебель",t:"lex"},{id:"sm2_face",ru:"Лицо",t:"lex"},{id:"sm2_wouldlike",ru:"Would like",t:"gram"}]},
+        {mod:"SM2 · Unit 7-9",prog:"Super Minds 2",unit:"Unit 7",items:[{id:"sm2_transport",ru:"Транспорт",t:"lex"},{id:"sm2_likeing",ru:"Like + ing",t:"gram"},{id:"sm2_sport",ru:"Спорт",t:"lex"}]},
+        {mod:"SM3 · Unit 0-3",prog:"Super Minds 3",unit:"Unit 0",items:[{id:"sm3_daily",ru:"Повседневные дела",t:"lex"},{id:"sm3_haveto",ru:"Have to",t:"gram"},{id:"sm3_advfreq",ru:"Наречия частоты действия",t:"gram"}]},
+        {mod:"SM3 · Unit 4-6",prog:"Super Minds 3",unit:"Unit 4",items:[{id:"sm3_waswere",ru:"Was / were",t:"gram"},{id:"sm3_compar",ru:"Comparatives and superlatives",t:"gram"},{id:"sm3_goingto",ru:"Going to",t:"gram"}]},
+        {mod:"SM3 · Unit 7-9",prog:"Super Minds 3",unit:"Unit 7",items:[{id:"sm3_pastreg",ru:"Past Simple (regular)",t:"gram"},{id:"sm3_pastirr",ru:"Past Simple (irregular)",t:"gram"},{id:"sm3_weather",ru:"Погода",t:"lex"}]}],
         goals:["Подтянуть школьную программу","Развитие разговорных навыков","Расширение словарного запаса","Подготовка к олимпиаде","Преодоление языкового барьера","Улучшение произношения","Чтение на английском","Путешествия"],
         paHints:["Изучает английский в школе","Знает базовые слова и фразы","Занимался в другой онлайн-школе","Может представиться на английском","Понимает простые инструкции учителя","Читает простые слова","Стесняется говорить на английском","Хорошо воспринимает на слух"],
         cmHints:["Активно участвовал в квесте","Демонстрирует хорошую базу лексики","Уверенно строит короткие фразы","Хорошо воспринимает речь на слух","Нуждается в работе над грамматикой","Проявляет любознательность","Читает простые слова уверенно","Не боится ошибаться","Быстро запоминает новые слова","Нужна дополнительная практика говорения","Хорошо работает с картинками и визуалом","Мотивирован и заинтересован"]},
@@ -33197,12 +34967,15 @@
         progs:["Go Getter 1","Go Getter 2","Go Getter 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
         progInfo:{"Go Getter 1":"Pre-A1.4–A1.1 · 10-12 лет","Go Getter 2":"A1.2 · 10-12 лет","Go Getter 3":"A2.1 · 10-12 лет"},
         topics:[
-        {mod:"GG1 — Модуль 1",items:[{id:"gg1_personal",ru:"Личная информация",t:"lex"},{id:"gg1_countries",ru:"Страны и национальности",t:"lex"},{id:"gg1_possess",ru:"Притяжательные прилагательные",t:"gram"}]},
-        {mod:"GG1 — Модуль 2",items:[{id:"gg1_routine",ru:"Распорядок дня",t:"gram"},{id:"gg1_time",ru:"Telling the time",t:"gram"},{id:"gg1_adverbs",ru:"Наречия частотности",t:"gram"}]},
-        {mod:"GG1 — Модуль 3",items:[{id:"gg1_food",ru:"Еда и напитки",t:"lex"},{id:"gg1_count",ru:"Исчисляемые/неисчисляемые",t:"gram"},{id:"gg1_some",ru:"Some / Any",t:"gram"}]},
-        {mod:"GG2 — Модуль 1",items:[{id:"gg2_person",ru:"Черты характера",t:"lex"},{id:"gg2_presvscont",ru:"Present Simple vs Continuous",t:"gram"},{id:"gg2_compar",ru:"Сравнительная степень",t:"gram"}]},
-        {mod:"GG2 — Модуль 2",items:[{id:"gg2_places",ru:"Места в городе",t:"lex"},{id:"gg2_thereis",ru:"There is / are",t:"gram"},{id:"gg2_superl",ru:"Превосходная степень",t:"gram"}]},
-        {mod:"GG2 — Модуль 3",items:[{id:"gg2_past",ru:"Past Simple (irregular)",t:"gram"},{id:"gg2_events",ru:"Прошедшие события",t:"lex"},{id:"gg2_bio",ru:"Биографии",t:"lex"}]}],
+        {mod:"GG1 · Unit 0-2",prog:"Go Getter 1",unit:"Unit 0",items:[{id:"gg1_things",ru:"Повседневные предметы и школьные вещи",t:"lex"},{id:"gg1_tobe",ru:"To be (+ и −)",t:"gram"},{id:"gg1_countries",ru:"Страны и места",t:"lex"}]},
+        {mod:"GG1 · Unit 3-5",prog:"Go Getter 1",unit:"Unit 3",items:[{id:"gg1_appear",ru:"Внешность и части тела",t:"lex"},{id:"gg1_thereis",ru:"There is / are + предлоги места",t:"gram"},{id:"gg1_can",ru:"Can / Can't",t:"gram"}]},
+        {mod:"GG1 · Unit 6-8",prog:"Go Getter 1",unit:"Unit 6",items:[{id:"gg1_animals",ru:"Животные",t:"lex"},{id:"gg1_sport",ru:"Спорт",t:"lex"},{id:"gg1_pressim",ru:"Present Simple (+, −, ?)",t:"gram"}]},
+        {mod:"GG2 · Unit 0-2",prog:"Go Getter 2",unit:"Unit 0",items:[{id:"gg2_food",ru:"Еда и напитки",t:"lex"},{id:"gg2_school",ru:"Места в школе",t:"lex"},{id:"gg2_pressim",ru:"Present Simple (+, −, ?)",t:"gram"}]},
+        {mod:"GG2 · Unit 3-5",prog:"Go Getter 2",unit:"Unit 3",items:[{id:"gg2_compar",ru:"Сравнительная и превосходная степень",t:"gram"},{id:"gg2_prescont",ru:"Present Continuous",t:"gram"},{id:"gg2_places",ru:"Места в городе + предлоги места",t:"lex"}]},
+        {mod:"GG2 · Unit 6-8",prog:"Go Getter 2",unit:"Unit 6",items:[{id:"gg2_past",ru:"Past Simple",t:"gram"},{id:"gg2_jobs",ru:"Профессии",t:"lex"},{id:"gg2_goingto",ru:"Be going to",t:"gram"}]},
+        {mod:"GG3 · Unit 0-2",prog:"Go Getter 3",unit:"Unit 0",items:[{id:"gg3_presvscont",ru:"Present Simple vs Present Continuous",t:"gram"},{id:"gg3_shopping",ru:"Покупки",t:"lex"},{id:"gg3_person",ru:"Черты характера",t:"lex"}]},
+        {mod:"GG3 · Unit 3-5",prog:"Go Getter 3",unit:"Unit 3",items:[{id:"gg3_phones",ru:"Смартфоны",t:"lex"},{id:"gg3_pastcont",ru:"Past Continuous",t:"gram"},{id:"gg3_tech",ru:"Технологии",t:"lex"}]},
+        {mod:"GG3 · Unit 6-8",prog:"Go Getter 3",unit:"Unit 6",items:[{id:"gg3_presperf",ru:"Present Perfect",t:"gram"},{id:"gg3_will",ru:"Will (предсказания)",t:"gram"},{id:"gg3_house",ru:"Дом",t:"lex"}]}],
         goals:["Подтянуть школьную программу","Подготовка к олимпиаде","Развитие разговорных навыков","Расширение словарного запаса","Улучшение произношения","Подготовка к ОГЭ в будущем","Чтение книг на английском","Путешествия и общение"],
         paHints:["Учит английский в школе 3+ года","Имеет хорошую базу лексики","Грамматика выше среднего","Может поддержать простой диалог","Читает и понимает короткие тексты","Есть пробелы в грамматике","Понимает речь на слух хорошо","Стесняется говорить, хотя знает много","Занимался с репетитором"],
         cmHints:["Демонстрирует хороший уровень языка","Активно участвует в диалоге","Не боится ошибаться","Уверенно читает тексты","Нуждается в систематизации грамматики","Хороший словарный запас","Есть пробелы в произношении","Мотивирован на обучение","Ставит конкретные цели","Легко переключается между темами","Хорошо аргументирует свои ответы","Нужна практика свободного говорения"]},
@@ -33210,14 +34983,22 @@
         progs:["Prepare 1","Prepare 2","Prepare 3","Prepare 4","Prepare 5","Prepare 6","Prepare 7"],durs:["40 минут","60 минут"],freqs:["2","3"],
         progInfo:{"Prepare 1":"A1.1–A1.2 · 13-17 лет","Prepare 2":"A2.1 · 13-17 лет","Prepare 3":"A2.2 · 13-17 лет","Prepare 4":"B1.1 · 13-17 лет","Prepare 5":"B1.2 · 13-17 лет","Prepare 6":"B2.1 · 13-17 лет","Prepare 7":"B2.2 · 13-17 лет"},
         topics:[
-        {mod:"PR1 — Units 0-4",items:[{id:"pr1_families",ru:"Families",t:"lex"},{id:"pr1_countries",ru:"Countries",t:"lex"},{id:"pr1_tobe",ru:"To be",t:"gram"},{id:"pr1_havegot",ru:"Have got",t:"gram"}]},
-        {mod:"PR1 — Units 5-9",items:[{id:"pr1_sports",ru:"Sports",t:"lex"},{id:"pr1_food",ru:"Food and drinks",t:"lex"},{id:"pr1_pressim",ru:"Present Simple",t:"gram"},{id:"pr1_can",ru:"Can / Can't",t:"gram"}]},
-        {mod:"PR2 — Units 0-9",items:[{id:"pr2_clothes",ru:"Clothes",t:"lex"},{id:"pr2_emotions",ru:"Emotions",t:"lex"},{id:"pr2_pastirr",ru:"Past Simple irregulars",t:"gram"},{id:"pr2_quant",ru:"Quantifiers",t:"gram"}]},
-        {mod:"PR3 — Units 0-9",items:[{id:"pr3_house",ru:"Household and furniture",t:"lex"},{id:"pr3_presperfect",ru:"Present Perfect",t:"gram"},{id:"pr3_firstcond",ru:"1st Conditional",t:"gram"}]},
-        {mod:"PR4 — Units 0-9",items:[{id:"pr4_crime",ru:"Crime and criminals",t:"lex"},{id:"pr4_reported",ru:"Reported speech",t:"gram"},{id:"pr4_secondcond",ru:"2nd Conditional",t:"gram"}]},
-        {mod:"PR5 — Units 0-9",items:[{id:"pr5_music",ru:"Music",t:"lex"},{id:"pr5_usedto",ru:"Used to",t:"gram"},{id:"pr5_modals",ru:"Modals of obligation and advice",t:"gram"}]},
-        {mod:"PR6 — Units 0-9",items:[{id:"pr6_education",ru:"Education",t:"lex"},{id:"pr6_passive",ru:"Passive: complex forms",t:"gram"},{id:"pr6_thirdcond",ru:"3rd Conditional",t:"gram"}]},
-        {mod:"PR7 — Units 0-9",items:[{id:"pr7_abstract",ru:"Abstract nouns",t:"lex"},{id:"pr7_narrative",ru:"Narrative tenses",t:"gram"},{id:"pr7_determ",ru:"Determiners",t:"gram"}]}],
+        {mod:"PR1 · Unit 0-4",prog:"Prepare 1",unit:"Unit 0",items:[{id:"pr1_families",ru:"Семья",t:"lex"},{id:"pr1_countries",ru:"Страны",t:"lex"},{id:"pr1_school",ru:"Школьные принадлежности",t:"lex"},{id:"pr1_tobe",ru:"To be",t:"gram"},{id:"pr1_havegot",ru:"Have got",t:"gram"},{id:"pr1_thereis",ru:"There is",t:"gram"}]},
+        {mod:"PR1 · Unit 5-9",prog:"Prepare 1",unit:"Unit 5",items:[{id:"pr1_sports",ru:"Спорт",t:"lex"},{id:"pr1_body",ru:"Части тела",t:"lex"},{id:"pr1_food",ru:"Еда и напитки",t:"lex"},{id:"pr1_pressim",ru:"Present Simple",t:"gram"},{id:"pr1_can",ru:"Can / Can't",t:"gram"},{id:"pr1_some",ru:"Some, any, lots of",t:"gram"}]},
+        {mod:"PR1 · Unit 10-14",prog:"Prepare 1",unit:"Unit 10",items:[{id:"pr1_jobs",ru:"Профессии",t:"lex"},{id:"pr1_transport",ru:"Транспорт",t:"lex"},{id:"pr1_enter",ru:"Развлечения",t:"lex"},{id:"pr1_presvscont",ru:"Present Simple vs Present Continuous",t:"gram"},{id:"pr1_advfreq",ru:"Наречия частотности",t:"gram"},{id:"pr1_lets",ru:"Let's…",t:"gram"}]},
+        {mod:"PR1 · Unit 15-20",prog:"Prepare 1",unit:"Unit 15",items:[{id:"pr1_weather",ru:"Погода",t:"lex"},{id:"pr1_pets",ru:"Питомцы и животные фермы",t:"lex"},{id:"pr1_clothes",ru:"Одежда",t:"lex"},{id:"pr1_needwant",ru:"Need, want",t:"gram"},{id:"pr1_compar",ru:"Comparatives",t:"gram"},{id:"pr1_past",ru:"Past Simple",t:"gram"}]},
+        {mod:"PR2 · Unit 0-9",prog:"Prepare 2",unit:"Unit 0",items:[{id:"pr2_clothes",ru:"Одежда",t:"lex"},{id:"pr2_holidays",ru:"Каникулы и праздники",t:"lex"},{id:"pr2_emotions",ru:"Эмоции",t:"lex"},{id:"pr2_pastirr",ru:"Past Simple (regular и irregular)",t:"gram"},{id:"pr2_presvscont",ru:"Present Simple vs Present Continuous",t:"gram"},{id:"pr2_quant",ru:"Quantifiers (some, any, a lot of)",t:"gram"}]},
+        {mod:"PR2 · Unit 10-20",prog:"Prepare 2",unit:"Unit 10",items:[{id:"pr2_health",ru:"Здоровье и болезни",t:"lex"},{id:"pr2_geo",ru:"География",t:"lex"},{id:"pr2_travel",ru:"Путешествия",t:"lex"},{id:"pr2_goingto",ru:"Going to",t:"gram"},{id:"pr2_pastcont",ru:"Past Continuous",t:"gram"},{id:"pr2_haveto",ru:"Have to / Don't have to",t:"gram"}]},
+        {mod:"PR3 · Unit 0-9",prog:"Prepare 3",unit:"Unit 0",items:[{id:"pr3_house",ru:"Дом и мебель",t:"lex"},{id:"pr3_travel",ru:"Способы путешествий",t:"lex"},{id:"pr3_adj",ru:"Прилагательные для описания предметов",t:"lex"},{id:"pr3_pastcont",ru:"Past Continuous vs Past Simple",t:"gram"},{id:"pr3_future",ru:"Future: will, may, might",t:"gram"},{id:"pr3_modals",ru:"Modals of obligation (must, have to)",t:"gram"}]},
+        {mod:"PR3 · Unit 10-20",prog:"Prepare 3",unit:"Unit 10",items:[{id:"pr3_rel",ru:"Отношения",t:"lex"},{id:"pr3_free",ru:"Досуг: книги и фильмы",t:"lex"},{id:"pr3_body",ru:"Части тела",t:"lex"},{id:"pr3_presperf",ru:"Present Perfect",t:"gram"},{id:"pr3_firstcond",ru:"1st Conditional",t:"gram"},{id:"pr3_passive",ru:"Present и Past Simple Passive",t:"gram"}]},
+        {mod:"PR4 · Unit 0-9",prog:"Prepare 4",unit:"Unit 0",items:[{id:"pr4_people",ru:"Описание людей",t:"lex"},{id:"pr4_crime",ru:"Преступления",t:"lex"},{id:"pr4_money",ru:"Деньги и покупки",t:"lex"},{id:"pr4_perfvspast",ru:"Present Perfect vs Past Simple",t:"gram"},{id:"pr4_pastcont",ru:"Past Continuous",t:"gram"},{id:"pr4_future",ru:"Be going to vs Present Continuous (будущее)",t:"gram"}]},
+        {mod:"PR4 · Unit 10-20",prog:"Prepare 4",unit:"Unit 10",items:[{id:"pr4_food",ru:"Прилагательные о еде",t:"lex"},{id:"pr4_colloc",ru:"Collocations: look, see, watch",t:"lex"},{id:"pr4_computer",ru:"Компьютерная лексика",t:"lex"},{id:"pr4_reported",ru:"Reported speech",t:"gram"},{id:"pr4_secondcond",ru:"2nd Conditional",t:"gram"},{id:"pr4_relative",ru:"Relative clauses",t:"gram"}]},
+        {mod:"PR5 · Unit 0-9",prog:"Prepare 5",unit:"Unit 0",items:[{id:"pr5_sport",ru:"Спортивная лексика",t:"lex"},{id:"pr5_health",ru:"Глаголы здоровья",t:"lex"},{id:"pr5_music",ru:"Музыка",t:"lex"},{id:"pr5_ing",ru:"-ing формы",t:"gram"},{id:"pr5_usedto",ru:"Used to",t:"gram"},{id:"pr5_modals",ru:"Modals of obligation and advice",t:"gram"}]},
+        {mod:"PR5 · Unit 10-20",prog:"Prepare 5",unit:"Unit 10",items:[{id:"pr5_social",ru:"Соцсети",t:"lex"},{id:"pr5_comm",ru:"Глаголы общения",t:"lex"},{id:"pr5_hopes",ru:"Мечты и планы",t:"lex"},{id:"pr5_pastperf",ru:"Past Perfect",t:"gram"},{id:"pr5_reporting",ru:"Reporting verbs",t:"gram"}]},
+        {mod:"PR6 · Unit 0-9",prog:"Prepare 6",unit:"Unit 0",items:[{id:"pr6_education",ru:"Образование",t:"lex"},{id:"pr6_phrasal",ru:"Phrasal verbs об отношениях",t:"lex"},{id:"pr6_disasters",ru:"Стихийные бедствия",t:"lex"},{id:"pr6_modals",ru:"Modals of ability and possibility",t:"gram"},{id:"pr6_passive",ru:"Passive: сложные формы",t:"gram"},{id:"pr6_questions",ru:"Вопросительные формы (сложные)",t:"gram"}]},
+        {mod:"PR6 · Unit 10-20",prog:"Prepare 6",unit:"Unit 10",items:[{id:"pr6_qualities",ru:"Личные качества",t:"lex"},{id:"pr6_crime",ru:"Преступления",t:"lex"},{id:"pr6_reporting",ru:"Reporting verbs",t:"gram"},{id:"pr6_reportedq",ru:"Reported questions and requests",t:"gram"},{id:"pr6_deduction",ru:"Modals of deduction (прошлое)",t:"gram"}]},
+        {mod:"PR7 · Unit 0-9",prog:"Prepare 7",unit:"Unit 0",items:[{id:"pr7_media",ru:"Интернет, кино и медиа",t:"lex"},{id:"pr7_abstract",ru:"Абстрактные существительные",t:"lex"},{id:"pr7_history",ru:"История",t:"lex"},{id:"pr7_futureperf",ru:"Future Continuous и Perfect",t:"gram"},{id:"pr7_narrative",ru:"Narrative tenses",t:"gram"},{id:"pr7_habits",ru:"Привычки в настоящем и прошлом",t:"gram"}]},
+        {mod:"PR7 · Unit 10-20",prog:"Prepare 7",unit:"Unit 10",items:[{id:"pr7_idioms",ru:"Идиомы",t:"lex"},{id:"pr7_ads",ru:"Реклама",t:"lex"},{id:"pr7_global",ru:"Глобальные проблемы",t:"lex"},{id:"pr7_modalspast",ru:"Modals in the past",t:"gram"},{id:"pr7_cond",ru:"3rd и mixed Conditionals",t:"gram"}]}],
         goals:["Подготовка к ОГЭ","Подготовка к ЕГЭ","Международные экзамены (Cambridge, IELTS)","Подтянуть школьную программу","Свободное общение на английском","Поступление за рубеж","Путешествия","Карьерные цели"],
         paHints:["Учит английский в школе 5+ лет","Уровень А1-А2, базовые знания","Уровень В1, уверенный средний","Уровень В2, продвинутый","Готовится к экзаменам","Может поддержать разговор на бытовые темы","Хорошо читает, но не говорит","Занимался с репетитором","Жил/учился за границей"],
         cmHints:["Демонстрирует уверенный уровень владения языком","Свободно поддерживает диалог на знакомые темы","Грамотно строит сложные предложения","Нуждается в расширении словарного запаса","Хорошее произношение","Есть пробелы в грамматике высокого уровня","Мотивирован и нацелен на результат","Уверенно аргументирует свою точку зрения","Нужна практика письменной речи","Хорошо воспринимает аутентичную речь на слух","Стесняется говорить, несмотря на хорошие знания","Готов к интенсивной работе"]}
@@ -33263,7 +35044,7 @@
             if(!teacherObj){alert('Не удалось определить преподавателя');return;}
             VU_S={step:-1,reportId:null,token:null,createdAt:null,teacherId:teacherObj.id,teacher:teacherObj.name,
                 studentId:null,studentExtId:null,ageGroup:"",show:false,name:"",surname:"",age:"",canRead:null,date:new Date().toISOString().slice(0,10),
-                goals:[],goalsCustom:"",pointA:"",scores:{},soft:{},comment:"",prog:"",dur:"",freq:"2",grade:"Basic",err:{}};
+                goals:[],goalsCustom:"",pointA:"",scores:{},soft:{},comment:"",prog:"",unit:"",dur:"",freq:"2",grade:"Basic",err:{}};
             document.getElementById('vuModalTitle').textContent='🚀 Новый отчёт после ВУ';
             document.getElementById('vuCopyLinkBtn').style.display='none';
             document.getElementById('vuDeleteBtn').style.display='none';
@@ -33328,7 +35109,7 @@
             if(VU_S.err.ageGroup) h+='<p style="color:#FF4444;font-size:13px;margin-top:8px">Выберите группу</p>';
             return h;
         }
-        function vuPickAge(k){VU_S.ageGroup=k;VU_S.scores={};VU_S.prog=VU_AGE_GROUPS[k].progs[0];VU_S.dur=VU_AGE_GROUPS[k].durs[0];VU_S.freq=VU_AGE_GROUPS[k].freqs[0];vuRender();}
+        function vuPickAge(k){VU_S.ageGroup=k;VU_S.scores={};VU_S.unit="";VU_S.prog=VU_AGE_GROUPS[k].progs[0];VU_S.dur=VU_AGE_GROUPS[k].durs[0];VU_S.freq=VU_AGE_GROUPS[k].freqs[0];vuRender();}
 
         function vuInp(id,lbl,ph,type,multi){
             var v=vuEsc(VU_S[id]||'');var ec=VU_S.err[id]?'border-color:#FF4444':'border-color:#E8E0FF';
@@ -33362,7 +35143,7 @@
             var g=vuAg();var h='<h2 style="font-size:18px;font-weight:700;margin-bottom:6px">Чек-лист оценки '+vuAg().icon+'</h2><p style="font-size:13px;color:#6B6B80;margin-bottom:10px">0 = не знает, 1 = с подсказкой, 2 = сам, — = не проверялось</p>';
             if(VU_S.err.scores) h+='<p style="color:#FF4444;font-size:13px;margin-bottom:8px">Оцените хотя бы 3 темы</p>';
             // Для 7-9: вопрос про чтение решает Starter vs SM1+
-            if(VU_S.ageGroup==="7-9"){
+            if(VU_S.ageGroup==="7-9"||VU_S.ageGroup==="10-12"){
                 var yesSel=VU_S.canRead===true, noSel=VU_S.canRead===false;
                 h+='<div style="margin-bottom:14px;background:#FFF7ED;border:1px solid '+(VU_S.err.canRead?'#DC2626':'#FED7AA')+';border-radius:10px;padding:12px 14px">'+
                     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#9A3412">📖 Умеет читать по-английски? *</label>'+
@@ -33370,7 +35151,7 @@
                     '<button onclick="vuSetCanRead(true)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(yesSel?'#16A34A':'#E2E8F0')+';background:'+(yesSel?'#DCFCE7':'#fff')+';color:'+(yesSel?'#15803D':'#64748B')+';font-weight:600;cursor:pointer">Да</button>'+
                     '<button onclick="vuSetCanRead(false)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(noSel?'#DC2626':'#E2E8F0')+';background:'+(noSel?'#FEE2E2':'#fff')+';color:'+(noSel?'#B91C1C':'#64748B')+';font-weight:600;cursor:pointer">Нет</button>'+
                     '</div>'+
-                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>Super Minds Starter</b> (обучение чтению с нуля)</div>':'')+
+                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>'+(VU_S.ageGroup==="10-12"?'Reading Course, Модуль 1':'Super Minds Starter')+'</b> (обучение чтению с нуля)</div>':'')+
                     '</div>';
             }
             g.topics.forEach(function(mod){
@@ -33415,19 +35196,47 @@
             return h;
         }
 
+        // Блок считается пройденным, если набрано не меньше 2/3 максимума
+        // (для блока из 3 тем это 4 балла из 6). Идём по блокам подряд и
+        // рекомендуем первый, который ученик НЕ прошёл.
+        function vuBlockPassed(block){
+            var tested=block.items.filter(function(i){return VU_S.scores[i.id]>=0;});
+            if(!tested.length) return null;                       // не проверялся
+            var sum=tested.reduce(function(s,i){return s+VU_S.scores[i.id];},0);
+            return sum >= (2/3)*(2*tested.length);
+        }
+
         function vuAutoRec(){
-            var items=vuAllItems();var firstHalf=items.slice(0,Math.ceil(items.length/2));
-            var tested=firstHalf.filter(function(i){return VU_S.scores[i.id]>=0;});
-            var avgVal=tested.length?tested.reduce(function(s,i){return s+VU_S.scores[i.id];},0)/tested.length:-1;
+            var g=vuAg();
             var n=parseInt(VU_S.age)||5;
-            if(VU_S.ageGroup==="4-6") return{prog:avgVal>=1.5?"Wow Dragon 2":"Wow Dragon 1",dur:n<=4?"20 минут":"30 минут",freq:"2",grade:"Basic"};
-            if(VU_S.ageGroup==="7-9"){
-                // Не умеет читать → всегда Super Minds Starter (обучение чтению с нуля), баллы не важны
-                if(VU_S.canRead===false) return{prog:"Super Minds Starter",dur:n<=7?"30 минут":"40 минут",freq:"2",grade:"Basic"};
-                var p="Super Minds 1";if(avgVal>=1.5)p="Super Minds 2";if(avgVal>=1.8&&n>=9)p="Super Minds 3";return{prog:p,dur:n<=7?"30 минут":"40 минут",freq:"2",grade:"Basic"};
+            var dur = VU_S.ageGroup==="4-6" ? (n<=4?"20 минут":"30 минут")
+                    : VU_S.ageGroup==="7-9" ? (n<=7?"30 минут":"40 минут")
+                    : "40 минут";
+            var grade = VU_S.ageGroup==="13+" ? "Expert" : "Basic";
+
+            // Не читает: 7-9 → Super Minds Starter, 10-12 → Reading Course
+            if(VU_S.ageGroup==="7-9" && VU_S.canRead===false)
+                return{prog:"Super Minds Starter",unit:"",dur:dur,freq:"2",grade:grade};
+            if(VU_S.ageGroup==="10-12" && VU_S.canRead===false)
+                return{prog:"Reading Course",unit:"Модуль 1",dur:dur,freq:"2",grade:grade};
+
+            // 4-6 остаётся на старой логике: в чек-листе модули, а не юниты
+            if(VU_S.ageGroup==="4-6"){
+                var items=vuAllItems().slice(0,Math.ceil(vuAllItems().length/2));
+                var t4=items.filter(function(i){return VU_S.scores[i.id]>=0;});
+                var avg4=t4.length?t4.reduce(function(s,i){return s+VU_S.scores[i.id];},0)/t4.length:-1;
+                return{prog:avg4>=1.5?"Wow Dragon 2":"Wow Dragon 1",unit:"",dur:dur,freq:"2",grade:grade};
             }
-            if(VU_S.ageGroup==="10-12"){var p2="Go Getter 1";if(avgVal>=1.5)p2="Go Getter 2";if(avgVal>=1.8&&n>=12)p2="Go Getter 3";return{prog:p2,dur:"40 минут",freq:"2",grade:"Basic"};}
-            var p3="Prepare 1";if(avgVal>=1.8)p3="Prepare 3";else if(avgVal>=1.5)p3="Prepare 2";return{prog:p3,dur:"40 минут",freq:"2",grade:"Expert"};
+
+            var blocks=g.topics, last=null;
+            for(var i=0;i<blocks.length;i++){
+                var p=vuBlockPassed(blocks[i]);
+                if(p===true){ last=blocks[i]; continue; }         // прошёл — идём дальше
+                if(p===false) return{prog:blocks[i].prog,unit:blocks[i].unit,dur:dur,freq:"2",grade:grade};
+            }
+            // Все проверенные блоки пройдены — берём последний из чек-листа
+            var tail=last||blocks[0];
+            return{prog:tail.prog,unit:tail.unit,dur:dur,freq:"2",grade:grade};
         }
 
         function vuUpd(k,v){VU_S[k]=v;}
@@ -33440,11 +35249,11 @@
             VU_S.err={};
             if(step===-1){if(!VU_S.ageGroup)VU_S.err.ageGroup=true;}
             if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;}
-            if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;if(VU_S.ageGroup==="7-9"&&VU_S.canRead===null)VU_S.err.canRead=true;}
+            if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;if((VU_S.ageGroup==="7-9"||VU_S.ageGroup==="10-12")&&VU_S.canRead===null)VU_S.err.canRead=true;}
             if(step===4){if(!VU_S.comment.trim())VU_S.err.comment=true;}
             return Object.keys(VU_S.err).length===0;
         }
-        function vuNext(){if(!vuValidate(VU_S.step))return vuRender();if(VU_S.step===3){var r=vuAutoRec();VU_S.prog=r.prog;VU_S.dur=r.dur;VU_S.freq=r.freq;VU_S.grade=r.grade;}VU_S.step=Math.min(4,VU_S.step+1);vuRender();}
+        function vuNext(){if(!vuValidate(VU_S.step))return vuRender();if(VU_S.step===3){var r=vuAutoRec();VU_S.prog=r.prog;VU_S.unit=r.unit;VU_S.dur=r.dur;VU_S.freq=r.freq;VU_S.grade=r.grade;}VU_S.step=Math.min(4,VU_S.step+1);vuRender();}
         function vuPrev(){if(VU_S.show){VU_S.show=false;vuRender();return;}VU_S.step=Math.max(-1,VU_S.step-1);vuRender();}
         function vuGenerate(){if(!vuValidate(4))return vuRender();VU_S.show=true;vuRender();vuSave();}
 
@@ -33516,7 +35325,7 @@
             if(weakSoft.length>0){h+='<h3 style="font-size:16px;font-weight:700;margin:12px 0 10px">Над чем ещё поработаем</h3>';weakSoft.forEach(function(s){h+='<div style="background:#FFF8E1;border-radius:12px;padding:10px 16px;margin-bottom:8px"><span style="font-size:14px">'+s.label+' — разовьём через игровой формат</span></div>';});}
             h+='</div>';
             // PLAN
-            h+='<div style="'+rp+'"><h2 style="font-size:21px;font-weight:800;color:#7B61FF;margin-bottom:18px">Наш план для '+E(VU_S.name)+'</h2><div style="background:linear-gradient(135deg,#E8E0FF,#FFE0EB 50%,#E0F7F5);border-radius:18px;padding:24px;margin-bottom:22px"><div style="margin-bottom:14px"><div style="font-size:22px;font-weight:800;color:#7B61FF">'+E(VU_S.prog)+'</div><div style="font-size:14px;color:#6B6B80">'+E(progInfoText)+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+            h+='<div style="'+rp+'"><h2 style="font-size:21px;font-weight:800;color:#7B61FF;margin-bottom:18px">Наш план для '+E(VU_S.name)+'</h2><div style="background:linear-gradient(135deg,#E8E0FF,#FFE0EB 50%,#E0F7F5);border-radius:18px;padding:24px;margin-bottom:22px"><div style="margin-bottom:14px"><div style="font-size:22px;font-weight:800;color:#7B61FF">'+E(VU_S.prog)+(VU_S.unit?' · '+E(VU_S.unit):'')+'</div><div style="font-size:14px;color:#6B6B80">'+E(progInfoText)+'</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
             [["Длительность",VU_S.dur],["Частота",VU_S.freq+" раз(а) в неделю"],["Грейд",VU_S.grade],["Формат",VU_S.ageGroup==="4-6"?"Индивидуальный":"Индив. / Группа"]].forEach(function(a){h+='<div style="background:rgba(255,255,255,.8);border-radius:12px;padding:12px 16px"><div style="font-size:12px;color:#6B6B80">'+a[0]+'</div><div style="font-size:16px;font-weight:700;margin-top:2px">'+E(a[1])+'</div></div>';});
             h+='</div></div><h3 style="font-size:16px;font-weight:700;margin-bottom:14px">Ожидаемые результаты</h3><div style="display:flex;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:220px;border-radius:14px;padding:16px 18px;background:#E8E0FF"><div style="font-size:14px;font-weight:700;color:#7B61FF;margin-bottom:10px">Через 3 месяца</div>';
             r3.forEach(function(item){h+='<div style="font-size:13px;margin-bottom:6px;padding-left:14px;position:relative"><span style="position:absolute;left:0">·</span> '+E(item)+'</div>';});
@@ -33550,7 +35359,7 @@
                     student_name:(VU_S.name+' '+(VU_S.surname||'')).trim(),
                     program:VU_S.prog||null,
                     language:'ru',
-                    form_data:VU_S
+                    form_data:VU_S   // юнит лежит здесь, в form_data.unit
                 };
                 var res;
                 if(VU_S.reportId){
@@ -34890,8 +36699,8 @@
         // ============================================================
         let _historyState = {
             yearMonth: null,
-            type: 'all',  // 'all' | 'bonus' | 'penalty' | 'star'
-            data: { bonuses: [], penalties: [], stars: [] },
+            type: 'all',  // 'all' | 'bonus' | 'penalty' | 'star' | 'grade'
+            data: { bonuses: [], penalties: [], stars: [], grades: [] },
             usersMap: new Map(),  // id → name
             loaded: false
         };
@@ -34954,7 +36763,7 @@
             const endDate = new Date(y, m, 0).toISOString().slice(0, 10);
 
             try {
-                const [bonRes, penRes, starsRes, usersRes] = await Promise.all([
+                const [bonRes, penRes, starsRes, usersRes, gradeRes] = await Promise.all([
                     sb.from('bonuses')
                         .select('id, teacher_id, issued_by, bonus_type, amount, reason_text, reason_code, date, year_month, created_at')
                         .eq('year_month', ym)
@@ -34971,7 +36780,12 @@
                         .gte('date', startDate)
                         .lte('date', endDate)
                         .order('date', { ascending: false }),
-                    sb.from('users').select('id, name, roles')
+                    sb.from('users').select('id, name, roles'),
+                    sb.from('grade_changes')
+                        .select('id, teacher_id, from_grade, to_grade, effective_date, created_by, created_at')
+                        .gte('effective_date', startDate)
+                        .lte('effective_date', endDate)
+                        .order('effective_date', { ascending: false })
                 ]);
 
                 if (bonRes.error) throw bonRes.error;
@@ -34982,6 +36796,7 @@
                 _historyState.data.bonuses = bonRes.data || [];
                 _historyState.data.penalties = penRes.data || [];
                 _historyState.data.stars = starsRes.data || [];
+                _historyState.data.grades = (gradeRes && !gradeRes.error) ? (gradeRes.data || []) : [];
 
                 _historyState.usersMap = new Map((usersRes.data || []).map(u => [u.id, { name: u.name, roles: u.roles || [] }]));
 
@@ -35087,6 +36902,22 @@
                     }
                 }
 
+                // Смена грейда
+                if (typeFilter === 'all' || typeFilter === 'grade') {
+                    for (const g of (_historyState.data.grades || [])) {
+                        items.push({
+                            kind: 'grade',
+                            id: g.id,
+                            date: g.effective_date,
+                            teacher_id: g.teacher_id,
+                            issued_by: g.created_by,
+                            reason: `${g.from_grade || '—'} → ${g.to_grade}`,
+                            isAuto: false,
+                            sortKey: (g.effective_date || '') + (g.created_at || '')
+                        });
+                    }
+                }
+
                 // Применяем фильтры по преподу и сотруднику
                 let filtered = items.filter(item => {
                     if (issuerFilter && item.issued_by !== issuerFilter) return false;
@@ -35185,6 +37016,10 @@
                 icon = '⭐'; cls = 'star';
                 amountText = item.isRedeemed ? '⭐ потрачена' : '⭐';
                 amountCls = 'star';
+            } else if (item.kind === 'grade') {
+                icon = '🎓'; cls = 'bonus';
+                amountText = 'смена грейда';
+                amountCls = 'star';
             }
 
             const autoPill = item.isAuto ? '<span class="history-row-pill auto">авто</span>' : '';
@@ -35224,6 +37059,8 @@
         // { kind, id, originalRecord, canEdit, canDelete, isAuto }
 
         async function openHistoryItem(kind, id) {
+            // Смена грейда — открываем её карточку, а не редактор начислений
+            if (kind === 'grade') { openGradeChangeDetails(id); return; }
             // Загружаем актуальную запись из БД
             const tableMap = { bonus: 'bonuses', penalty: 'penalties', star: 'stars' };
             const table = tableMap[kind];
