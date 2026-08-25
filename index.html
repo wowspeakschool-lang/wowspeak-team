@@ -24671,11 +24671,17 @@
             const item = _ccState.cases.find(x => x.id === caseId);
             if (!item) return;
 
-            const { data: hist } = await sb.from('client_cases')
-                .select('id, category, status, created_at, methodist_topics(name)')
-                .eq('student_id', item.student_id)
-                .neq('id', caseId)
-                .order('created_at', { ascending: false });
+            const [{ data: hist }, { data: comments }] = await Promise.all([
+                sb.from('client_cases')
+                    .select('id, category, status, created_at, methodist_topics(name)')
+                    .eq('student_id', item.student_id)
+                    .neq('id', caseId)
+                    .order('created_at', { ascending: false }),
+                sb.from('client_case_comments')
+                    .select('id, body, created_at, user_id, users(id, name)')
+                    .eq('case_id', caseId)
+                    .order('created_at'),
+            ]);
 
             let ov = document.getElementById('ccViewOverlay');
             if (!ov) {
@@ -24713,6 +24719,28 @@
                             ${CC_CATEGORIES[h.category]?.icon || ''} ${escapeHtml(h.methodist_topics?.name || '')} · ${formatDate(h.created_at)} · ${CC_STATUSES[h.status]?.label || ''}</div>`).join('')}
                     </div>` : ''}
 
+                    <div style="margin-bottom:1rem;">
+                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.35rem;">
+                            💬 Ход работы ${(comments || []).length ? `(${comments.length})` : ''}
+                        </label>
+                        ${(comments || []).length ? `
+                            <div style="display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.6rem;">
+                                ${comments.map(cm => `
+                                    <div style="background:#f8fafc; border-radius:8px; padding:8px 11px;">
+                                        <div style="font-size:11px; color:#94a3b8; margin-bottom:3px;">
+                                            ${escapeHtml(cm.users?.name || '—')} · ${formatDate(cm.created_at)}
+                                        </div>
+                                        <div style="font-size:13px; line-height:1.45; white-space:pre-wrap;">${escapeHtml(cm.body)}</div>
+                                    </div>`).join('')}
+                            </div>` : ''}
+                        <div style="display:flex; gap:0.4rem; align-items:flex-start;">
+                            <textarea id="ccNewComment" rows="2" placeholder="Что выяснили, что сделали, чего ждём…"
+                                      style="flex:1; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px; resize:vertical;"></textarea>
+                            <button class="btn btn-small" style="background:#ede9fe; color:#5b21b6;"
+                                    onclick="_ccAddComment('${item.id}')">Добавить</button>
+                        </div>
+                    </div>
+
                     <div style="margin-bottom:0.9rem;">
                         <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.35rem;">
                             👤 Ответственные <span style="color:#94a3b8;">(можно выбрать нескольких)</span>
@@ -24745,8 +24773,8 @@
                             ${Object.entries(CC_OUTCOMES).map(([k,v]) =>
                                 `<option value="${k}" ${item.outcome === k ? 'selected' : ''}>${v.label}</option>`).join('')}
                         </select>
-                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Как решили</label>
-                        <textarea id="ccViewResolution" rows="3" placeholder="Кратко: что сделали и чем закончилось"
+                        <label style="display:block; font-size:0.82rem; color:#475569; margin-bottom:0.25rem;">Итоговый вердикт</label>
+                        <textarea id="ccViewResolution" rows="3" placeholder="Чем закончилось: что сделали и к чему пришли"
                                   style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; resize:vertical; margin-bottom:0.8rem;">${escapeHtml(item.resolution || '')}</textarea>
                     </div>
 
@@ -24786,6 +24814,33 @@
             item.assignee_user_id = next[0] || null;
             openClientCase(caseId);          // перерисовываем карточку
             renderClientCasesList();
+        }
+
+        // Комментарий по ходу работы. Остальным ответственным уходит
+        // уведомление — иначе о новой записи никто не узнает.
+        async function _ccAddComment(caseId) {
+            const el = document.getElementById('ccNewComment');
+            const body = (el?.value || '').trim();
+            if (!body) { alert('Напишите комментарий'); return; }
+
+            const { error } = await sb.from('client_case_comments').insert({
+                case_id: caseId,
+                user_id: currentAppUser?.id || null,
+                body: body,
+            });
+            if (error) { alert('Ошибка: ' + error.message); return; }
+
+            const item = _ccState.cases.find(c => c.id === caseId);
+            if (item) {
+                const others = _ccAssignees(item).filter(id => id !== currentAppUser?.id);
+                for (const uid of others) {
+                    await createNotification(uid, 'teacher_question_assigned',
+                        `💬 Новый комментарий: ${item.student_name || ''}`,
+                        body.slice(0, 120),
+                        '#section/client_cases', { case_id: caseId });
+                }
+            }
+            openClientCase(caseId);
         }
 
         function _ccToggleCloseFields() {
