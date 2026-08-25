@@ -24284,15 +24284,6 @@
 
         let _ccState = { tab: 'list', filter: 'open', cases: [], topics: [], staff: [], loaded: false };
 
-        const CC_ROLE_LABELS = {
-            methodist:'методист', assistant:'ассистент', curator:'куратор',
-            manager:'менеджер', super_admin:'админ',
-        };
-        function _ccRoleLabel(roles) {
-            const r = (roles || []).find(x => CC_ROLE_LABELS[x]);
-            return CC_ROLE_LABELS[r] || '';
-        }
-
         // Ответственные: массив, но у старых кейсов может быть только одиночное поле
         function _ccAssignees(c) {
             const arr = Array.isArray(c.assignee_user_ids) ? c.assignee_user_ids.filter(Boolean) : [];
@@ -24339,7 +24330,7 @@
                     .eq('is_archived', false)
                     .order('sort_order'),
                 sb.from('users').select('id, name, roles')
-                    .overlaps('roles', ['methodist','assistant','curator','manager','super_admin'])
+                    .contains('roles', ['methodist'])
                     .order('name'),
             ]);
             _ccState.cases      = casesRes.data || [];
@@ -24730,14 +24721,12 @@
                             ${(_ccState.staff || []).map(m => {
                                 const on = assignees.includes(m.id);
                                 return `<button onclick="_ccToggleAssignee('${item.id}','${m.id}')"
-                                    title="${escapeHtml(_ccRoleLabel(m.roles))}"
                                     style="padding:6px 11px; border-radius:99px; font-family:inherit; font-size:12px;
                                            border:1px solid ${on ? '#c4b5fd' : '#e5e7eb'};
                                            background:${on ? '#ede9fe' : '#fff'};
                                            color:${on ? '#5b21b6' : '#64748b'};
                                            font-weight:${on ? '600' : '400'}; cursor:pointer;">
                                     ${on ? '✓ ' : ''}${escapeHtml(m.name)}
-                                    <span style="opacity:.6; font-weight:400;">· ${escapeHtml(_ccRoleLabel(m.roles))}</span>
                                 </button>`;
                             }).join('') || '<span style="font-size:12px; color:#94a3b8;">Методисты не найдены</span>'}
                         </div>
