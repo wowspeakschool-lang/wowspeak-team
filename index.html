@@ -24331,6 +24331,7 @@
                     .order('sort_order'),
                 sb.from('users').select('id, name, roles')
                     .contains('roles', ['methodist'])
+                    .eq('handles_cases', true)
                     .order('name'),
             ]);
             _ccState.cases      = casesRes.data || [];
