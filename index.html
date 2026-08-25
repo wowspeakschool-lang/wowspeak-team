@@ -24282,7 +24282,16 @@
             'Жалоба на школу':                        'организация, деньги, сервис',
         };
 
-        let _ccState = { tab: 'list', filter: 'open', cases: [], topics: [], methodists: [], loaded: false };
+        let _ccState = { tab: 'list', filter: 'open', cases: [], topics: [], staff: [], loaded: false };
+
+        const CC_ROLE_LABELS = {
+            methodist:'методист', assistant:'ассистент', curator:'куратор',
+            manager:'менеджер', super_admin:'админ',
+        };
+        function _ccRoleLabel(roles) {
+            const r = (roles || []).find(x => CC_ROLE_LABELS[x]);
+            return CC_ROLE_LABELS[r] || '';
+        }
 
         // Ответственные: массив, но у старых кейсов может быть только одиночное поле
         function _ccAssignees(c) {
@@ -24329,11 +24338,13 @@
                     .not('category', 'is', null)
                     .eq('is_archived', false)
                     .order('sort_order'),
-                sb.from('users').select('id, name').contains('roles', ['methodist']).order('name'),
+                sb.from('users').select('id, name, roles')
+                    .overlaps('roles', ['methodist','assistant','curator','manager','super_admin'])
+                    .order('name'),
             ]);
             _ccState.cases      = casesRes.data || [];
             _ccState.topics     = topicsRes.data || [];
-            _ccState.methodists = methRes.data || [];
+            _ccState.staff = methRes.data || [];
             _ccState.loaded = true;
 
             // Наполняем фильтр по ответственным
@@ -24392,7 +24403,7 @@
                         ? Math.floor((Date.now() - new Date(c.created_at)) / 86400000) : 0;
                     const outcome = c.outcome ? CC_OUTCOMES[c.outcome] : null;
                     const asgNames = _ccAssignees(c)
-                        .map(id => (_ccState.methodists || []).find(m => m.id === id)?.name)
+                        .map(id => (_ccState.staff || []).find(m => m.id === id)?.name)
                         .filter(Boolean).join(', ');
                     return `<div onclick="openClientCase('${c.id}')" style="background:white; border:1px solid #e2e8f0; border-left:4px solid ${cat.border || '#cbd5e1'}; border-radius:10px; padding:12px 16px; cursor:pointer;">
                         <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
@@ -24716,15 +24727,17 @@
                             👤 Ответственные <span style="color:#94a3b8;">(можно выбрать нескольких)</span>
                         </label>
                         <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                            ${(_ccState.methodists || []).map(m => {
+                            ${(_ccState.staff || []).map(m => {
                                 const on = assignees.includes(m.id);
                                 return `<button onclick="_ccToggleAssignee('${item.id}','${m.id}')"
+                                    title="${escapeHtml(_ccRoleLabel(m.roles))}"
                                     style="padding:6px 11px; border-radius:99px; font-family:inherit; font-size:12px;
                                            border:1px solid ${on ? '#c4b5fd' : '#e5e7eb'};
                                            background:${on ? '#ede9fe' : '#fff'};
                                            color:${on ? '#5b21b6' : '#64748b'};
                                            font-weight:${on ? '600' : '400'}; cursor:pointer;">
                                     ${on ? '✓ ' : ''}${escapeHtml(m.name)}
+                                    <span style="opacity:.6; font-weight:400;">· ${escapeHtml(_ccRoleLabel(m.roles))}</span>
                                 </button>`;
                             }).join('') || '<span style="font-size:12px; color:#94a3b8;">Методисты не найдены</span>'}
                         </div>
