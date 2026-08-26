@@ -37977,6 +37977,7 @@ ${lessonsText || '—'}
     <label><span class="h3-en">Textbook</span><span class="h3-ru">Учебник</span></label>
     <select id="textbookSelect" onchange="window.tr_onTextbookChange()">
       <option value="">Выберите учебник...</option>
+      <option value="SM0">Super Minds 0</option>
       <option value="SM1">Super Minds 1</option>
       <option value="SM2">Super Minds 2</option>
       <option value="SM3">Super Minds 3</option>
@@ -38195,6 +38196,82 @@ ${lessonsText || '—'}
 // Add new textbooks here — just follow the same structure
 // ============================================================
 const TEXTBOOKS = {
+  SM0: {
+    name: "Super Minds 0",
+    units: {
+      "0": {
+        label: "Unit 0 — Say Hello! (Colours, Numbers)",
+        nameRu: "Юнит 0: Приветствие, Цвета, Числа",
+        skills: [
+          "Здороваться и знакомиться: Hello! What's your name? I'm…",
+          "Называть 6 основных цветов (blue, green, yellow, orange, red, pink) и спрашивать: What colour is it?",
+          "Считать от 1 до 10.",
+          "Узнавать на слух звуки первых 10 букв: s, a, t, p, i, n, e, d, r, k.",
+          "Читать простые CVC-слова: sat, pin, ten, red."
+        ]
+      },
+      "1": {
+        label: "Unit 1 — My body (I've got, How many)",
+        nameRu: "Юнит 1: Моё тело",
+        skills: [
+          "Называть 7 частей тела: eyes, ears, mouth, nose, arms, legs, head.",
+          "Рассказывать, что у него есть: I've got two eyes / a mouth.",
+          "Задавать вопросы о количестве: How many…?",
+          "Узнавать на слух звуки ещё 12 букв: m, h, l, o, g, b, f, u, w, c, v, x.",
+          "Читать CVC-слова: mum, head, run, six, cat."
+        ]
+      },
+      "2": {
+        label: "Unit 2 — My family (This is my…, magic e)",
+        nameRu: "Юнит 2: Моя семья",
+        skills: [
+          "Называть членов семьи: mum, dad, grandma, grandpa, sister, brother.",
+          "Представлять членов семьи: This is my…",
+          "Задавать вопросы и кратко отвечать: Is this your…? — Yes / No.",
+          "Знать все 26 букв английского алфавита — их звуки и названия (ABC-песенка).",
+          "Читать слова с magic e: name, game, cake, five, nine, bike.",
+          "Читать простые предложения."
+        ]
+      },
+      "3": {
+        label: "Unit 3 — Jobs (He's / She's a…)",
+        nameRu: "Юнит 3: Профессии",
+        skills: [
+          "Называть 6 профессий: teacher, doctor, vet, gardener, fire fighter, police officer.",
+          "Рассказывать о профессии другого человека: He's / She's a…",
+          "Задавать вопросы о профессиях: Is he / she a…?",
+          "Читать слова с magic e (o_e, u_e): nose, home, cube, tune.",
+          "Читать слова с диграфами: ee (green), th (three), sh (she), ch (teacher).",
+          "Читать короткий текст."
+        ]
+      },
+      "4": {
+        label: "Unit 4 — My hobbies (Present Continuous)",
+        nameRu: "Юнит 4: Моё хобби",
+        skills: [
+          "Называть 6 действий: run, swim, read, dance, play football, paint a picture.",
+          "Описывать текущее действие: I'm playing / running / reading.",
+          "Задавать вопросы о текущих действиях: Are you + ing?",
+          "Читать слова с диграфами: ar (arms, car), ck (back), ng (running), ai (paint), ay (play), ea (read).",
+          "Читать короткий текст с пониманием."
+        ]
+      },
+      "final": {
+        label: "🎓 Final Test — All Units",
+        nameRu: "Финальный тест: весь курс",
+        skills: [
+          "Здороваться, знакомиться, называть цвета и числа от 1 до 10.",
+          "Называть части тела, членов семьи, профессии и хобби.",
+          "Задавать и отвечать на базовые вопросы: What's your name?, How many…?, Is this your…?, Is he / she a…?",
+          "Знать все 26 букв алфавита — их звуки и названия.",
+          "Читать слова с magic e (a_e, i_e, o_e, u_e) и диграфами (ee, th, sh, ch, ar, ck, ng, ai, ay, ea).",
+          "Читать простые предложения и короткие тексты — готовность к SM1."
+        ],
+        isFinal: true
+      }
+    },
+    unitOrder: ["0","1","2","3","4","final"]
+  },
   SM1: {
     name: "Super Minds 1",
     units: {
@@ -41546,6 +41623,7 @@ window.tr_TEXTBOOKS        = TEXTBOOKS;
     <label><span class="h3-en">Textbook</span><span class="h3-ru">Учебник</span></label>
     <select id="textbookSelect" onchange="window.tr_onTextbookChange()">
       <option value="">Select textbook...</option>
+      <option value="SM0">Super Minds 0</option>
       <option value="SM1">Super Minds 1</option>
       <option value="SM2">Super Minds 2</option>
       <option value="SM3">Super Minds 3</option>
@@ -41778,6 +41856,7 @@ const tr_ru_LOGO_W='data:image/webp;base64,UklGRkAMAABXRUJQVlA4WAoAAAAQAAAAdwAAQ
 const tr_ru_PROGRAMS={
 WD1:{name:"Wow Dragon 1",ages:"4–6 лет",level:"Starter",cat:"dragon",total:80,desc:"Первый курс английского для самых маленьких! Через игры, песни и приключения с дракончиком дети знакомятся с базовым английским: учатся здороваться, называть цвета, животных, игрушки, еду и одежду.",units:[{k:"0",l:"Unit 0 — Welcome"},{k:"1",l:"Unit 1 — It's a cat!"},{k:"2",l:"Unit 2 — Let's Play!"},{k:"3",l:"Unit 3 — It's yummy!"},{k:"4",l:"Unit 4 — Let's go to school!"},{k:"5",l:"Unit 5 — I like my uniform!"},{k:"6",l:"Unit 6 — Classes"},{k:"7",l:"Unit 7 — Where is the map?"},{k:"8",l:"Unit 8 — Go travelling!"},{k:"9",l:"Unit 9 — We win!"}]},
 WD2:{name:"Wow Dragon 2",ages:"4–6 лет",level:"Starter+",cat:"dragon",total:80,desc:"Продолжение приключений с дракончиком. Расширяем словарный запас, учимся описывать семью, тело, путешествия и космос. Вводим простые структуры: he/she is, I can, this/that.",units:[{k:"0",l:"Unit 0 — Review"},{k:"1",l:"Unit 1 — Family"},{k:"2",l:"Unit 2 — Body & Health"},{k:"3",l:"Unit 3 — Dinosaurs"},{k:"4",l:"Unit 4 — Travel & Cities"},{k:"5",l:"Unit 5 — Equipment"},{k:"6",l:"Unit 6 — Plurals & Food"},{k:"7",l:"Unit 7 — Space"},{k:"8",l:"Unit 8 — Sport & Body"},{k:"9",l:"Unit 9 — Final Adventure"}]},
+SM0:{name:"Super Minds 0",ages:"6–9 лет",level:"Pre-A1.0",cat:"sm",total:80,desc:"Стартовый курс для тех, кто только начинает: знакомимся с алфавитом и звуками, учимся читать простые слова, говорим о себе, семье, теле и хобби. Готовит к переходу на Super Minds 1.",units:[{k:"0",l:"Unit 0 — Say Hello! (Colours, Numbers)"},{k:"1",l:"Unit 1 — My body (I've got, How many)"},{k:"2",l:"Unit 2 — My family (This is my…, magic e)"},{k:"3",l:"Unit 3 — Jobs (He's / She's a…)"},{k:"4",l:"Unit 4 — My hobbies (Present Continuous)"},{k:"final",l:"🎓 Final Test — All Units"}]},
 SM1:{name:"Super Minds 1",ages:"7–9 лет",level:"Starter / A1",cat:"sm",total:80,desc:"Курс для младших школьников через игры, песни и истории. Дети учатся понимать базовые фразы, считать, описывать мир. Акцент на аудировании и говорении через TPR-методику.",units:[{k:"0",l:"Unit 0 — Greetings, Numbers"},{k:"1",l:"Unit 1 — School Supplies"},{k:"2",l:"Unit 2 — Toys, Adjectives"},{k:"3",l:"Unit 3 — Pets, Prepositions"},{k:"4",l:"Unit 4 — Food"},{k:"5",l:"Unit 5 — Days of the Week"},{k:"6",l:"Unit 6 — Home"},{k:"7",l:"Unit 7 — Clothes"},{k:"8",l:"Unit 8 — Body parts, Can"},{k:"9",l:"Unit 9 — Holiday, Wishes"}]},
 SM2:{name:"Super Minds 2",ages:"7–9 лет",level:"A1",cat:"sm",total:80,desc:"Продолжение Super Minds. Расширяем словарный запас, начинаем читать короткие тексты. Развиваем все навыки с упором на креативное мышление и фонетику.",units:[{k:"0",l:"Unit 0 — School, Commands"},{k:"1",l:"Unit 1 — Daily Routine"},{k:"2",l:"Unit 2 — Animals, Likes"},{k:"3",l:"Unit 3 — City, Prepositions"},{k:"4",l:"Unit 4 — Food, Is there?"},{k:"5",l:"Unit 5 — Furniture, Whose?"},{k:"6",l:"Unit 6 — Face, Months"},{k:"7",l:"Unit 7 — Transport"},{k:"8",l:"Unit 8 — Sports, Gerund"},{k:"9",l:"Unit 9 — Holidays, Can"}]},
 SM3:{name:"Super Minds 3",ages:"7–9 лет",level:"A1+",cat:"sm",total:80,desc:"Для учеников с уверенным базовым уровнем. Сложные предложения, пересказ историй, мнения. Грамматика в контексте, Past Simple и сравнения!",units:[{k:"0",l:"Unit 0 — Family, be good at"},{k:"1",l:"Unit 1 — School Subjects"},{k:"2",l:"Unit 2 — Food & Drinks"},{k:"3",l:"Unit 3 — Daily Routine"},{k:"4",l:"Unit 4 — City, be going to"},{k:"5",l:"Unit 5 — Sea Animals, was/were"},{k:"6",l:"Unit 6 — Technology"},{k:"7",l:"Unit 7 — Health, Past Simple"},{k:"8",l:"Unit 8 — Countries"},{k:"9",l:"Unit 9 — Weather, be going to"}]},
@@ -41880,7 +41959,7 @@ function tr_ru_renderForm(){
         <select onchange="tr_ru_F.pg=this.value;tr_ru_F.su=0;const p=tr_ru_PROGRAMS[tr_ru_F.pg];if(p){tr_ru_F.dur=tr_ru_DURS[p.cat]?.[0]?.v||0;tr_ru_F.fmt=tr_ru_FMTS[p.cat]?.[0]?.v||'individual'}tr_ru_render()">
           <option value="">Выберите программу...</option>
           <optgroup label="🐉 Wow Dragon (4–6 лет)"><option value="WD1"${tr_ru_F.pg==="WD1"?" selected":""}>Wow Dragon 1</option><option value="WD2"${tr_ru_F.pg==="WD2"?" selected":""}>Wow Dragon 2</option></optgroup>
-          <optgroup label="🧠 Super Minds (7–9 лет)"><option value="SM1"${tr_ru_F.pg==="SM1"?" selected":""}>Super Minds 1</option><option value="SM2"${tr_ru_F.pg==="SM2"?" selected":""}>Super Minds 2</option><option value="SM3"${tr_ru_F.pg==="SM3"?" selected":""}>Super Minds 3</option></optgroup>
+          <optgroup label="🧠 Super Minds (7–9 лет)"><option value="SM0"${tr_ru_F.pg==="SM0"?" selected":""}>Super Minds 0</option><option value="SM1"${tr_ru_F.pg==="SM1"?" selected":""}>Super Minds 1</option><option value="SM2"${tr_ru_F.pg==="SM2"?" selected":""}>Super Minds 2</option><option value="SM3"${tr_ru_F.pg==="SM3"?" selected":""}>Super Minds 3</option></optgroup>
           <optgroup label="🎯 Go Getter (10–12 лет)"><option value="GG1"${tr_ru_F.pg==="GG1"?" selected":""}>Go Getter 1</option><option value="GG2"${tr_ru_F.pg==="GG2"?" selected":""}>Go Getter 2</option><option value="GG3"${tr_ru_F.pg==="GG3"?" selected":""}>Go Getter 3</option></optgroup>
           <optgroup label="📝 Prepare (13+ лет)"><option value="PR1"${tr_ru_F.pg==="PR1"?" selected":""}>Prepare 1</option><option value="PR2"${tr_ru_F.pg==="PR2"?" selected":""}>Prepare 2</option><option value="PR3"${tr_ru_F.pg==="PR3"?" selected":""}>Prepare 3</option><option value="PR4"${tr_ru_F.pg==="PR4"?" selected":""}>Prepare 4</option><option value="PR5"${tr_ru_F.pg==="PR5"?" selected":""}>Prepare 5</option><option value="PR6"${tr_ru_F.pg==="PR6"?" selected":""}>Prepare 6</option></optgroup>
         </select>
@@ -42178,6 +42257,7 @@ const tr_en_LOGO_W='data:image/webp;base64,UklGRkAMAABXRUJQVlA4WAoAAAAQAAAAdwAAQ
 const tr_en_PROGRAMS={
 WD1:{name:"Wow Dragon 1",ages:"4–6 лет",level:"Starter",cat:"dragon",total:80,desc:"Первый курс английского для самых маленьких! Через игры, песни и приключения с дракончиком дети знакомятся с базовым английским: учатся здороваться, называть цвета, животных, игрушки, еду и одежду.",agesEn:"ages 4–6",descEn:"First English course for the youngest learners! Through games, songs and adventures with a dragon, children learn basic English: greetings, colors, animals, toys, food and clothes.",units:[{k:"0",l:"Unit 0 — Welcome"},{k:"1",l:"Unit 1 — It's a cat!"},{k:"2",l:"Unit 2 — Let's Play!"},{k:"3",l:"Unit 3 — It's yummy!"},{k:"4",l:"Unit 4 — Let's go to school!"},{k:"5",l:"Unit 5 — I like my uniform!"},{k:"6",l:"Unit 6 — Classes"},{k:"7",l:"Unit 7 — Where is the map?"},{k:"8",l:"Unit 8 — Go travelling!"},{k:"9",l:"Unit 9 — We win!"}]},
 WD2:{name:"Wow Dragon 2",ages:"4–6 лет",level:"Starter+",cat:"dragon",total:80,desc:"Продолжение приключений с дракончиком. Расширяем словарный запас, учимся описывать семью, тело, путешествия и космос. Вводим простые структуры: he/she is, I can, this/that.",agesEn:"ages 4–6",descEn:"Continuing adventures with the dragon. Expanding vocabulary: family, body, travel, space. Introducing structures: he/she is, I can, this/that. More speaking and interaction.",units:[{k:"0",l:"Unit 0 — Review"},{k:"1",l:"Unit 1 — Family"},{k:"2",l:"Unit 2 — Body & Health"},{k:"3",l:"Unit 3 — Dinosaurs"},{k:"4",l:"Unit 4 — Travel & Cities"},{k:"5",l:"Unit 5 — Equipment"},{k:"6",l:"Unit 6 — Plurals & Food"},{k:"7",l:"Unit 7 — Space"},{k:"8",l:"Unit 8 — Sport & Body"},{k:"9",l:"Unit 9 — Final Adventure"}]},
+SM0:{name:"Super Minds 0",ages:"6–9 лет",level:"Pre-A1.0",cat:"sm",total:80,desc:"Стартовый курс для тех, кто только начинает: знакомимся с алфавитом и звуками, учимся читать простые слова, говорим о себе, семье, теле и хобби. Готовит к переходу на Super Minds 1.",agesEn:"ages 6–9",descEn:"Starter course for absolute beginners: the alphabet and letter sounds, reading simple words, talking about yourself, family, body and hobbies. Prepares for Super Minds 1.",units:[{k:"0",l:"Unit 0 — Say Hello! (Colours, Numbers)"},{k:"1",l:"Unit 1 — My body (I've got, How many)"},{k:"2",l:"Unit 2 — My family (This is my…, magic e)"},{k:"3",l:"Unit 3 — Jobs (He's / She's a…)"},{k:"4",l:"Unit 4 — My hobbies (Present Continuous)"},{k:"final",l:"🎓 Final Test — All Units"}]},
 SM1:{name:"Super Minds 1",ages:"7–9 лет",level:"Starter / A1",cat:"sm",total:80,desc:"Курс для младших школьников через игры, песни и истории. Дети учатся понимать базовые фразы, считать, описывать мир. Акцент на аудировании и говорении через TPR-методику.",agesEn:"ages 7–9",descEn:"Foundation course through games, songs and stories. Children learn basic phrases, counting, describing the world. Focus on listening and speaking through TPR methodology.",units:[{k:"0",l:"Unit 0 — Greetings, Numbers"},{k:"1",l:"Unit 1 — School Supplies"},{k:"2",l:"Unit 2 — Toys, Adjectives"},{k:"3",l:"Unit 3 — Pets, Prepositions"},{k:"4",l:"Unit 4 — Food"},{k:"5",l:"Unit 5 — Days of the Week"},{k:"6",l:"Unit 6 — Home"},{k:"7",l:"Unit 7 — Clothes"},{k:"8",l:"Unit 8 — Body parts, Can"},{k:"9",l:"Unit 9 — Holiday, Wishes"}]},
 SM2:{name:"Super Minds 2",ages:"7–9 лет",level:"A1",cat:"sm",total:80,desc:"Продолжение Super Minds. Расширяем словарный запас, начинаем читать короткие тексты. Развиваем все навыки с упором на креативное мышление и фонетику.",agesEn:"ages 7–9",descEn:"Continuing Super Minds. Expanding vocabulary, starting to read short texts. Developing all skills with focus on creative thinking and phonics.",units:[{k:"0",l:"Unit 0 — School, Commands"},{k:"1",l:"Unit 1 — Daily Routine"},{k:"2",l:"Unit 2 — Animals, Likes"},{k:"3",l:"Unit 3 — City, Prepositions"},{k:"4",l:"Unit 4 — Food, Is there?"},{k:"5",l:"Unit 5 — Furniture, Whose?"},{k:"6",l:"Unit 6 — Face, Months"},{k:"7",l:"Unit 7 — Transport"},{k:"8",l:"Unit 8 — Sports, Gerund"},{k:"9",l:"Unit 9 — Holidays, Can"}]},
 SM3:{name:"Super Minds 3",ages:"7–9 лет",level:"A1+",cat:"sm",total:80,desc:"Для учеников с уверенным базовым уровнем. Сложные предложения, пересказ историй, мнения. Грамматика в контексте, Past Simple и сравнения!",agesEn:"ages 7–9",descEn:"For students with a solid foundation. Complex sentences, retelling stories, expressing opinions. Grammar in context, Past Simple and comparisons!",units:[{k:"0",l:"Unit 0 — Family, be good at"},{k:"1",l:"Unit 1 — School Subjects"},{k:"2",l:"Unit 2 — Food & Drinks"},{k:"3",l:"Unit 3 — Daily Routine"},{k:"4",l:"Unit 4 — City, be going to"},{k:"5",l:"Unit 5 — Sea Animals, was/were"},{k:"6",l:"Unit 6 — Technology"},{k:"7",l:"Unit 7 — Health, Past Simple"},{k:"8",l:"Unit 8 — Countries"},{k:"9",l:"Unit 9 — Weather, be going to"}]},
@@ -42281,7 +42361,7 @@ function tr_en_renderForm(){
         <select onchange="tr_en_F.pg=this.value;tr_en_F.su=0;const p=tr_en_PROGRAMS[tr_en_F.pg];if(p){tr_en_F.dur=tr_en_DURS[p.cat]?.[0]?.v||0;tr_en_F.fmt=tr_en_FMTS[p.cat]?.[0]?.v||'individual'}tr_en_render()">
           <option value="">Select a program...</option>
           <optgroup label="🐉 Wow Dragon (ages 4–6)"><option value="WD1"${tr_en_F.pg==="WD1"?" selected":""}>Wow Dragon 1</option><option value="WD2"${tr_en_F.pg==="WD2"?" selected":""}>Wow Dragon 2</option></optgroup>
-          <optgroup label="🧠 Super Minds (ages 7–9)"><option value="SM1"${tr_en_F.pg==="SM1"?" selected":""}>Super Minds 1</option><option value="SM2"${tr_en_F.pg==="SM2"?" selected":""}>Super Minds 2</option><option value="SM3"${tr_en_F.pg==="SM3"?" selected":""}>Super Minds 3</option></optgroup>
+          <optgroup label="🧠 Super Minds (ages 7–9)"><option value="SM0"${tr_en_F.pg==="SM0"?" selected":""}>Super Minds 0</option><option value="SM1"${tr_en_F.pg==="SM1"?" selected":""}>Super Minds 1</option><option value="SM2"${tr_en_F.pg==="SM2"?" selected":""}>Super Minds 2</option><option value="SM3"${tr_en_F.pg==="SM3"?" selected":""}>Super Minds 3</option></optgroup>
           <optgroup label="🎯 Go Getter (ages 10–12)"><option value="GG1"${tr_en_F.pg==="GG1"?" selected":""}>Go Getter 1</option><option value="GG2"${tr_en_F.pg==="GG2"?" selected":""}>Go Getter 2</option><option value="GG3"${tr_en_F.pg==="GG3"?" selected":""}>Go Getter 3</option></optgroup>
           <optgroup label="📝 Prepare (ages 13+)"><option value="PR1"${tr_en_F.pg==="PR1"?" selected":""}>Prepare 1</option><option value="PR2"${tr_en_F.pg==="PR2"?" selected":""}>Prepare 2</option><option value="PR3"${tr_en_F.pg==="PR3"?" selected":""}>Prepare 3</option><option value="PR4"${tr_en_F.pg==="PR4"?" selected":""}>Prepare 4</option><option value="PR5"${tr_en_F.pg==="PR5"?" selected":""}>Prepare 5</option><option value="PR6"${tr_en_F.pg==="PR6"?" selected":""}>Prepare 6</option></optgroup>
         </select>
