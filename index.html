@@ -24541,8 +24541,9 @@
             w.document.close();
         }
 
-        // Обучение на дашборде преподавателя: свои курсы и сертификаты.
-        // Читает то же представление, но RLS отдаёт только свои строки.
+        // Обучение на дашборде: свои курсы и сертификаты.
+        // Методист открывает дашборд чужого преподавателя — тогда показываем
+        // обучение того, чью карточку смотрим, а не своё.
         async function loadDashboardLearning() {
             const wrap = document.getElementById('dashboardLearningContent');
             if (!wrap) return;
@@ -24553,9 +24554,13 @@
                     .order('started_at', { ascending: false });
                 if (error) throw error;
 
-                // Ограда от чужих строк: если RLS вдруг отдаст лишнее, отфильтруем сами
-                const myUserId = currentAppUser?.id;
-                const rows = (data || []).filter(r => !myUserId || r.user_id === myUserId);
+                const viewed = window._currentTeacherObj;
+                const isForeign = viewed && viewed.userId && viewed.userId !== currentAppUser?.id;
+                const targetUserId = isForeign ? viewed.userId : currentAppUser?.id;
+
+                // Представление и так отдаёт преподавателю только его строки,
+                // но фильтруем ещё раз — на случай, если смотрим чужую карточку
+                const rows = (data || []).filter(r => !targetUserId || r.user_id === targetUserId);
                 if (!rows.length) return;
 
                 const done = rows.filter(r => r.passed);
@@ -24564,7 +24569,7 @@
                 wrap.innerHTML = `
                 <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:1.1rem 1.3rem;">
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.9rem;">
-                        <h3 style="margin:0; font-size:1rem;">🎓 Моё обучение</h3>
+                        <h3 style="margin:0; font-size:1rem;">🎓 ${isForeign ? 'Обучение' : 'Моё обучение'}</h3>
                         <span style="font-size:12px; color:#94a3b8;">
                             пройдено ${done.length} из ${rows.length}${certs.length ? ` · сертификатов ${certs.length}` : ''}
                         </span>
