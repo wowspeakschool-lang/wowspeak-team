@@ -9278,6 +9278,7 @@
                     <div class="analytics-loading">Загружаю расчёт…</div>
                 </div>
                 <div id="dashboardRetentionContent" style="max-width:780px; margin-top:1.2rem;"></div>
+                <div id="dashboardLearningContent" style="max-width:780px; margin-top:1.2rem;"></div>
             </div>
         </div>
     </div>
@@ -11146,7 +11147,7 @@
                 setSideNavVisible('certificates', hasAnyRole(['super_admin', 'methodist', 'assistant']));
                 setSideNavVisible('analytics',   canViewAnalytics());
                 setSideNavVisible('assessments', canViewAssessments());
-                setSideNavVisible('learning', hasAnyRole(['super_admin','admin','methodist','manager']));
+                setSideNavVisible('learning', hasAnyRole(['super_admin','admin','methodist','buddy']));
                 setSideNavVisible('calendar',    true);
                 setSideNavVisible('team',        isSuper);
                 setSideNavVisible('students',    canManageStudents());
@@ -11828,7 +11829,8 @@
                 photoUrl:    t.photo_url || '',
                 userId:      t.user_id || null,
                 reviews:     Array.isArray(t.reviews) ? t.reviews : [],
-                reviewsCount: t.reviews_count || 0
+                reviewsCount: t.reviews_count || 0,
+                certificates: Array.isArray(t.certificates) ? t.certificates : []
             };
 
             const status = teacher.status || 'Работает';
@@ -11882,6 +11884,19 @@
             }
 
             if (teacher.ageGroups) rows.push({ label: 'Возраст учеников', value: escapeHtml(teacher.ageGroups) });
+            if (teacher.certificates.length) {
+                const items = teacher.certificates.map(c => {
+                    const d = c.issued_at ? new Date(c.issued_at).toLocaleDateString('ru-RU', { month:'long', year:'numeric' }) : '';
+                    return `<li class="public-lang-item">
+                        <span class="public-lang-name">${escapeHtml(c.course || '')}</span>
+                        ${d ? `<span class="public-lang-sep">—</span><span class="public-lang-level">${escapeHtml(d)}</span>` : ''}
+                    </li>`;
+                }).join('');
+                rows.push({
+                    label: teacher.certificates.length === 1 ? 'Пройденное обучение' : 'Пройденное обучение',
+                    value: `<ul class="public-langs-list">${items}</ul>`
+                });
+            }
             if (teacher.description) rows.push({ label: 'О преподавателе', value: escapeHtml(teacher.description) });
             if (teacher.education) rows.push({ label: 'Образование', value: escapeHtml(teacher.education).replace(/\n/g, '<br>') });
             if (teacher.courses) {
@@ -23638,6 +23653,7 @@
             }
 
             loadDashboardRetention();
+            loadDashboardLearning();
         }
 
         // ============================================================
@@ -24368,7 +24384,11 @@
             const q = (document.getElementById('learnSearch')?.value || '').trim().toLowerCase();
             const courseF = document.getElementById('learnFilterCourse')?.value || '';
             const statusF = document.getElementById('learnFilterStatus')?.value || '';
+            // Buddy сопровождает онбординг, поэтому видит только эти курсы
+            const onlyOnboarding = typeof isOnlyBuddy === 'function' ? isOnlyBuddy()
+                                 : (hasRole('buddy') && !hasAnyRole(['super_admin','admin','methodist']));
             return _learnState.rows.filter(r => {
+                if (onlyOnboarding && !/онбординг/i.test(r.course_title || '')) return false;
                 if (courseF && r.course_title !== courseF) return false;
                 if (statusF && _learnStatus(r) !== statusF) return false;
                 if (q) {
@@ -24426,16 +24446,164 @@
                                     <span style="padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; background:${st.bg}; color:${st.color};">${st.label}</span>
                                 </td>
                                 <td style="padding:9px 11px; color:#94a3b8; white-space:nowrap;">${r.started_at ? formatDate(r.started_at) : '—'}</td>
-                                <td style="padding:9px 11px;">
+                                <td style="padding:9px 11px; white-space:nowrap;">
                                     ${r.certificate_number
-                                        ? `<span style="color:#16a34a;">✓ ${escapeHtml(r.certificate_number)}</span>`
-                                        : (r.passed && r.gives_certificate ? '<span style="color:#d97706;">можно выдать</span>' : '<span style="color:#cbd5e1;">—</span>')}
+                                        ? `<span style="color:#16a34a; font-weight:600;">✓ ${escapeHtml(r.certificate_number)}</span>
+                                           <button onclick="openLearnCertificate('${r.enrollment_id}')" title="Открыть сертификат"
+                                                   style="background:none; border:none; cursor:pointer; color:#7c3aed; font-size:14px; padding:2px 4px;">👁</button>`
+                                        : (r.passed && r.gives_certificate
+                                            ? `<button onclick="issueLearnCertificate('${r.enrollment_id}')"
+                                                 style="padding:4px 10px; border-radius:7px; border:1px solid #c4b5fd; background:#ede9fe; color:#5b21b6; font-family:inherit; font-size:12px; font-weight:600; cursor:pointer;">
+                                                 Выдать
+                                               </button>`
+                                            : '<span style="color:#cbd5e1;">—</span>')}
                                 </td>
                             </tr>`;
                         }).join('')}
                     </tbody>
                 </table>
             </div>`;
+        }
+
+        // Выдача сертификата. Номер присваивает база — так он не задвоится,
+        // если два методиста нажмут одновременно.
+        async function issueLearnCertificate(enrollmentId) {
+            const row = _learnState.rows.find(r => r.enrollment_id === enrollmentId);
+            if (!row) return;
+            if (!confirm(`Выдать сертификат?\n\n${row.user_name || ''}\n${row.course_title || ''}\nСредний балл: ${row.avg_score}%`)) return;
+            try {
+                const { data, error } = await sb.rpc('issue_learn_certificate', { p_enrollment_id: enrollmentId });
+                if (error) throw error;
+                const cert = Array.isArray(data) ? data[0] : data;
+                alert('✅ Сертификат выдан: ' + (cert?.number || ''));
+                await renderLearningSection();
+            } catch (e) {
+                alert('Не удалось выдать: ' + (e.message || e));
+            }
+        }
+
+        // Печатная версия сертификата. Фон с логотипом, подписью и печатью —
+        // отдельная картинка в корне сайта, поэтому страница лёгкая.
+        // Открывается в новой вкладке: «Печать» → «Сохранить как PDF».
+        const CERT_BG = '/cert-bg-1.jpg';
+
+        function openLearnCertificate(enrollmentId) {
+            const r = _learnState.rows.find(x => x.enrollment_id === enrollmentId);
+            if (!r || !r.certificate_number) return;
+            const issued = r.certificate_issued_at
+                ? new Date(r.certificate_issued_at).toLocaleDateString('ru-RU')
+                : '';
+            const origin = window.location.origin;
+            // Длинное название не влезает в капсулу — уменьшаем шрифт
+            const longTitle = (r.course_title || '').length > 46;
+
+            const html = `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<title>${escapeHtml(r.certificate_number)} — ${escapeHtml(r.user_name || '')}</title>
+<style>
+  @page { size: 297mm 167mm; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#eef2f7; display:flex; flex-direction:column;
+         align-items:center; justify-content:center; min-height:100vh; padding:20px;
+         font-family:'Segoe UI', Roboto, Arial, sans-serif; }
+  .sheet { position:relative; width:297mm; height:167mm; max-width:100%; background:#fff;
+           background-image:url('${origin}${CERT_BG}'); background-size:cover; background-position:center;
+           box-shadow:0 10px 40px rgba(15,23,42,.18); overflow:hidden; }
+  .num    { position:absolute; left:5.5%; top:11.8%; font-size:9pt;
+            color:#64748b; letter-spacing:.09em; }
+  .issued { position:absolute; left:75.7%; top:11.5%; width:20%;
+            font-size:13pt; color:#1e293b; }
+  .title  { position:absolute; left:12%; top:30.6%; width:76%; text-align:center;
+            font-family:'Times New Roman', Georgia, serif; font-size:31pt; color:#111827; }
+  .lead   { position:absolute; left:20%; top:41.6%; width:60%; text-align:center;
+            font-size:15pt; line-height:1.45; color:#1f2937; }
+  .capsule{ position:absolute; left:18.5%; top:56.9%; width:61.5%; height:12.8%;
+            border:1.6px solid #111827; border-radius:999px; background:rgba(255,255,255,.62);
+            display:flex; align-items:center; justify-content:center; padding:0 26px; }
+  .course { font-size:${longTitle ? '12.5' : '15'}pt; text-align:center; line-height:1.25; color:#111827; }
+  .bar { margin-top:18px; }
+  .bar button { padding:10px 20px; border-radius:9px; border:1px solid #7B61FF;
+                background:#7B61FF; color:#fff; font:inherit; font-size:14px; font-weight:600; cursor:pointer; }
+  @media print { body { background:#fff; padding:0; } .sheet { box-shadow:none; } .bar { display:none; } }
+</style></head><body>
+  <div class="sheet">
+    <div class="num">${escapeHtml(r.certificate_number)}</div>
+    <div class="issued">Issued on: ${escapeHtml(issued)}</div>
+    <div class="title">CERTIFICATE OF COMPLETION</div>
+    <div class="lead">This is to certify that <b>${escapeHtml(r.user_name || '')}</b><br>successfully completed the following course</div>
+    <div class="capsule"><div class="course">${escapeHtml(r.course_title || '')}</div></div>
+  </div>
+  <div class="bar"><button onclick="window.print()">Скачать PDF</button></div>
+</body></html>`;
+
+            const w = window.open('', '_blank');
+            if (!w) { alert('Разрешите всплывающие окна, чтобы открыть сертификат'); return; }
+            w.document.write(html);
+            w.document.close();
+        }
+
+        // Обучение на дашборде преподавателя: свои курсы и сертификаты.
+        // Читает то же представление, но RLS отдаёт только свои строки.
+        async function loadDashboardLearning() {
+            const wrap = document.getElementById('dashboardLearningContent');
+            if (!wrap) return;
+            wrap.innerHTML = '';
+            try {
+                const { data, error } = await sb.from('learn_progress_summary')
+                    .select('*')
+                    .order('started_at', { ascending: false });
+                if (error) throw error;
+
+                // Ограда от чужих строк: если RLS вдруг отдаст лишнее, отфильтруем сами
+                const myUserId = currentAppUser?.id;
+                const rows = (data || []).filter(r => !myUserId || r.user_id === myUserId);
+                if (!rows.length) return;
+
+                const done = rows.filter(r => r.passed);
+                const certs = rows.filter(r => r.certificate_number);
+
+                wrap.innerHTML = `
+                <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:1.1rem 1.3rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.9rem;">
+                        <h3 style="margin:0; font-size:1rem;">🎓 Моё обучение</h3>
+                        <span style="font-size:12px; color:#94a3b8;">
+                            пройдено ${done.length} из ${rows.length}${certs.length ? ` · сертификатов ${certs.length}` : ''}
+                        </span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        ${rows.map(r => {
+                            const total = r.lessons_total || 0, d = r.lessons_done || 0;
+                            const pct = total ? Math.round(d / total * 100) : 0;
+                            let note = '', color = '#94a3b8';
+                            if (r.passed) { note = 'пройден'; color = '#16a34a'; }
+                            else if ((r.pending_cnt || 0) > 0) { note = 'работы на проверке'; color = '#d97706'; }
+                            else if (d > 0) { note = `${d} из ${total} уроков`; color = '#1e40af'; }
+                            else { note = 'не начат'; }
+                            return `<div style="border:1px solid #f1f5f9; border-radius:9px; padding:9px 12px;">
+                                <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
+                                    <span style="font-size:13px; font-weight:600;">${escapeHtml(r.course_title || '')}</span>
+                                    <span style="font-size:11px; color:${color}; white-space:nowrap;">${note}</span>
+                                </div>
+                                <div style="height:5px; background:#f1f5f9; border-radius:3px; margin-top:6px;">
+                                    <div style="height:5px; width:${pct}%; background:${r.passed ? '#16a34a' : '#93c5fd'}; border-radius:3px;"></div>
+                                </div>
+                                ${r.certificate_number ? `
+                                    <div style="margin-top:7px; display:flex; align-items:center; gap:8px;">
+                                        <span style="font-size:11px; color:#16a34a;">✓ Сертификат ${escapeHtml(r.certificate_number)}</span>
+                                        <button onclick="openLearnCertificate('${r.enrollment_id}')"
+                                                style="padding:3px 9px; border-radius:6px; border:1px solid #c4b5fd; background:#ede9fe; color:#5b21b6; font-family:inherit; font-size:11px; cursor:pointer;">
+                                            Скачать
+                                        </button>
+                                    </div>` : ''}
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+
+                // Кнопка «Скачать» берёт данные отсюда — на дашборде своего списка нет
+                _learnState.rows = rows;
+            } catch (e) {
+                console.error('[learning] дашборд:', e);
+            }
         }
 
         function exportLearningCsv() {
