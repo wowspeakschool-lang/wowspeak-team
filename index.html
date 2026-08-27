@@ -6425,6 +6425,9 @@
         <button class="side-nav-item" data-snav="assessments" onclick="sideNavGo('assessments')" style="display:none;">
             <span class="snav-icon">🎯</span><span>Контроль качества</span>
         </button>
+        <button class="side-nav-item" data-snav="learning" onclick="sideNavGo('learning')" style="display:none;">
+            <span class="snav-icon">🎓</span><span>Обучение</span>
+        </button>
         <button class="side-nav-item" data-snav="calendar" onclick="sideNavGo('calendar')">
             <span class="snav-icon">📅</span><span>Календарь</span>
         </button>
@@ -7694,6 +7697,38 @@
                     </div>
                     <div id="clientCasesStatsWrap"><div class="analytics-loading">Загрузка…</div></div>
                 </div>
+            </div>
+
+            <!-- 🎓 Обучение преподавателей -->
+            <div id="learningSection" class="content-section">
+                <div class="section-header" style="margin-bottom:1rem;">
+                    <h2 style="margin:0;">🎓 Обучение</h2>
+                    <p style="color:#64748b; font-size:0.9rem; margin:0.25rem 0 0;">
+                        Прохождение обучающих курсов на learn.wowteach.ru
+                    </p>
+                </div>
+
+                <div id="learnStatsWrap" style="margin-bottom:1.2rem;"></div>
+
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+                    <input id="learnSearch" type="text" placeholder="🔍 Поиск по имени или курсу…" oninput="renderLearningTable()"
+                           style="padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; min-width:230px;">
+                    <select id="learnFilterCourse" onchange="renderLearningTable()"
+                            style="padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white;">
+                        <option value="">📚 Все курсы</option>
+                    </select>
+                    <select id="learnFilterStatus" onchange="renderLearningTable()"
+                            style="padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white;">
+                        <option value="">Все статусы</option>
+                        <option value="passed">✅ Сдано</option>
+                        <option value="pending">⏳ Ждёт проверки</option>
+                        <option value="progress">📖 В процессе</option>
+                        <option value="notstarted">⚪ Не начато</option>
+                    </select>
+                    <button class="btn btn-secondary btn-small" onclick="exportLearningCsv()">📥 CSV</button>
+                </div>
+
+                <div id="learningTableWrap"><div class="analytics-loading">Загрузка…</div></div>
             </div>
 
             <!-- Модалка карточки ученика -->
@@ -11080,6 +11115,7 @@
             if (onlyBuddy) {
                 setSideNavVisible('teachers',     true);
                 setSideNavVisible('assessments',  true);
+                setSideNavVisible('learning',     true);
                 setSideNavVisible('calendar',     true);
                 setSideNavVisible('account',      true);
                 // Всё остальное скрыто
@@ -11110,6 +11146,7 @@
                 setSideNavVisible('certificates', hasAnyRole(['super_admin', 'methodist', 'assistant']));
                 setSideNavVisible('analytics',   canViewAnalytics());
                 setSideNavVisible('assessments', canViewAssessments());
+                setSideNavVisible('learning', hasAnyRole(['super_admin','admin','methodist','manager']));
                 setSideNavVisible('calendar',    true);
                 setSideNavVisible('team',        isSuper);
                 setSideNavVisible('students',    canManageStudents());
@@ -13504,6 +13541,7 @@
             if (tab === 'students') renderStudentsSection();
             if (tab === 'unit_requests') renderUnitRequestsSection();
             if (tab === 'client_cases') renderClientCasesSection();
+            if (tab === 'learning') renderLearningSection();
             if (tab === 'groups') renderGroupsSection();
             if (tab === 'schedule') renderScheduleSection();
             if (tab === 'wiki') renderWikiSection();
@@ -24251,6 +24289,177 @@
             filterNotified: '',   // '' / 'yes' / 'no'
             filterMoved: ''       // '' / 'yes' / 'no'
         };
+
+        // ============================================================
+        //              ОБУЧЕНИЕ ПРЕПОДАВАТЕЛЕЙ
+        // ============================================================
+        let _learnState = { rows: [], loaded: false };
+
+        // Статус записи. Порядок проверок важен: сначала «сдано»,
+        // потом очередь проверки — она и есть причина, по которой
+        // формально пройденный курс не засчитан.
+        function _learnStatus(r) {
+            if (r.passed) return 'passed';
+            if ((r.pending_cnt || 0) > 0) return 'pending';
+            if ((r.lessons_done || 0) > 0) return 'progress';
+            return 'notstarted';
+        }
+        const LEARN_STATUS = {
+            passed:     { label:'Сдано',          bg:'#dcfce7', color:'#166534' },
+            pending:    { label:'Ждёт проверки',  bg:'#fef3c7', color:'#92400e' },
+            progress:   { label:'В процессе',     bg:'#dbeafe', color:'#1e40af' },
+            notstarted: { label:'Не начато',      bg:'#f1f5f9', color:'#64748b' },
+        };
+
+        async function renderLearningSection() {
+            const wrap = document.getElementById('learningTableWrap');
+            if (wrap) wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+            try {
+                const { data, error } = await sb.from('learn_progress_summary')
+                    .select('*')
+                    .order('user_name', { nullsFirst: false });
+                if (error) throw error;
+                _learnState.rows = data || [];
+                _learnState.loaded = true;
+
+                // Наполняем фильтр курсов
+                const sel = document.getElementById('learnFilterCourse');
+                if (sel) {
+                    const cur = sel.value;
+                    const titles = [...new Set(_learnState.rows.map(r => r.course_title).filter(Boolean))].sort();
+                    sel.innerHTML = '<option value="">📚 Все курсы</option>' +
+                        titles.map(t => `<option value="${escapeHtml(t)}"${t === cur ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+                }
+                renderLearningStats();
+                renderLearningTable();
+            } catch (e) {
+                if (wrap) wrap.innerHTML = `<div style="color:#dc2626; padding:1rem;">Ошибка: ${escapeHtml(e.message || e)}</div>`;
+            }
+        }
+
+        function renderLearningStats() {
+            const box = document.getElementById('learnStatsWrap');
+            if (!box) return;
+            const rows = _learnState.rows;
+            const by = s => rows.filter(r => _learnStatus(r) === s).length;
+            const pendingTotal = rows.reduce((s, r) => s + (r.pending_cnt || 0), 0);
+            const people = new Set(rows.map(r => r.user_id).filter(Boolean)).size;
+
+            const card = (label, value, color, hint) => `
+                <div style="flex:1; min-width:135px; background:white; border:1px solid #e2e8f0; border-radius:10px; padding:13px 15px;">
+                    <div style="font-size:23px; font-weight:800; color:${color};">${value}</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">${label}</div>
+                    ${hint ? `<div style="font-size:11px; color:#94a3b8; margin-top:3px;">${hint}</div>` : ''}
+                </div>`;
+
+            box.innerHTML = `<div style="display:flex; gap:0.7rem; flex-wrap:wrap;">
+                ${card('всего записей', rows.length, '#0f172a', people + ' преподавателей')}
+                ${card('сдано', by('passed'), '#16a34a')}
+                ${card('ждут проверки', by('pending'), '#d97706', pendingTotal + ' работ в очереди')}
+                ${card('в процессе', by('progress'), '#1e40af')}
+                ${card('не начато', by('notstarted'), '#64748b')}
+            </div>
+            ${pendingTotal > 0 ? `<div style="margin-top:0.7rem; padding:9px 13px; background:#fffbeb; border:1px solid #fcd34d; border-radius:9px; font-size:13px; color:#92400e;">
+                ⏳ ${pendingTotal} ${_retPlural(pendingTotal,'работа ждёт','работы ждут','работ ждут')} проверки. Пока они не приняты, курс не засчитывается и сертификат не выдаётся.
+            </div>` : ''}`;
+        }
+
+        function _learnFiltered() {
+            const q = (document.getElementById('learnSearch')?.value || '').trim().toLowerCase();
+            const courseF = document.getElementById('learnFilterCourse')?.value || '';
+            const statusF = document.getElementById('learnFilterStatus')?.value || '';
+            return _learnState.rows.filter(r => {
+                if (courseF && r.course_title !== courseF) return false;
+                if (statusF && _learnStatus(r) !== statusF) return false;
+                if (q) {
+                    const hay = `${r.user_name || ''} ${r.course_title || ''}`.toLowerCase();
+                    if (!hay.includes(q)) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderLearningTable() {
+            const wrap = document.getElementById('learningTableWrap');
+            if (!wrap) return;
+            const rows = _learnFiltered();
+            if (!rows.length) {
+                wrap.innerHTML = '<div style="padding:2rem; text-align:center; color:#94a3b8;">Ничего не найдено</div>';
+                return;
+            }
+            wrap.innerHTML = `<div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px; background:white; border-radius:10px; overflow:hidden;">
+                    <thead>
+                        <tr style="background:#f8fafc; text-align:left;">
+                            <th style="padding:9px 11px;">Преподаватель</th>
+                            <th style="padding:9px 11px;">Курс</th>
+                            <th style="padding:9px 11px;">Уроки</th>
+                            <th style="padding:9px 11px;">Балл</th>
+                            <th style="padding:9px 11px;">Очередь</th>
+                            <th style="padding:9px 11px;">Статус</th>
+                            <th style="padding:9px 11px;">Начал</th>
+                            <th style="padding:9px 11px;">Сертификат</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(r => {
+                            const st = LEARN_STATUS[_learnStatus(r)];
+                            const done = r.lessons_done || 0, total = r.lessons_total || 0;
+                            const pct = total ? Math.round(done / total * 100) : 0;
+                            const scoreLow = r.avg_score !== null && r.avg_score < r.pass_score;
+                            return `<tr style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:9px 11px; font-weight:600;">${escapeHtml(r.user_name || '— не определён —')}</td>
+                                <td style="padding:9px 11px; color:#475569;">${escapeHtml(r.course_title || '')}</td>
+                                <td style="padding:9px 11px; white-space:nowrap;">
+                                    <span style="color:${done === total && total ? '#16a34a' : '#64748b'};">${done}/${total}</span>
+                                    <div style="height:4px; background:#f1f5f9; border-radius:2px; margin-top:3px; width:60px;">
+                                        <div style="height:4px; width:${pct}%; background:${done === total && total ? '#16a34a' : '#93c5fd'}; border-radius:2px;"></div>
+                                    </div>
+                                </td>
+                                <td style="padding:9px 11px; ${scoreLow ? 'color:#dc2626; font-weight:600;' : ''}">
+                                    ${r.avg_score === null ? '—' : r.avg_score + '%'}
+                                </td>
+                                <td style="padding:9px 11px; ${(r.pending_cnt || 0) > 0 ? 'color:#d97706; font-weight:600;' : 'color:#cbd5e1;'}">
+                                    ${r.pending_cnt || 0}
+                                </td>
+                                <td style="padding:9px 11px;">
+                                    <span style="padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; background:${st.bg}; color:${st.color};">${st.label}</span>
+                                </td>
+                                <td style="padding:9px 11px; color:#94a3b8; white-space:nowrap;">${r.started_at ? formatDate(r.started_at) : '—'}</td>
+                                <td style="padding:9px 11px;">
+                                    ${r.certificate_number
+                                        ? `<span style="color:#16a34a;">✓ ${escapeHtml(r.certificate_number)}</span>`
+                                        : (r.passed && r.gives_certificate ? '<span style="color:#d97706;">можно выдать</span>' : '<span style="color:#cbd5e1;">—</span>')}
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+        }
+
+        function exportLearningCsv() {
+            const rows = _learnFiltered();
+            if (!rows.length) { alert('Нечего выгружать'); return; }
+            const head = ['Преподаватель','Курс','Уроков пройдено','Уроков всего','Средний балл','Порог','Ждут проверки','Статус','Начал','Сертификат'];
+            const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            const body = rows.map(r => [
+                r.user_name || '', r.course_title || '',
+                r.lessons_done || 0, r.lessons_total || 0,
+                r.avg_score ?? '', r.pass_score ?? '',
+                r.pending_cnt || 0,
+                LEARN_STATUS[_learnStatus(r)].label,
+                r.started_at ? formatDate(r.started_at) : '',
+                r.certificate_number || '',
+            ].map(esc).join(';'));
+            // BOM, иначе Excel открывает кириллицу как кракозябры
+            const csv = '\uFEFF' + [head.map(esc).join(';')].concat(body).join('\n');
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+            a.download = `Обучение_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
 
         // ============================================================
         //          КЕЙСЫ: пожелания / замечания / кризисы
