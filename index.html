@@ -9241,6 +9241,7 @@
 
             <!-- Progress Tab -->
             <div id="progressTab" class="dashboard-grid content-tab">
+                <div id="dashboardLearningContent" style="grid-column:1/-1;"></div>
                 <div class="dashboard-card">
                     <div class="card-header">
                         <div class="card-icon" style="background: var(--gradient-success);">📈</div>
@@ -9278,7 +9279,7 @@
                     <div class="analytics-loading">Загружаю расчёт…</div>
                 </div>
                 <div id="dashboardRetentionContent" style="max-width:780px; margin-top:1.2rem;"></div>
-                <div id="dashboardLearningContent" style="max-width:780px; margin-top:1.2rem;"></div>
+
             </div>
         </div>
     </div>
@@ -20134,6 +20135,7 @@
             // Подгружаем содержимое таба
             if (tabName === 'vacations') loadDashboardVacations();
             if (tabName === 'salary') loadDashboardSalary();
+            if (tabName === 'progress') loadDashboardLearning();
         }
 
         async function loadQualityData(teacherName) {
@@ -23653,7 +23655,6 @@
             }
 
             loadDashboardRetention();
-            loadDashboardLearning();
         }
 
         // ============================================================
