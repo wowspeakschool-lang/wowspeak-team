@@ -12073,32 +12073,49 @@
                     existingData: data.form_data || {},
                     language: lang
                 };
+                // Блокировка полей: форма отчёта после пробного
+                // перерисовывает себя, поэтому вызываем повторно после отрисовки —
+                // иначе новые поля останутся редактируемыми
+                const lockFields = () => {
+                    root.querySelectorAll('input, textarea, select, button').forEach(el => {
+                        if (el.type === 'checkbox' || el.type === 'radio') {
+                            el.disabled = true;
+                        } else {
+                            el.setAttribute('readonly', 'readonly');
+                            el.style.pointerEvents = 'none';
+                            if (el.tagName === 'SELECT' || el.tagName === 'BUTTON') el.disabled = true;
+                        }
+                    });
+                    root.querySelectorAll('[contenteditable]').forEach(el => {
+                        el.setAttribute('contenteditable', 'false');
+                        el.style.pointerEvents = 'none';
+                    });
+                };
+
                 if (isTrial) {
-                    // Форма отчёта после пробного рисует себя сама из
-                    // глобального объекта — наполняем его и вызываем отрисовку
+                    // У формы есть готовый режим просмотра — тот самый красивый
+                    // вид отчёта. Родителю показываем именно его, а не форму:
+                    // так ничего нельзя случайно поправить и выглядит опрятнее.
                     const isEn = lang === 'en';
                     const F = isEn ? window.tr_en_F : window.tr_ru_F;
                     if (F) Object.assign(F, fd);
                     setTimeout(() => {
                         try {
-                            if (isEn && typeof window.tr_en_render === 'function') window.tr_en_render();
-                            else if (!isEn && typeof window.tr_ru_render === 'function') window.tr_ru_render();
+                            if (isEn && typeof window.tr_en_showPreview === 'function') window.tr_en_showPreview();
+                            else if (!isEn && typeof window.tr_ru_showPreview === 'function') window.tr_ru_showPreview();
+                            else if (isEn && typeof window.tr_en_render === 'function') window.tr_en_render();
+                            else if (typeof window.tr_ru_render === 'function') window.tr_ru_render();
                         } catch (e) { console.warn('[parent-view] trial render', e); }
+                        lockFields();
+                        // Кнопки режима «Форма / Предпросмотр» родителю не нужны
+                        root.querySelectorAll('button').forEach(b => b.style.display = 'none');
                     }, 50);
+                    setTimeout(lockFields, 600);
                 } else if (typeof window.deserializeTrackerForm === 'function') {
                     deserializeTrackerForm(data.form_data || {});
                 }
 
-                // Применяем read-only ко всем полям
-                root.querySelectorAll('input, textarea, select, button').forEach(el => {
-                    if (el.type === 'checkbox' || el.type === 'radio') {
-                        el.disabled = true;
-                    } else {
-                        el.setAttribute('readonly', 'readonly');
-                        el.style.pointerEvents = 'none';
-                        if (el.tagName === 'SELECT' || el.tagName === 'BUTTON') el.disabled = true;
-                    }
-                });
+                lockFields();
                 // Автосайз всех textarea (чтобы текст полностью помещался)
                 setTimeout(() => {
                     root.querySelectorAll('textarea').forEach(ta => {
@@ -36474,6 +36491,7 @@
                 // Сериализуем F в plain JSON
                 const formData = JSON.parse(JSON.stringify(F));
 
+                let justCreated = false;
                 if (_trialState.mode === 'create') {
                     const { data, error } = await sb.from('teacher_reports').insert({
                         teacher_id:   _trialState.teacherId,
@@ -36484,22 +36502,39 @@
                         form_data:    formData,
                         created_by:   currentAppUser?.id,
                         updated_by:   currentAppUser?.id
-                    }).select().single();
+                    }).select('id, parent_view_token').single();
                     if (error) throw error;
                     _trialState.reportId = data.id;
-                    _trialState.mode = 'edit';
-                    alert('Отчёт сохранён!');
+                    _trialState.token    = data.parent_view_token || null;
+                    _trialState.mode     = 'edit';
+                    justCreated = true;
                 } else {
-                    const { error } = await sb.from('teacher_reports').update({
+                    const { data, error } = await sb.from('teacher_reports').update({
                         student_name: studentName,
                         program:      program || null,
                         form_data:    formData,
                         updated_by:   currentAppUser?.id
-                    }).eq('id', _trialState.reportId);
+                    }).eq('id', _trialState.reportId).select('parent_view_token').single();
                     if (error) throw error;
-                    alert('Изменения сохранены!');
+                    if (data?.parent_view_token) _trialState.token = data.parent_view_token;
                 }
-                closeTrialReportModal();
+
+                // Кнопка ссылки появляется сразу после сохранения —
+                // раньше за ней приходилось закрывать и открывать отчёт заново
+                const linkBtn = document.getElementById('trialCopyLinkBtn');
+                if (linkBtn) linkBtn.style.display = _trialState.token ? '' : 'none';
+
+                const modalEl = document.getElementById('trialModal');
+                if (modalEl && modalEl.dataset) modalEl.dataset.dirty = '0';
+
+                if (_trialState.token) {
+                    if (confirm((justCreated ? 'Отчёт сохранён.' : 'Изменения сохранены.')
+                              + '\n\nСкопировать ссылку для родителя?')) {
+                        trialCopyLink();
+                    }
+                } else {
+                    alert(justCreated ? 'Отчёт сохранён!' : 'Изменения сохранены!');
+                }
             } catch (e) {
                 console.error(e);
                 alert('Ошибка сохранения: ' + (e.message || e));
@@ -42490,7 +42525,7 @@ function tr_ru_renderForm(){
   }
   h+=`</div></div>`;
 
-  h+=`<button class="preview-btn ${ok?'ok':'off'}" ${ok?'onclick="tr_ru_showPreview()"':'disabled'}>👀 Предпросмотр отчёта для родителя</button>`;
+  h+=`<button class="preview-btn ${ok?'ok':'off'}" ${ok?'onclick="tr_ru_showPreview()"':'disabled'}>👀 Посмотреть, как увидит родитель</button>`;
   return h;
 }
 
