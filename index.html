@@ -34657,6 +34657,35 @@
             );
         }
 
+        // Англоязычные преподаватели ищут учеников латиницей, а имена в базе
+        // кириллицей. Приводим кириллицу к латинице и сравниваем ещё и так.
+        const _TRANSLIT_MAP = {
+            а:'a', б:'b', в:'v', г:'g', д:'d', е:'e', ё:'e', ж:'zh', з:'z', и:'i',
+            й:'y', к:'k', л:'l', м:'m', н:'n', о:'o', п:'p', р:'r', с:'s', т:'t',
+            у:'u', ф:'f', х:'h', ц:'ts', ч:'ch', ш:'sh', щ:'sch', ъ:'', ы:'y',
+            ь:'', э:'e', ю:'yu', я:'ya'
+        };
+        function _translit(s) {
+            return String(s || '').toLowerCase().split('')
+                .map(ch => (ch in _TRANSLIT_MAP ? _TRANSLIT_MAP[ch] : ch)).join('');
+        }
+        // Одно и то же имя записывают по-разному: Blohina / Blokhina,
+        // Tashchi / Taschi, Pudova / Poudova. Сводим к общему виду:
+        // убираем h и y как необязательные, схлопываем шипящие.
+        function _translitLoose(s) {
+            return _translit(s)
+                // сначала сочетания, потом одиночные буквы — иначе
+                // kh превратится в k и перестанет совпадать с русским х
+                .replace(/shch/g, 's').replace(/sch/g, 's')
+                .replace(/sh/g, 's').replace(/ch/g, 's')
+                .replace(/zh/g, 'z').replace(/ts/g, 's')
+                .replace(/kh/g, 'h').replace(/ph/g, 'f')
+                .replace(/ck/g, 'k').replace(/ou/g, 'u')
+                .replace(/j/g, 'y')
+                .replace(/[hy]/g, '')
+                .replace(/[^a-z0-9]/g, '');
+        }
+
         async function onMkStudentSearchInput(e) {
             const dropdown = document.getElementById('mkStudentDropdown');
             const q = (e.target.value || '').trim().toLowerCase();
@@ -34676,12 +34705,24 @@
                 }
                 const n = (s.name || '').toLowerCase();
                 const p = (s.parent_text || '').toLowerCase();
-                return n.includes(q) || p.includes(q);
+                if (n.includes(q) || p.includes(q)) return true;
+                // Запрос латиницей — сравниваем транслитерированное имя
+                if (/[a-z]/.test(q)) {
+                    if (_translit(n).includes(q) || _translit(p).includes(q)) return true;
+                    const ql = _translitLoose(q);
+                    if (ql.length >= 3 &&
+                        (_translitLoose(n).includes(ql) || _translitLoose(p).includes(ql))) return true;
+                }
+                return false;
             });
             // Сортировка: те, у кого имя НАЧИНАЕТСЯ с query — первыми
             matches.sort((a, b) => {
-                const aStart = (a.name || '').toLowerCase().startsWith(q) ? 0 : 1;
-                const bStart = (b.name || '').toLowerCase().startsWith(q) ? 0 : 1;
+                const st = (nm) => {
+                    const low = (nm || '').toLowerCase();
+                    return (low.startsWith(q) || _translit(low).startsWith(q)) ? 0 : 1;
+                };
+                const aStart = st(a.name);
+                const bStart = st(b.name);
                 if (aStart !== bStart) return aStart - bStart;
                 return (a.name || '').localeCompare(b.name || '', 'ru');
             });
@@ -35099,6 +35140,13 @@
             const tbForFinal = (TEXTBOOKS && TEXTBOOKS[tbKey]) ? TEXTBOOKS[tbKey] : null;
             if (isFinalByKey) {
                 const tbNameFinal = (tbForFinal && tbForFinal.name) || formData.textbookSelect || tbKey;
+                // Курс пройден: фиксируем в карточке учебник и финал.
+                // Новый учебник назначит методист, утверждая запрос.
+                try {
+                    await sb.from('students')
+                        .update({ level: tbNameFinal, unit: '🎓 Final Test — All Units' })
+                        .eq('id', _trackerState.studentId);
+                } catch (e) { console.warn('students level/unit save failed', e); }
                 await _createCourseCompletedRequest(tbNameFinal, '🎓 Final Test — All Units');
                 return;
             }
@@ -35110,21 +35158,25 @@
             console.log('[unit-progress] currentUnit:', currentUnit);
             if (!currentUnit) { console.log('[unit-progress] EXIT: tb.units[' + unitKey + '] not found'); return; }
 
-            // Если у ученика учебник не был задан — зафиксируем его сейчас
-            if (!_trackerState.studentLevelLocked) {
-                try {
-                    await sb.from('students')
-                        .update({ level: tb.name || tbKey })
-                        .eq('id', _trackerState.studentId);
-                    _trackerState.studentLevelLocked = true;
-                    const tbSel = document.getElementById('textbookSelect');
-                    if (tbSel) tbSel.disabled = true;
-                } catch (e) { console.warn('students.level save failed', e); }
-            }
-
             const orderIdx = tb.unitOrder.indexOf(unitKey);
             const nextKey = tb.unitOrder[orderIdx + 1];
             const nextUnit = nextKey ? tb.units[nextKey] : null;
+
+            // Карточка ученика всегда следует за трекером: он отражает то,
+            // что реально происходит на уроках. Раньше учебник записывался
+            // только в пустое поле, из-за чего карточка расходилась с трекером.
+            // Юнит ставим следующий — трекер заполняют по завершении текущего.
+            try {
+                await sb.from('students')
+                    .update({
+                        level: tb.name || tbKey,
+                        unit:  (nextUnit || currentUnit).label
+                    })
+                    .eq('id', _trackerState.studentId);
+                _trackerState.studentLevelLocked = true;
+                const tbSel = document.getElementById('textbookSelect');
+                if (tbSel) tbSel.disabled = true;
+            } catch (e) { console.warn('students level/unit save failed', e); }
 
             // Запрос методисту создаём ТОЛЬКО когда заполнен финальный тест
             console.log('[unit-progress] decision: currentFinal=', currentUnit.isFinal);
@@ -35132,15 +35184,6 @@
                 console.log('[unit-progress] → creating unit_change_request');
                 await _createCourseCompletedRequest(tb.name || tbKey, currentUnit.label);
                 return;
-            }
-
-            // Авто-продвижение
-            if (nextUnit) {
-                try {
-                    await sb.from('students')
-                        .update({ unit: nextUnit.label })
-                        .eq('id', _trackerState.studentId);
-                } catch (e) { console.warn('students.unit update failed', e); }
             }
         }
 
