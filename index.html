@@ -8740,9 +8740,10 @@
             <div class="tracker-modal-toolbar">
                 <div class="tracker-modal-title" id="trialModalTitle">📄 Отчёт после пробного</div>
                 <div class="tracker-modal-actions">
-                    <button class="btn btn-secondary btn-small" id="trialCopyLinkBtn" onclick="trialCopyLink()" style="display:none;">🔗 Ссылка родителю</button>
-                    <button class="btn btn-secondary btn-small" onclick="printTrialReport()" title="Скачать как PDF">🖨 Скачать PDF</button>
-                    <button class="btn btn-primary btn-small" id="trialSaveBtn" onclick="saveTrialReport()">💾 Сохранить</button>
+                    <button class="btn btn-secondary btn-small" id="trialCopyLinkBtn" onclick="trialCopyLink()" style="display:none;">🔗 Скопировать ссылку</button>
+                    <button class="btn btn-secondary btn-small" id="trialPrintBtn" onclick="printTrialReport()" title="Скачать как PDF" style="display:none;">🖨 Скачать PDF</button>
+                    <button class="btn btn-secondary btn-small" id="trialBackBtn" onclick="trialBackToForm()" style="display:none;">✏️ Вернуться к форме</button>
+                    <button class="btn btn-primary btn-small" id="trialSaveBtn" onclick="saveTrialReport()">✅ Сформировать отчёт</button>
                     <button class="btn btn-secondary btn-small" id="trialDeleteBtn" onclick="deleteTrialReport()" style="display:none; color:#dc2626; border-color:#fca5a5;" title="Удалить отчёт">🗑 Удалить</button>
                     <button class="btn btn-secondary btn-small" onclick="tryCloseProtectedModal('trialModal')" title="Закрыть">✕</button>
                 </div>
@@ -35997,6 +35998,59 @@
             }catch(e){alert('Не удалось сохранить: '+(e.message||e));}
         }
 
+        // Отчёт сформирован: показываем готовый вид и открываем действия.
+        // До этого момента печать и ссылка недоступны — печатать нечего.
+        function trialShowResult(){
+            const isEn = _trialState?.language === 'en';
+            try {
+                if (isEn && typeof window.tr_en_showPreview === 'function') window.tr_en_showPreview();
+                else if (typeof window.tr_ru_showPreview === 'function') window.tr_ru_showPreview();
+            } catch (e) { console.warn('trial preview', e); }
+
+            const show = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? '' : 'none';
+            };
+            show('trialCopyLinkBtn', !!_trialState?.token);
+            show('trialPrintBtn', true);
+            show('trialBackBtn', true);
+
+            const save = document.getElementById('trialSaveBtn');
+            if (save) save.style.display = 'none';
+
+            const title = document.getElementById('trialModalTitle');
+            if (title) title.textContent = '📄 Отчёт готов';
+
+            // Кнопку «посмотреть, как увидит родитель» в готовом виде прячем
+            setTimeout(() => {
+                document.querySelectorAll('#trialContent .preview-btn')
+                    .forEach(b => b.style.display = 'none');
+            }, 60);
+        }
+
+        // Вернуться к правкам
+        function trialBackToForm(){
+            const isEn = _trialState?.language === 'en';
+            try {
+                if (isEn && typeof window.tr_en_showForm === 'function') window.tr_en_showForm();
+                else if (typeof window.tr_ru_showForm === 'function') window.tr_ru_showForm();
+            } catch (e) { console.warn('trial form', e); }
+
+            const show = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? '' : 'none';
+            };
+            show('trialCopyLinkBtn', false);
+            show('trialPrintBtn', false);
+            show('trialBackBtn', false);
+
+            const save = document.getElementById('trialSaveBtn');
+            if (save) { save.style.display = ''; save.textContent = '✅ Сформировать отчёт'; }
+
+            const title = document.getElementById('trialModalTitle');
+            if (title) title.textContent = '📄 Отчёт после пробного';
+        }
+
         // Ссылка на отчёт после пробного — открывается тем же параметром,
         // что и трекер: публичная страница ищет отчёт по токену
         function trialCopyLink(){
@@ -36371,15 +36425,26 @@
             if (!modal || !content) return;
 
             const langBadge = _trialState.language === 'en' ? ' (EN)' : ' (RU)';
-            title.textContent = (_trialState.mode === 'create' ? '📄 Новый отчёт после пробного' : '📄 Редактирование отчёта') + langBadge;
+            title.textContent = (_trialState.mode === 'create' ? '📄 Новый отчёт после пробного' : '📄 Отчёт готов') + langBadge;
 
             // Кнопка "Удалить" — только в режиме редактирования
             const delBtn = document.getElementById('trialDeleteBtn');
             if (delBtn) delBtn.style.display = _trialState.mode === 'edit' ? '' : 'none';
 
-            // Ссылка родителю — когда отчёт уже сохранён и токен получен
-            const linkBtn = document.getElementById('trialCopyLinkBtn');
-            if (linkBtn) linkBtn.style.display = _trialState.token ? '' : 'none';
+            // Новый отчёт открываем формой, сохранённый — готовым видом.
+            // Печать и ссылка появляются только на готовом отчёте.
+            const isSaved = _trialState.mode === 'edit';
+            [['trialCopyLinkBtn', isSaved && !!_trialState.token],
+             ['trialPrintBtn',    isSaved],
+             ['trialBackBtn',     isSaved]].forEach(([id, on]) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? '' : 'none';
+            });
+            const saveBtn = document.getElementById('trialSaveBtn');
+            if (saveBtn) {
+                saveBtn.style.display = isSaved ? 'none' : '';
+                saveBtn.textContent = '✅ Сформировать отчёт';
+            }
 
             // Выбираем шаблон
             const templateId = _trialState.language === 'en' ? 'trialEngTemplate' : 'trialRusTemplate';
@@ -36427,7 +36492,15 @@
             // Запускаем render формы
             setTimeout(() => {
                 try {
-                    if (isEn && typeof window.tr_en_render === 'function') window.tr_en_render();
+                    if (_trialState.mode === 'edit') {
+                        // Сохранённый отчёт сразу показываем готовым
+                        if (isEn && typeof window.tr_en_showPreview === 'function') window.tr_en_showPreview();
+                        else if (typeof window.tr_ru_showPreview === 'function') window.tr_ru_showPreview();
+                        setTimeout(() => {
+                            document.querySelectorAll('#trialContent .preview-btn')
+                                .forEach(b => b.style.display = 'none');
+                        }, 60);
+                    } else if (isEn && typeof window.tr_en_render === 'function') window.tr_en_render();
                     else if (!isEn && typeof window.tr_ru_render === 'function') window.tr_ru_render();
                 } catch (e) {
                     console.warn('trial render error:', e);
@@ -36519,22 +36592,12 @@
                     if (data?.parent_view_token) _trialState.token = data.parent_view_token;
                 }
 
-                // Кнопка ссылки появляется сразу после сохранения —
-                // раньше за ней приходилось закрывать и открывать отчёт заново
-                const linkBtn = document.getElementById('trialCopyLinkBtn');
-                if (linkBtn) linkBtn.style.display = _trialState.token ? '' : 'none';
-
                 const modalEl = document.getElementById('trialModal');
                 if (modalEl && modalEl.dataset) modalEl.dataset.dirty = '0';
 
-                if (_trialState.token) {
-                    if (confirm((justCreated ? 'Отчёт сохранён.' : 'Изменения сохранены.')
-                              + '\n\nСкопировать ссылку для родителя?')) {
-                        trialCopyLink();
-                    }
-                } else {
-                    alert(justCreated ? 'Отчёт сохранён!' : 'Изменения сохранены!');
-                }
+                // Отчёт сформирован: показываем его так, как увидит родитель,
+                // и открываем кнопки печати и ссылки
+                trialShowResult();
             } catch (e) {
                 console.error(e);
                 alert('Ошибка сохранения: ' + (e.message || e));
