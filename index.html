@@ -8740,6 +8740,7 @@
             <div class="tracker-modal-toolbar">
                 <div class="tracker-modal-title" id="trialModalTitle">📄 Отчёт после пробного</div>
                 <div class="tracker-modal-actions">
+                    <button class="btn btn-secondary btn-small" id="trialCopyLinkBtn" onclick="trialCopyLink()" style="display:none;">🔗 Ссылка родителю</button>
                     <button class="btn btn-secondary btn-small" onclick="printTrialReport()" title="Скачать как PDF">🖨 Скачать PDF</button>
                     <button class="btn btn-primary btn-small" id="trialSaveBtn" onclick="saveTrialReport()">💾 Сохранить</button>
                     <button class="btn btn-secondary btn-small" id="trialDeleteBtn" onclick="deleteTrialReport()" style="display:none; color:#dc2626; border-color:#fca5a5;" title="Удалить отчёт">🗑 Удалить</button>
@@ -12038,9 +12039,18 @@
                     return true;
                 }
 
-                // Рендерим трекер в read-only режиме
+                // По этой же ссылке открываются два разных отчёта:
+                // трекер прогресса и отчёт после пробного урока.
+                // Если функция в базе не отдаёт тип, определяем по данным:
+                // у отчёта после пробного есть блок «сильные стороны».
                 const lang = data.language || 'ru';
-                const tmplId = lang === 'en' ? 'trackerEngTemplate' : 'trackerRusTemplate';
+                const fd = data.form_data || {};
+                const isTrial = (data.report_type && data.report_type.startsWith('trial'))
+                    || (!data.report_type && (fd.strengths || fd.strong || fd.goals || fd.pointA));
+
+                const tmplId = isTrial
+                    ? (lang === 'en' ? 'trialEngTemplate' : 'trialRusTemplate')
+                    : (lang === 'en' ? 'trackerEngTemplate' : 'trackerRusTemplate');
                 const tmpl = document.getElementById(tmplId);
                 const trackerHtml = tmpl ? tmpl.innerHTML : '<p>Шаблон не найден.</p>';
                 wrap.innerHTML = `
@@ -12049,7 +12059,7 @@
                             <div style="width:44px; height:44px; background:linear-gradient(135deg, #7c3aed, #6366f1); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:26px;">W</div>
                             <div>
                                 <div style="font-size:18px; font-weight:700; color:#5b21b6;">WowSpeak <span style="color:#f59e0b;">Team</span></div>
-                                <div style="color:#64748b; font-size:13px;">Отчёт о прогрессе ученика</div>
+                                <div style="color:#64748b; font-size:13px;">${isTrial ? 'Отчёт после пробного урока' : 'Отчёт о прогрессе ученика'}</div>
                             </div>
                         </div>
                         <div id="parentViewTracker">${trackerHtml}</div>
@@ -12063,7 +12073,19 @@
                     existingData: data.form_data || {},
                     language: lang
                 };
-                if (typeof window.deserializeTrackerForm === 'function') {
+                if (isTrial) {
+                    // Форма отчёта после пробного рисует себя сама из
+                    // глобального объекта — наполняем его и вызываем отрисовку
+                    const isEn = lang === 'en';
+                    const F = isEn ? window.tr_en_F : window.tr_ru_F;
+                    if (F) Object.assign(F, fd);
+                    setTimeout(() => {
+                        try {
+                            if (isEn && typeof window.tr_en_render === 'function') window.tr_en_render();
+                            else if (!isEn && typeof window.tr_ru_render === 'function') window.tr_ru_render();
+                        } catch (e) { console.warn('[parent-view] trial render', e); }
+                    }, 50);
+                } else if (typeof window.deserializeTrackerForm === 'function') {
                     deserializeTrackerForm(data.form_data || {});
                 }
 
@@ -35958,6 +35980,17 @@
             }catch(e){alert('Не удалось сохранить: '+(e.message||e));}
         }
 
+        // Ссылка на отчёт после пробного — открывается тем же параметром,
+        // что и трекер: публичная страница ищет отчёт по токену
+        function trialCopyLink(){
+            if (!_trialState || !_trialState.token) { alert('Сначала сохраните отчёт'); return; }
+            const url = location.origin + location.pathname + '?parent_view=' + _trialState.token;
+            navigator.clipboard.writeText(url).then(
+                () => { if (typeof _showToast === 'function') _showToast('🔗 Ссылка скопирована'); else alert('Ссылка: ' + url); },
+                () => prompt('Скопируйте ссылку:', url)
+            );
+        }
+
         function vuCopyLink(){
             if(!VU_S.token){alert('Сначала сформируйте отчёт');return;}
             var url=location.origin+location.pathname+'?vu_report='+VU_S.token;
@@ -36303,7 +36336,8 @@
                     language: data.language,
                     existingData: data.form_data || {},
                     studentName: data.student_name,
-                    program: data.program
+                    program: data.program,
+                    token: data.parent_view_token || null
                 };
                 openTrialReportModal();
             } catch (e) {
@@ -36325,6 +36359,10 @@
             // Кнопка "Удалить" — только в режиме редактирования
             const delBtn = document.getElementById('trialDeleteBtn');
             if (delBtn) delBtn.style.display = _trialState.mode === 'edit' ? '' : 'none';
+
+            // Ссылка родителю — когда отчёт уже сохранён и токен получен
+            const linkBtn = document.getElementById('trialCopyLinkBtn');
+            if (linkBtn) linkBtn.style.display = _trialState.token ? '' : 'none';
 
             // Выбираем шаблон
             const templateId = _trialState.language === 'en' ? 'trialEngTemplate' : 'trialRusTemplate';
