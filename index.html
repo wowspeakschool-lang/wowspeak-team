@@ -35140,13 +35140,9 @@
             const tbForFinal = (TEXTBOOKS && TEXTBOOKS[tbKey]) ? TEXTBOOKS[tbKey] : null;
             if (isFinalByKey) {
                 const tbNameFinal = (tbForFinal && tbForFinal.name) || formData.textbookSelect || tbKey;
-                // Курс пройден: фиксируем в карточке учебник и финал.
-                // Новый учебник назначит методист, утверждая запрос.
-                try {
-                    await sb.from('students')
-                        .update({ level: tbNameFinal, unit: '🎓 Final Test — All Units' })
-                        .eq('id', _trackerState.studentId);
-                } catch (e) { console.warn('students level/unit save failed', e); }
+                // Карточку при финале НЕ трогаем: новый учебник назначит
+                // методист, утверждая запрос. Иначе отметка о финале затрёт
+                // уже утверждённый переход, если трекер заполнили задним числом.
                 await _createCourseCompletedRequest(tbNameFinal, '🎓 Final Test — All Units');
                 return;
             }
