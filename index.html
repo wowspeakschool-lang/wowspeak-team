@@ -25200,6 +25200,22 @@
             renderClientCasesList();
         }
 
+        // Кому сообщать о движении по кейсу: автору, ответственным
+        // и всем кураторам. Себя исключаем — о своих действиях
+        // уведомлять незачем.
+        async function _ccNotifyRecipients(item) {
+            const ids = new Set();
+            if (item?.created_by) ids.add(item.created_by);
+            for (const id of _ccAssignees(item || {})) ids.add(id);
+            try {
+                const { data } = await sb.from('users').select('id')
+                    .contains('roles', ['curator']);
+                for (const u of (data || [])) ids.add(u.id);
+            } catch (e) { console.warn('[cases] кураторы не загрузились', e); }
+            ids.delete(currentAppUser?.id);
+            return [...ids];
+        }
+
         // Комментарий по ходу работы. Остальным ответственным уходит
         // уведомление — иначе о новой записи никто не узнает.
         async function _ccAddComment(caseId) {
@@ -25216,10 +25232,10 @@
 
             const item = _ccState.cases.find(c => c.id === caseId);
             if (item) {
-                const others = _ccAssignees(item).filter(id => id !== currentAppUser?.id);
-                for (const uid of others) {
-                    await createNotification(uid, 'teacher_question_assigned',
-                        `💬 Новый комментарий: ${item.student_name || ''}`,
+                const to = await _ccNotifyRecipients(item);
+                if (to.length) {
+                    await createNotificationsBatch(to, 'teacher_question_assigned',
+                        `💬 Комментарий по кейсу: ${item.student_name || ''}`,
                         body.slice(0, 120),
                         '#section/client_cases', { case_id: caseId });
                 }
@@ -25253,8 +25269,28 @@
                 update.closed_at = null;
                 update.closed_by_user_id = null;
             }
+            const item = _ccState.cases.find(c => c.id === caseId);
+            const statusChanged = item && item.status !== status;
+
             const { error } = await sb.from('client_cases').update(update).eq('id', caseId);
             if (error) { alert('Ошибка: ' + error.message); return; }
+
+            // О смене статуса сообщаем автору, ответственным и кураторам
+            if (statusChanged) {
+                const to = await _ccNotifyRecipients(item);
+                if (to.length) {
+                    const cat = CC_CATEGORIES[item.category] || {};
+                    const st  = CC_STATUSES[status] || {};
+                    const tail = status === 'closed'
+                        ? (CC_OUTCOMES[update.outcome]?.label || '') + '\n' + (update.resolution || '')
+                        : (item.methodist_topics?.name || '');
+                    await createNotificationsBatch(to, 'teacher_question_assigned',
+                        `${cat.icon || ''} ${st.label || status}: ${item.student_name || ''}`,
+                        tail.slice(0, 160),
+                        '#section/client_cases', { case_id: caseId });
+                }
+            }
+
             closeClientCase();
             await _ccLoadData();
             renderClientCasesList();
