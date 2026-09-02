@@ -19602,6 +19602,18 @@
             }
         }
 
+        // Переключатели напоминаний в личном кабинете
+        async function toggleNotifyPref(field, value) {
+            try {
+                const { error } = await sb.from('users')
+                    .update({ [field]: value })
+                    .eq('id', currentAppUser.id);
+                if (error) throw error;
+            } catch (e) {
+                alert('Не удалось сохранить: ' + (e.message || e));
+            }
+        }
+
         // ---------- Подключение Telegram ----------
         // Бот не может написать первым, поэтому человек сам открывает
         // ссылку с личным кодом. Показываем блок только владельцу
@@ -22782,7 +22794,7 @@
             try {
                 // Свежие данные из БД
                 const { data: u, error } = await sb.from('users')
-                    .select('id, email, name, roles, phone, telegram, avatar_url, birth_date, start_date, notification_sound, email_notifications, timezone_offset')
+                    .select('id, email, name, roles, phone, telegram, avatar_url, birth_date, start_date, notification_sound, email_notifications, timezone_offset, notify_day_schedule, notify_lesson_soon')
                     .eq('id', currentAppUser.id)
                     .maybeSingle();
                 if (error) throw error;
@@ -22924,6 +22936,28 @@
                             </label>
                         </div>
                         <p style="font-size:0.8rem; color:#94a3b8; margin:0.5rem 0 0 1.7rem;">Письма приходят на ${escapeHtml(u.email)} только для важных событий: одобрение/отклонение отпуска, сообщения от команды, скрининги, ассесменты.</p>
+
+                        <div class="account-row" style="align-items:center; margin-top:1rem;">
+                            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:normal;">
+                                <input type="checkbox" id="accDayScheduleToggle"
+                                       ${u.notify_day_schedule !== false ? 'checked' : ''}
+                                       onchange="toggleNotifyPref('notify_day_schedule', this.checked)"
+                                       style="width:18px; height:18px; cursor:pointer;">
+                                📅 Список уроков на день
+                            </label>
+                        </div>
+                        <p style="font-size:0.8rem; color:#94a3b8; margin:0.5rem 0 0 1.7rem;">Каждое утро в 8:00 по Москве — расписание на сегодня с именами учеников.</p>
+
+                        <div class="account-row" style="align-items:center; margin-top:1rem;">
+                            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:normal;">
+                                <input type="checkbox" id="accLessonSoonToggle"
+                                       ${u.notify_lesson_soon ? 'checked' : ''}
+                                       onchange="toggleNotifyPref('notify_lesson_soon', this.checked)"
+                                       style="width:18px; height:18px; cursor:pointer;">
+                                ⏰ Напоминание за 15 минут до урока
+                            </label>
+                        </div>
+                        <p style="font-size:0.8rem; color:#94a3b8; margin:0.5rem 0 0 1.7rem;">Придёт перед каждым занятием. Если уроков много, сообщений тоже будет много.</p>
 
                         <div id="accTelegramBox" style="margin-top:1rem;"></div>
                     </div>
