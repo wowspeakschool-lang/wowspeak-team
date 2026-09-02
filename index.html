@@ -12056,13 +12056,6 @@
                 const trackerHtml = tmpl ? tmpl.innerHTML : '<p>Шаблон не найден.</p>';
                 wrap.innerHTML = `
                     <div style="max-width:1100px; margin:0 auto;">
-                        <div style="background:white; border-radius:16px; padding:1.5rem; box-shadow:0 2px 12px rgba(0,0,0,0.04); margin-bottom:1.5rem; display:flex; align-items:center; gap:0.75rem;">
-                            <div style="width:44px; height:44px; background:linear-gradient(135deg, #7c3aed, #6366f1); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:26px;">W</div>
-                            <div>
-                                <div style="font-size:18px; font-weight:700; color:#5b21b6;">WowSpeak <span style="color:#f59e0b;">Team</span></div>
-                                <div style="color:#64748b; font-size:13px;">${isTrial ? 'Отчёт после пробного урока' : 'Отчёт о прогрессе ученика'}</div>
-                            </div>
-                        </div>
                         <div id="parentViewTracker">${trackerHtml}</div>
                     </div>
                 `;
@@ -28988,12 +28981,6 @@
             modal.classList.add('open');
             document.body.style.overflow = 'hidden';
 
-            // Подставляем логотип в шапку (берём из глобальных переменных trial-report)
-            const logoEl_ = document.getElementById(_trackerState.language === 'en' ? 'trackerEngLogo' : 'trackerRusLogo');
-            if (logoEl_ && (window.tr_ru_LOGO || window.tr_en_LOGO)) {
-                logoEl_.src = window.tr_ru_LOGO || window.tr_en_LOGO;
-            }
-
             // Если режим edit — десериализуем сохранённые данные
             if (_trackerState.mode === 'edit' && _trackerState.existingData) {
                 deserializeTrackerForm(_trackerState.existingData);
@@ -38522,7 +38509,6 @@ ${lessonsText || '—'}
 <div class="container" id="report">
 
   <div class="card" style="text-align:center;">
-    <img id="trackerRusLogo" alt="WOW Speak" src="" style="max-width:140px; height:auto; display:block; margin:0 auto 12px auto;">
     <h1 style="font-family:'Nunito',sans-serif; font-size:28px; font-weight:900; color:#E91E8C; margin:0 0 6px 0; line-height:1.2;">Результаты и достижения</h1>
     <p style="color:#5A5A6E; font-size:14px; margin:0; font-weight:600;">Отчёт о результатах и достижениях студента</p>
   </div>
@@ -42168,7 +42154,6 @@ window.tr_TEXTBOOKS        = TEXTBOOKS;
 <div class="container" id="report">
 
   <div class="card" style="text-align:center;">
-    <img id="trackerEngLogo" alt="WOW Speak" src="" style="max-width:140px; height:auto; display:block; margin:0 auto 12px auto;">
     <h1 style="font-family:'Fredoka One',cursive; font-size:28px; color:#E91E8C; margin:0 0 6px 0; line-height:1.2;">Результаты и достижения</h1>
     <p style="color:#5A5A6E; font-size:14px; margin:0; font-weight:600;">Progress and achievements report</p>
   </div>
