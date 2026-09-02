@@ -9029,6 +9029,8 @@
                     <!-- Кнопки генерируются JS по правам -->
                 </div>
 
+                <div id="dashboardTelegramBox" style="grid-column: 1 / -1;"></div>
+
                 <!-- Статистика уроков: счётчики + мини-график (во всю ширину) -->
                 <div class="dashboard-card" style="grid-column: 1 / -1;">
                     <div class="card-header">
@@ -19601,6 +19603,85 @@
             }
         }
 
+        // ---------- Подключение Telegram ----------
+        // Бот не может написать первым, поэтому человек сам открывает
+        // ссылку с личным кодом. Показываем блок только владельцу
+        // кабинета: методисту, который смотрит чужой дашборд, он не нужен.
+        const TG_BOT = 'wowspeak_assistant_bot';
+
+        async function renderTelegramConnect() {
+            const box = document.getElementById('dashboardTelegramBox');
+            if (!box) return;
+            box.innerHTML = '';
+
+            const viewed = window._currentTeacherObj;
+            const isOwn = !viewed?.userId || viewed.userId === currentAppUser?.id;
+            if (!isOwn) return;
+
+            let linked = false;
+            try {
+                const { data } = await sb.from('users')
+                    .select('telegram_chat_id')
+                    .eq('id', currentAppUser.id)
+                    .maybeSingle();
+                linked = !!data?.telegram_chat_id;
+            } catch (e) { console.warn('[tg] проверка привязки', e); }
+
+            box.innerHTML = linked
+                ? `<div style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                     <span style="font-size:15px;">✅</span>
+                     <span style="font-size:14px; color:#166534;">Telegram подключён — уведомления приходят в бот</span>
+                     <button class="btn btn-secondary btn-small" style="margin-left:auto;" onclick="telegramDisconnect()">Отключить</button>
+                   </div>`
+                : `<div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                     <span style="font-size:15px;">💬</span>
+                     <div style="font-size:14px; color:#1e40af;">
+                        Подключите Telegram — напоминания о незакрытых уроках,
+                        изменения в расписании и ответы методистов будут приходить в мессенджер
+                     </div>
+                     <button class="btn btn-small" style="margin-left:auto; background:#2563eb; color:white;"
+                             onclick="telegramConnect(this)">Подключить</button>
+                   </div>`;
+        }
+
+        async function telegramConnect(btn) {
+            if (btn) { btn.disabled = true; btn.textContent = 'Готовлю ссылку…'; }
+            try {
+                const { data, error } = await sb.rpc('telegram_get_link_code');
+                if (error) throw error;
+                window.open(`https://t.me/${TG_BOT}?start=${data}`, '_blank');
+                if (btn) {
+                    btn.textContent = 'Нажмите «Старт» в боте';
+                    // Пока человек подключается в другой вкладке, проверяем
+                    // привязку — блок сам обновится на «подключён»
+                    let tries = 0;
+                    const timer = setInterval(async () => {
+                        tries++;
+                        const { data: u } = await sb.from('users')
+                            .select('telegram_chat_id').eq('id', currentAppUser.id).maybeSingle();
+                        if (u?.telegram_chat_id || tries > 40) {
+                            clearInterval(timer);
+                            renderTelegramConnect();
+                        }
+                    }, 3000);
+                }
+            } catch (e) {
+                alert('Не удалось получить ссылку: ' + (e.message || e));
+                if (btn) { btn.disabled = false; btn.textContent = 'Подключить'; }
+            }
+        }
+
+        async function telegramDisconnect() {
+            if (!confirm('Отключить уведомления в Telegram?')) return;
+            try {
+                const { error } = await sb.rpc('telegram_unlink');
+                if (error) throw error;
+                renderTelegramConnect();
+            } catch (e) {
+                alert('Ошибка: ' + (e.message || e));
+            }
+        }
+
         // ---------- Быстрые действия в дашборде ----------
         function renderDashboardQuickActions(teacher) {
             const el = document.getElementById('dashboardQuickActions');
@@ -23688,6 +23769,7 @@
             }
 
             loadDashboardRetention();
+            renderTelegramConnect();
         }
 
         // ============================================================
