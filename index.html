@@ -9029,7 +9029,6 @@
                     <!-- Кнопки генерируются JS по правам -->
                 </div>
 
-                <div id="dashboardTelegramBox" style="grid-column: 1 / -1;"></div>
 
                 <!-- Статистика уроков: счётчики + мини-график (во всю ширину) -->
                 <div class="dashboard-card" style="grid-column: 1 / -1;">
@@ -19610,7 +19609,7 @@
         const TG_BOT = 'wowspeak_assistant_bot';
 
         async function renderTelegramConnect() {
-            const box = document.getElementById('dashboardTelegramBox');
+            const box = document.getElementById('accTelegramBox');
             if (!box) return;
             box.innerHTML = '';
 
@@ -22925,6 +22924,8 @@
                             </label>
                         </div>
                         <p style="font-size:0.8rem; color:#94a3b8; margin:0.5rem 0 0 1.7rem;">Письма приходят на ${escapeHtml(u.email)} только для важных событий: одобрение/отклонение отпуска, сообщения от команды, скрининги, ассесменты.</p>
+
+                        <div id="accTelegramBox" style="margin-top:1rem;"></div>
                     </div>
 
                     <div class="account-block">
@@ -22943,6 +22944,8 @@
                         </div>
                     </div>
                 `;
+
+                renderTelegramConnect();
 
                 // Блок отпусков переехал в дашборд препода (таб "Мои отпуска")
             } catch (e) {
@@ -23769,7 +23772,6 @@
             }
 
             loadDashboardRetention();
-            renderTelegramConnect();
         }
 
         // ============================================================
