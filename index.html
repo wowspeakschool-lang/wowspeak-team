@@ -19614,6 +19614,62 @@
             }
         }
 
+        // ---------- Подписка на календарь ----------
+        // Расписание в Google Calendar или Apple Calendar по ссылке.
+        // Календарь перечитывает её сам, обычно раз в несколько часов.
+        const CAL_URL = 'https://vtcxghsqymwkyiogpndf.supabase.co/functions/v1/calendar';
+
+        function renderCalendarConnect() {
+            const box = document.getElementById('accCalendarBox');
+            if (!box) return;
+            box.innerHTML = `
+                <div style="background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:12px 16px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span style="font-size:15px;">📆</span>
+                        <div style="font-size:14px; color:#92400e;">
+                            Расписание в вашем календаре — Google, Apple или любом другом
+                        </div>
+                        <button class="btn btn-small" style="margin-left:auto; background:#d97706; color:white;"
+                                onclick="calendarShowLink()">Подключить</button>
+                    </div>
+                    <div id="accCalendarLink" style="margin-top:10px;"></div>
+                </div>`;
+        }
+
+        async function calendarShowLink() {
+            const wrap = document.getElementById('accCalendarLink');
+            if (!wrap) return;
+            wrap.innerHTML = '<span style="font-size:13px; color:#94a3b8;">Готовлю ссылку…</span>';
+            try {
+                const { data, error } = await sb.rpc('calendar_get_token');
+                if (error) throw error;
+                const url = CAL_URL + '?token=' + data;
+                wrap.innerHTML = `
+                    <div style="font-size:13px; color:#78350f; margin-bottom:8px;">
+                        Скопируйте ссылку и добавьте её в календарь как подписку:
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        <input readonly value="${escapeHtml(url)}" onclick="this.select()"
+                               style="flex:1; min-width:240px; padding:7px 10px; border:1px solid #fcd34d; border-radius:7px; font-size:12px; font-family:monospace;">
+                        <button class="btn btn-secondary btn-small" onclick="calendarCopy('${escapeHtml(url)}')">Копировать</button>
+                    </div>
+                    <div style="font-size:12px; color:#a16207; margin-top:8px; line-height:1.5;">
+                        <b>Google Calendar:</b> Настройки → Добавить календарь → Подписаться по URL<br>
+                        <b>iPhone:</b> Настройки → Календарь → Учётные записи → Подписной календарь<br>
+                        <span style="color:#b45309;">Расписание обновляется не мгновенно — календари перечитывают подписку раз в несколько часов. Срочные изменения приходят уведомлением.</span>
+                    </div>`;
+            } catch (e) {
+                wrap.innerHTML = `<span style="font-size:13px; color:#dc2626;">Не удалось: ${escapeHtml(e.message || String(e))}</span>`;
+            }
+        }
+
+        function calendarCopy(url) {
+            navigator.clipboard.writeText(url).then(
+                () => alert('Ссылка скопирована'),
+                () => prompt('Скопируйте ссылку:', url)
+            );
+        }
+
         // ---------- Подключение Telegram ----------
         // Бот не может написать первым, поэтому человек сам открывает
         // ссылку с личным кодом. Показываем блок только владельцу
@@ -22960,6 +23016,7 @@
                         <p style="font-size:0.8rem; color:#94a3b8; margin:0.5rem 0 0 1.7rem;">Придёт перед каждым занятием. Если уроков много, сообщений тоже будет много.</p>
 
                         <div id="accTelegramBox" style="margin-top:1rem;"></div>
+                        <div id="accCalendarBox" style="margin-top:1rem;"></div>
                     </div>
 
                     <div class="account-block">
@@ -22980,6 +23037,7 @@
                 `;
 
                 renderTelegramConnect();
+                renderCalendarConnect();
 
                 // Блок отпусков переехал в дашборд препода (таб "Мои отпуска")
             } catch (e) {
