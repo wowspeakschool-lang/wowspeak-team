@@ -23226,10 +23226,13 @@
                 // Глобальное поле осталось для более ранних месяцев.
                 const _month = (document.getElementById('assessmentMonthFilter')?.value || '');
                 const _monthly = (window._assessorMonthMap || {})[t.id + '|' + _month];
-                const _hasMonthly = _monthly !== undefined;
+
+                // С сентября 2026 глобальное поле не участвует вовсе:
+                // если назначения на месяц нет, значит куратор не назначен
+                const _monthlyEra = _month >= ASSESSOR_MONTHLY_FROM;
 
                 if (fMeth === 'unassigned') {
-                    if (_hasMonthly) { if (_monthly) return false; }
+                    if (_monthlyEra) { if (_monthly) return false; }
                     else if (t.assignedMethodistId || t.assignedAssessorUserId) return false;
                 } else if (fMeth && (fMeth.startsWith('m:') || fMeth.startsWith('a:'))) {
                     // Историчность: если в выбранном месяце ассесмент уже проведён —
@@ -23241,7 +23244,7 @@
                     let assigned;
                     if (monthRecords.length) {
                         assigned = monthRecords[0].methodist_id || null;
-                    } else if (_hasMonthly) {
+                    } else if (_monthlyEra) {
                         assigned = _monthly || null;
                     } else {
                         assigned = t.assignedAssessorUserId || t.assignedMethodistId || null;
