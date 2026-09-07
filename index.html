@@ -23222,17 +23222,27 @@
                 const isSkipped = t.assessmentSkipMonth === monthFirstDay;
                 if (fMeth === 'skip') return isSkipped;
                 if (isSkipped && fMeth !== '' && fMeth !== 'skip') return false;
+                // С сентября 2026 ассессор назначается помесячно.
+                // Глобальное поле осталось для более ранних месяцев.
+                const _month = (document.getElementById('assessmentMonthFilter')?.value || '');
+                const _monthly = (window._assessorMonthMap || {})[t.id + '|' + _month];
+                const _hasMonthly = _monthly !== undefined;
+
                 if (fMeth === 'unassigned') {
-                    if (t.assignedMethodistId || t.assignedAssessorUserId) return false;
+                    if (_hasMonthly) { if (_monthly) return false; }
+                    else if (t.assignedMethodistId || t.assignedAssessorUserId) return false;
                 } else if (fMeth && (fMeth.startsWith('m:') || fMeth.startsWith('a:'))) {
-                    // Историчность: если в выбранном месяце у препода ЕСТЬ ассесмент —
-                    // фильтруем по тому, кто его реально провёл (methodist_id ассесмента).
-                    // Если ассесмента нет — по текущему закреплению (assignedAssessorUserId).
+                    // Историчность: если в выбранном месяце ассесмент уже проведён —
+                    // фильтруем по тому, кто его реально провёл.
+                    // Иначе — по назначению на этот месяц, а до сентября 2026
+                    // по глобальному закреплению.
                     const wantId = fMeth.slice(2);
                     const monthRecords = byMap.get(t.id) || [];
                     let assigned;
                     if (monthRecords.length) {
                         assigned = monthRecords[0].methodist_id || null;
+                    } else if (_hasMonthly) {
+                        assigned = _monthly || null;
                     } else {
                         assigned = t.assignedAssessorUserId || t.assignedMethodistId || null;
                     }
