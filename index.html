@@ -29497,6 +29497,7 @@
                     expandedAnswers: {},
                     draft: {
                         topic: lesson.topic || '',
+                        description_local: lesson.description_local || '',
                         webinar_url: lesson.webinar_url || '',
                         homework: homeTask?.text || '',
                         students: students.map(s => ({
@@ -29672,6 +29673,18 @@
                         : `<div style="${readOnlyBoxStyle} min-height:38px;">${escapeHtml(draft.topic) || '—'}</div>`}
                 </div>`;
 
+            // ----- Секция: Описание для родителей -----
+            // Показывается на публичной странице Wowspace: родителям
+            // важно знать, что взять на мастер-класс. Отдельное поле,
+            // потому что description синк перезаписывает из МойКласс.
+            const publicDescSection = `
+                <div style="${sectionStyle}">
+                    <div style="${labelStyle}">👪 Описание для родителей</div>
+                    ${canEdit
+                        ? `<textarea id="lessonPublicDescInput" placeholder="Что взять с собой, о чём занятие — увидят родители в расписании" style="${inputStyle} resize:vertical; min-height:70px;" oninput="_lessonModalState.draft.description_local = this.value; updateSaveButtonState();">${escapeHtml(draft.description_local || '')}</textarea>`
+                        : `<div style="${readOnlyBoxStyle} min-height:38px; white-space:pre-wrap;">${escapeHtml(draft.description_local) || '—'}</div>`}
+                </div>`;
+
             // ----- Секция: Домашнее задание -----
             const prevHomeworkBlock = previousHomework
                 ? `<div style="margin-bottom:8px; padding:10px 12px; background:#fffbeb; border:1px solid #fde68a; border-left:3px solid #f59e0b; border-radius:8px;">
@@ -29776,6 +29789,7 @@
                 mainContent = `
                     ${webinarSection}
                     ${topicSection}
+                    ${publicDescSection}
                     ${homeworkSection}
                     <div style="${sectionStyle}">
                         <div style="${labelStyle}">👥 Ученики · посещаемость и оценки</div>
@@ -29849,6 +29863,7 @@
                     mainContent = `
                         ${webinarSection}
                         ${topicSection}
+                        ${publicDescSection}
                         ${homeworkSection}
                         <div style="padding:18px; text-align:center; background:#fafbfc; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b; font-size:13px;">
                             <div style="font-size:24px; margin-bottom:6px;">👤</div>
@@ -29860,6 +29875,7 @@
                         ${webinarSection}
                         ${attendanceSection}
                         ${topicSection}
+                        ${publicDescSection}
                         ${lessonMarkSection}
                         ${homeworkSection}
                         ${homeMarkSection}
@@ -29981,6 +29997,15 @@
                         external_id: lesson.external_id,
                         ...lessonFields,
                     });
+                }
+
+                // Описание для родителей живёт только у нас: в МойКласс
+                // его слать не нужно, а синк это поле не трогает
+                if ((d.description_local || '') !== (lesson.description_local || '')) {
+                    const { error: descErr } = await sb.from('mk_lessons')
+                        .update({ description_local: (d.description_local || '').trim() || null })
+                        .eq('id', lesson.id);
+                    if (descErr) throw descErr;
                 }
 
                 // 2. ДЗ — через mk-write-lesson (text как HTML)
@@ -30644,42 +30669,6 @@
             }).join('');
 
             wrap.innerHTML = html;
-        }
-
-        // В Wowspace к строке занятия добавляется описание для родителей.
-        // Хранится в description_local: синк перезаписывает description
-        // из МойКласс каждую минуту, и вписанное руками там бы терялось.
-        function renderWowspaceRow(l) {
-            const desc = l.description_local || l.description || '';
-            const block = `
-                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #e5e7eb;"
-                     onclick="event.stopPropagation();">
-                    ${desc
-                        ? `<div style="color:#475569; font-size:13px; white-space:pre-wrap;">📝 ${escapeHtml(desc)}</div>
-                           <button class="btn btn-secondary btn-small" style="margin-top:6px;"
-                                   onclick="wowspaceEditDescription('${l.id}', ${JSON.stringify(desc)})">Изменить описание</button>`
-                        : `<button class="btn btn-secondary btn-small"
-                                   onclick="wowspaceEditDescription('${l.id}')">+ Описание для родителей</button>`}
-                </div>`;
-            // Вставляем перед закрытием карточки занятия
-            const html = renderLessonRow(l);
-            const idx = html.lastIndexOf('</div>');
-            return html.slice(0, idx) + block + html.slice(idx);
-        }
-
-        async function wowspaceEditDescription(lessonId, current) {
-            const cur = current || '';
-            const val = prompt('Описание занятия для родителей:', cur);
-            if (val === null) return;
-            try {
-                const { error } = await sb.from('mk_lessons')
-                    .update({ description_local: val.trim() || null })
-                    .eq('id', lessonId);
-                if (error) throw error;
-                renderWowspaceSubtab();
-            } catch (e) {
-                alert('Не удалось сохранить: ' + (e.message || e));
-            }
         }
 
         function renderLessonRow(l) {
@@ -33533,7 +33522,7 @@
                             ${dayLabel}${isToday ? ' · сегодня' : ''}
                         </h3>
                         <div style="background:white; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden;">
-                            ${byDate.get(date).map(renderWowspaceRow).join('')}
+                            ${byDate.get(date).map(renderLessonRow).join('')}
                         </div>
                     </div>`;
             }).join('');
