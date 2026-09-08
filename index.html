@@ -12264,6 +12264,7 @@
                                     <div style="color:${col.accent}; font-weight:700;">⏱ ${time}</div>
                                     <div style="color:${col.accent}; font-weight:600;">${escapeHtml(heading)}</div>
                                     ${sub ? `<div style="color:#475569; margin-top:2px;">📝 ${escapeHtml(sub)}</div>` : ''}
+                                    ${e.description ? `<div style="color:#475569; margin-top:3px; white-space:pre-wrap;">${escapeHtml(e.description)}</div>` : ''}
                                     ${e.teacher_name ? `<div style="color:#64748b; margin-top:2px;">👤 ${escapeHtml(e.teacher_name)}</div>` : ''}
                                 </div>`;
                             }).join('');
@@ -30645,6 +30646,42 @@
             wrap.innerHTML = html;
         }
 
+        // В Wowspace к строке занятия добавляется описание для родителей.
+        // Хранится в description_local: синк перезаписывает description
+        // из МойКласс каждую минуту, и вписанное руками там бы терялось.
+        function renderWowspaceRow(l) {
+            const desc = l.description_local || l.description || '';
+            const block = `
+                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #e5e7eb;"
+                     onclick="event.stopPropagation();">
+                    ${desc
+                        ? `<div style="color:#475569; font-size:13px; white-space:pre-wrap;">📝 ${escapeHtml(desc)}</div>
+                           <button class="btn btn-secondary btn-small" style="margin-top:6px;"
+                                   onclick="wowspaceEditDescription('${l.id}', ${JSON.stringify(desc)})">Изменить описание</button>`
+                        : `<button class="btn btn-secondary btn-small"
+                                   onclick="wowspaceEditDescription('${l.id}')">+ Описание для родителей</button>`}
+                </div>`;
+            // Вставляем перед закрытием карточки занятия
+            const html = renderLessonRow(l);
+            const idx = html.lastIndexOf('</div>');
+            return html.slice(0, idx) + block + html.slice(idx);
+        }
+
+        async function wowspaceEditDescription(lessonId, current) {
+            const cur = current || '';
+            const val = prompt('Описание занятия для родителей:', cur);
+            if (val === null) return;
+            try {
+                const { error } = await sb.from('mk_lessons')
+                    .update({ description_local: val.trim() || null })
+                    .eq('id', lessonId);
+                if (error) throw error;
+                renderWowspaceSubtab();
+            } catch (e) {
+                alert('Не удалось сохранить: ' + (e.message || e));
+            }
+        }
+
         function renderLessonRow(l) {
             const time = `${(l.begin_time || '').slice(0, 5)}–${(l.end_time || '').slice(0, 5)}`;
             const statusBadge = l.status === 1
@@ -33496,7 +33533,7 @@
                             ${dayLabel}${isToday ? ' · сегодня' : ''}
                         </h3>
                         <div style="background:white; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden;">
-                            ${byDate.get(date).map(renderLessonRow).join('')}
+                            ${byDate.get(date).map(renderWowspaceRow).join('')}
                         </div>
                     </div>`;
             }).join('');
