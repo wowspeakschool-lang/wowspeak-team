@@ -10212,6 +10212,7 @@
 
             // 3. Загружаем преподавателей из базы
             await loadTeachersFromDb();
+            await loadMyAssessorTeachers();
 
             // 3.1 Загружаем справочники штрафов и бонусов (в фоне)
             loadReferenceData();
@@ -10289,6 +10290,26 @@
 
         // Массив активных преподов, полученный из базы (заменяет teachersDatabase)
         let teachersFromDb = [];
+
+        // Кого ассессор смотрит в текущем месяце. Назначения помесячные,
+        // поэтому в сентябре он должен видеть сентябрьский список,
+        // а не тех, кто был закреплён за ним в августе.
+        window._myAssessorTeachers = null;
+
+        async function loadMyAssessorTeachers() {
+            if (!isLimitedAssessor()) { window._myAssessorTeachers = null; return; }
+            const ym = new Date().toISOString().slice(0, 7);
+            try {
+                const { data } = await sb.from('assessor_month_assignment')
+                    .select('teacher_id')
+                    .eq('year_month', ym)
+                    .eq('assessor_user_id', currentAppUser?.id);
+                window._myAssessorTeachers = new Set((data || []).map(r => r.teacher_id));
+            } catch (e) {
+                console.warn('[assessor] назначения не загрузились', e);
+                window._myAssessorTeachers = new Set();
+            }
+        }
 
         async function loadTeachersFromDb() {
             const { data, error } = await sb
@@ -10542,6 +10563,7 @@
         // Перезагрузить данные и перерисовать
         async function reloadTeachers() {
             await loadTeachersFromDb();
+            await loadMyAssessorTeachers();
             // Авто-перевод "Увольнение" → "Не работает" если наступила дата (для админов)
             await _autoCompleteDismissals();
             updateStats();
@@ -13254,14 +13276,16 @@
         function renderTeachers() {
             const teachersList = document.getElementById('teachersList');
             let withOverrides = allTeachers().map(applyOverrides);
-            // Buddy видит только преподов на онбординге
-            if (isOnlyBuddy()) {
-                withOverrides = withOverrides.filter(t => (getStatus(t) || '') === 'Онбординг');
-            }
-            // Ассессор видит только своих преподов (где он назначен как смотрящий)
-            if (isOnlyAssessor()) {
-                const myId = currentAppUser?.id;
-                withOverrides = withOverrides.filter(t => t.assigned_assessor_user_id === myId || t.assignedAssessorUserId === myId);
+            // Ограниченный доступ: бадди видит онбординг, ассессор —
+            // назначенных ему на текущий месяц. Если роли обе, списки
+            // складываются. Глобальное поле не используем: оно историческое
+            // и показывало августовский список в сентябре.
+            if (isLimitedBuddy() || isLimitedAssessor()) {
+                const mine = window._myAssessorTeachers;
+                withOverrides = withOverrides.filter(t =>
+                    (isLimitedBuddy() && (getStatus(t) || '') === 'Онбординг') ||
+                    (isLimitedAssessor() && !!mine && mine.has(t.id))
+                );
             }
             const filtered = withOverrides.filter(matchesFilters);
 
@@ -15618,6 +15642,15 @@
             const r = realRoles();
             return r.includes('assessor') && !r.some(x => x !== 'assessor');
         };
+
+        // У человека могут быть роли buddy и assessor разом: он и ведёт
+        // онбординг, и смотрит своих преподавателей. Роли recruiter
+        // к спискам преподавателей отношения не имеет, поэтому в расчёт
+        // берём только те, что дают широкий доступ.
+        const WIDE_ROLES = ['super_admin', 'methodist', 'assistant', 'curator', 'manager'];
+        const hasWideAccess = () => realRoles().some(r => WIDE_ROLES.includes(r));
+        const isLimitedBuddy    = () => realRoles().includes('buddy')    && !hasWideAccess();
+        const isLimitedAssessor = () => realRoles().includes('assessor') && !hasWideAccess();
         // ассессор ИЛИ бадди только — для ограничения навигации до раздела "Контроль качества"
         const isOnlyAssessorOrBuddy = () => isOnlyBuddy() || isOnlyAssessor();
 
@@ -20281,6 +20314,7 @@
             try {
                 await updateTeacherInDb(teacher.id, { education, motto });
                 await loadTeachersFromDb();
+            await loadMyAssessorTeachers();
                 const saved = btn.parentNode.querySelector('.about-saved');
                 if (saved) {
                     saved.style.display = 'inline';
@@ -23279,14 +23313,16 @@
 
         function activeTeachersForMonthList() {
             const allowed = new Set(['Работает', 'Набор приостановлен', 'Онбординг', 'Временно не работает']);
-            const onlyOnboarding = isOnlyBuddy();
-            const onlyAssessor = isOnlyAssessor();
-            const myId = currentAppUser?.id;
+            const limBuddy    = isLimitedBuddy();
+            const limAssessor = isLimitedAssessor();
+            const mine = window._myAssessorTeachers;
             return (teachersFromDb || [])
                 .filter(t => {
                     const st = t.status || 'Работает';
-                    if (onlyOnboarding) return st === 'Онбординг';
-                    if (onlyAssessor) return allowed.has(st) && (t.assignedAssessorUserId === myId);
+                    if (limBuddy || limAssessor) {
+                        return (limBuddy && st === 'Онбординг')
+                            || (limAssessor && allowed.has(st) && !!mine && mine.has(t.id));
+                    }
                     return allowed.has(st);
                 })
                 .slice()
