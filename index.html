@@ -19648,6 +19648,65 @@
             }
         }
 
+        // ---------- Обратная связь по трекеру прогресса ----------
+        // Преподаватель отмечает, что на следующем уроке будет трекер.
+        // Родитель выбирает формат в своём кабинете, а здесь мы
+        // показываем его выбор и даём сформировать отчёт.
+        async function requestFeedback() {
+            const st = _lessonModalState;
+            if (!st) return;
+            const { lesson, students } = st;
+
+            const targets = (students || []).filter(s => s.student_id);
+            if (!targets.length) { alert('На уроке нет учеников'); return; }
+
+            const isGroup = targets.length > 1;
+            const msg = isGroup
+                ? `Запросить трекер прогресса для ${targets.length} учеников?\n\nГрупповой урок: родители получат письменный отчёт.`
+                : `Запросить трекер прогресса для ${targets[0].name}?`;
+            if (!confirm(msg)) return;
+
+            try {
+                const rows = targets.map(s => ({
+                    student_id: s.student_id,
+                    teacher_id: lesson.primary_teacher_id,
+                    lesson_id:  lesson.id,
+                    is_group:   isGroup,
+                }));
+                const { error } = await sb.from('feedback_requests').insert(rows);
+                if (error) throw error;
+                closeLessonModal();
+                alert('Запрошено. Родител' + (isGroup ? 'и увидят' : 'ь увидит') + ' выбор формата в своём кабинете.');
+            } catch (e) {
+                alert('Не удалось запросить: ' + (e.message || e));
+            }
+        }
+
+        // Открывает форму трекера прогресса для ученика из этого урока
+        function openTrackerFromLesson() {
+            const st = _lessonModalState;
+            const pending = (st?.feedback || []).filter(r => r.lesson_id !== st.lesson.id);
+            if (!pending.length) return;
+
+            const first = pending[0];
+            const stu = (st.students || []).find(s => s.student_id === first.student_id);
+            closeLessonModal();
+
+            if (typeof openNewTrackerModal === 'function') {
+                openNewTrackerModal();
+                // Ученик известен заранее — подставляем, чтобы не искать вручную
+                setTimeout(() => {
+                    if (_trackerState) {
+                        _trackerState.studentId = first.student_id;
+                        _trackerState.studentNameMk = stu?.name || null;
+                        _trackerState.feedbackRequestId = first.id;
+                    }
+                }, 100);
+            } else {
+                alert('Откройте трекер прогресса в карточке ученика');
+            }
+        }
+
         // ---------- Подписка на календарь ----------
         // Расписание в Google Calendar или Apple Calendar по ссылке.
         // Календарь перечитывает её сам, обычно раз в несколько часов.
@@ -29524,10 +29583,27 @@
                     s.good_reason = s.good_reason ?? false;
                 }
 
+                // Обратная связь по трекеру: запрошена ли она для кого-то
+                // из учеников этого урока и что ответил родитель
+                let feedbackRows = [];
+                try {
+                    const sids = students.map(s => s.student_id).filter(Boolean);
+                    if (sids.length && lesson.primary_teacher_id) {
+                        const { data: fr } = await sb.from('feedback_requests')
+                            .select('*')
+                            .in('student_id', sids)
+                            .eq('teacher_id', lesson.primary_teacher_id)
+                            .is('report_id', null)
+                            .order('created_at', { ascending: false });
+                        feedbackRows = fr || [];
+                    }
+                } catch (e) { console.warn('[feedback] не загрузилось', e); }
+
                 _lessonModalState = {
                     lesson, students, homeTask, lessonTask, marks,
                     previousTopic: null, previousLessonDate: null,
                     previousHomework: null,
+                    feedback: feedbackRows,
                     answers: [],
                     answersLoading: false,
                     expandedAnswers: {},
@@ -29728,7 +29804,69 @@
                        <div style="font-size:13px; color:#78350f; line-height:1.45;">${previousHomework}</div>
                    </div>`
                 : '';
-            const homeworkSection = `
+            // ----- Обратная связь по трекеру прогресса -----
+            // Запрос ставится в одном уроке, а трекер делается на следующем
+            // занятии с этим же учеником — вычислить «следующий урок» заранее
+            // нельзя, поэтому ищем по ученику и преподавателю.
+            const fbRows = _lessonModalState?.feedback || [];
+            const fbHere = fbRows.filter(r => r.lesson_id === lesson.id);
+            const fbPending = fbRows.filter(r => r.lesson_id !== lesson.id);
+            const isGroupLesson = (students || []).length > 1;
+
+            const fbLabel = (r) => {
+                const s = (students || []).find(x => x.student_id === r.student_id);
+                const who = s?.name || '';
+                if (r.status === 'pending') return `⏳ ${escapeHtml(who)} — ждём ответа родителя`;
+                if (r.auto_chosen) return `📝 ${escapeHtml(who)} — родитель не ответил, отчёт письменный`;
+                if (r.format === 'written') return `📝 ${escapeHtml(who)} — родитель выбрал письменный отчёт`;
+                if (r.format === 'spoken') {
+                    const when = r.meeting_at
+                        ? new Date(r.meeting_at).toLocaleString('ru-RU',
+                            { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+                        : 'время уточняется';
+                    return `🗣 ${escapeHtml(who)} — родитель подойдёт ${escapeHtml(when)}`;
+                }
+                return escapeHtml(who);
+            };
+
+            const feedbackSection = `
+                <div style="${sectionStyle}">
+                    <div style="${labelStyle}">📊 Трекер прогресса</div>
+                    ${fbPending.length ? `
+                        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+                            <div style="font-size:13px; color:#1e40af; font-weight:600; margin-bottom:6px;">Трекер запрошен на этот урок</div>
+                            ${fbPending.map(r => `<div style="font-size:13px; color:#1e3a8a; margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
+                            ${canEdit ? `<button class="btn btn-small" style="margin-top:8px; background:#2563eb; color:white;"
+                                    onclick="openTrackerFromLesson()">Сформировать трекер прогресса</button>` : ''}
+                        </div>` : ''}
+
+                    ${fbHere.length ? `
+                        <div style="font-size:13px; color:#475569;">
+                            ${fbHere.map(r => `<div style="margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
+                        </div>`
+                    : (canEdit && !fbPending.length ? `
+                        <button class="btn btn-secondary btn-small" onclick="requestFeedback()">
+                            📊 Трекер прогресса на следующем уроке
+                        </button>
+                        <div style="font-size:12px; color:#94a3b8; margin-top:6px;">
+                            ${isGroupLesson
+                                ? 'Групповой урок: родители получат письменный отчёт'
+                                : 'Родитель выберет формат: письменно или устно на уроке'}
+                        </div>` : '')}
+                </div>`;
+
+            // На уроке с трекером домашки нет: вместо неё пояснение,
+            // которое уходит в МойКласс как обычное ДЗ
+            const TRACKER_HW_TEXT = 'На уроке был тест и обратная связь, домашнего задания нет';
+
+            const homeworkSection = fbPending.length ? `
+                <div style="${sectionStyle}">
+                    <div style="${labelStyle}">📚 Домашнее задание</div>
+                    <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
+                        ${TRACKER_HW_TEXT}
+                    </div>
+                    <div style="font-size:12px; color:#94a3b8; margin-top:6px;">Текст отправится в МойКласс при сохранении</div>
+                </div>` : `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
                     ${prevHomeworkBlock}
@@ -29826,6 +29964,7 @@
                     ${webinarSection}
                     ${topicSection}
                     ${publicDescSection}
+                    ${feedbackSection}
                     ${homeworkSection}
                     <div style="${sectionStyle}">
                         <div style="${labelStyle}">👥 Ученики · посещаемость и оценки</div>
@@ -29900,7 +30039,8 @@
                         ${webinarSection}
                         ${topicSection}
                         ${publicDescSection}
-                        ${homeworkSection}
+                        ${feedbackSection}
+                    ${homeworkSection}
                         <div style="padding:18px; text-align:center; background:#fafbfc; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b; font-size:13px;">
                             <div style="font-size:24px; margin-bottom:6px;">👤</div>
                             <div style="font-weight:600; color:#475569; margin-bottom:2px;">Записанных учеников пока нет</div>
@@ -29913,7 +30053,8 @@
                         ${topicSection}
                         ${publicDescSection}
                         ${lessonMarkSection}
-                        ${homeworkSection}
+                        ${feedbackSection}
+                    ${homeworkSection}
                         ${homeMarkSection}
                         ${coinsSection}`;
                 }
@@ -30044,7 +30185,13 @@
                     if (descErr) throw descErr;
                 }
 
-                // 2. ДЗ — через mk-write-lesson (text как HTML)
+                // 2. ДЗ — через mk-write-lesson (text как HTML).
+                // На уроке с трекером домашки нет: вместо неё уходит
+                // пояснение, чтобы родитель в МойКласс не искал задание
+                const _fbPending = (st.feedback || []).filter(r => r.lesson_id !== lesson.id);
+                if (_fbPending.length) {
+                    d.homework = 'На уроке был тест и обратная связь, домашнего задания нет';
+                }
                 const newHw = (d.homework || '').trim();
                 const oldHw = (st.homeTask?.text || '').trim();
                 if (newHw !== oldHw) {
@@ -35594,6 +35741,19 @@
                     _trackerState.mode = 'edit';
                     _refreshParentLinkBtn();
                     await _maybeProgressStudentUnit(formData);
+
+                    // Запрос обратной связи закрыт: родителю есть что открыть
+                    if (_trackerState.feedbackRequestId) {
+                        try {
+                            await sb.from('feedback_requests').update({
+                                report_id: data.id,
+                                report_url: location.origin + '/?parent_view=' + (data.parent_view_token || ''),
+                                status: 'done',
+                                updated_at: new Date().toISOString(),
+                            }).eq('id', _trackerState.feedbackRequestId);
+                        } catch (e) { console.warn('[feedback] не закрылся', e); }
+                    }
+
                     alert('Трекер сохранён!');
                 } else {
                     const { error } = await sb.from('teacher_reports').update({
