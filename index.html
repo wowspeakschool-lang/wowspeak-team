@@ -35776,8 +35776,8 @@
         paHints:["Нулевой уровень, никогда не занимался","Знает несколько слов (цвета, числа)","Занимался в другой школе","Занимался с родителями дома","Смотрит мультики на английском","Понимает простые фразы, но не говорит","Стесняется говорить","Есть старший брат/сестра, который учит английский"],
         cmHints:["Очень активный и любознательный","Хорошо идёт на контакт","Стеснялся в начале, но раскрылся","Быстро схватывает новое","Нужно больше времени на адаптацию","С удовольствием участвовал в играх","Отличная память","Любит песенки и рифмовки","Хорошо реагирует на похвалу","Было сложно удерживать внимание","Очень дружелюбный","Нужна поддержка и мягкий подход"]},
         "7-9":{label:"7–9 лет",icon:"🗝️",progName:"Treasure",
-        progs:["Super Minds Starter","Super Minds 1","Super Minds 2","Super Minds 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
-        progInfo:{"Super Minds Starter":"Pre-A1.2 · 7-9 лет","Super Minds 1":"Pre-A1.3 · 7-9 лет","Super Minds 2":"Pre-A1.4–A1.1 · 7-9 лет","Super Minds 3":"A1.2 · 7-9 лет"},
+        progs:["Super Minds 0","Super Minds 1","Super Minds 2","Super Minds 3"],durs:["30 минут","40 минут"],freqs:["2","3"],
+        progInfo:{"Super Minds 0":"Pre-A1.2 · 7-9 лет","Super Minds 1":"Pre-A1.3 · 7-9 лет","Super Minds 2":"Pre-A1.4–A1.1 · 7-9 лет","Super Minds 3":"A1.2 · 7-9 лет"},
         topics:[
         {mod:"SM1 · Unit 0",prog:"Super Minds 1",unit:"Unit 0",items:[{id:"sm1_read",ru:"Читает самые простые слова",t:"lex"},{id:"sm1_colors",ru:"Названия цветов",t:"lex"},{id:"sm1_count10",ru:"Счёт 1-10",t:"lex"}]},
         {mod:"SM1 · Unit 1-3",prog:"Super Minds 1",unit:"Unit 1",items:[{id:"sm1_school",ru:"Школьные вещи, игрушки",t:"lex"},{id:"sm1_preps",ru:"In / on / under",t:"gram"},{id:"sm1_like",ru:"I like / I don't like",t:"gram"}]},
@@ -35980,7 +35980,7 @@
                     '<button onclick="vuSetCanRead(true)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(yesSel?'#16A34A':'#E2E8F0')+';background:'+(yesSel?'#DCFCE7':'#fff')+';color:'+(yesSel?'#15803D':'#64748B')+';font-weight:600;cursor:pointer">Да</button>'+
                     '<button onclick="vuSetCanRead(false)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(noSel?'#DC2626':'#E2E8F0')+';background:'+(noSel?'#FEE2E2':'#fff')+';color:'+(noSel?'#B91C1C':'#64748B')+';font-weight:600;cursor:pointer">Нет</button>'+
                     '</div>'+
-                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>'+(VU_S.ageGroup==="10-12"?'Reading Course, Модуль 1':'Super Minds Starter')+'</b> (обучение чтению с нуля)</div>':'')+
+                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>'+(VU_S.ageGroup==="10-12"?'Reading Course, Модуль 1':'Super Minds 0')+'</b> (обучение чтению с нуля)</div>':'')+
                     '</div>';
             }
             g.topics.forEach(function(mod){
@@ -36043,9 +36043,9 @@
                     : "40 минут";
             var grade = VU_S.ageGroup==="13+" ? "Expert" : "Basic";
 
-            // Не читает: 7-9 → Super Minds Starter, 10-12 → Reading Course
+            // Не читает: 7-9 → Super Minds 0, 10-12 → Reading Course
             if(VU_S.ageGroup==="7-9" && VU_S.canRead===false)
-                return{prog:"Super Minds Starter",unit:"",dur:dur,freq:"2",grade:grade};
+                return{prog:"Super Minds 0",unit:"",dur:dur,freq:"2",grade:grade};
             if(VU_S.ageGroup==="10-12" && VU_S.canRead===false)
                 return{prog:"Reading Course",unit:"Модуль 1",dur:dur,freq:"2",grade:grade};
 
