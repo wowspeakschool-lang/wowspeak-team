@@ -19648,6 +19648,31 @@
             }
         }
 
+        // Занятия, которые видят родители в Wowspace: клубы, мастер-классы,
+        // вебинары. Только у них есть смысл в описании — на обычном уроке
+        // родителям сообщать нечего. Список тот же, что в настройках Wowspace,
+        // поэтому меняется вместе с ними.
+        window._wowspaceKeywords = null;
+
+        async function loadWowspaceKeywords() {
+            if (window._wowspaceKeywords) return window._wowspaceKeywords;
+            try {
+                const { data } = await sb.from('wowspace_settings')
+                    .select('keywords').eq('id', 1).maybeSingle();
+                window._wowspaceKeywords = (data?.keywords || []).map(k => String(k).toLowerCase());
+            } catch (e) {
+                window._wowspaceKeywords = [];
+            }
+            return window._wowspaceKeywords;
+        }
+
+        function isWowspaceLesson(className) {
+            const kw = window._wowspaceKeywords;
+            if (!kw || !kw.length) return false;
+            const n = (className || '').toLowerCase();
+            return kw.some(k => n.includes(k));
+        }
+
         // ---------- Обратная связь по трекеру прогресса ----------
         // Преподаватель отмечает, что на следующем уроке будет трекер.
         // Родитель выбирает формат в своём кабинете, а здесь мы
@@ -19663,7 +19688,7 @@
             const isGroup = targets.length > 1;
             const msg = isGroup
                 ? `Запросить трекер прогресса для ${targets.length} учеников?\n\nГрупповой урок: родители получат письменный отчёт.`
-                : `Запросить трекер прогресса для ${targets[0].name}?`;
+                : `Запросить трекер прогресса для ${targets[0].student_name}?`;
             if (!confirm(msg)) return;
 
             try {
@@ -19698,7 +19723,7 @@
                 setTimeout(() => {
                     if (_trackerState) {
                         _trackerState.studentId = first.student_id;
-                        _trackerState.studentNameMk = stu?.name || null;
+                        _trackerState.studentNameMk = stu?.student_name || null;
                         _trackerState.feedbackRequestId = first.id;
                     }
                 }, 100);
@@ -29583,6 +29608,8 @@
                     s.good_reason = s.good_reason ?? false;
                 }
 
+                await loadWowspaceKeywords();
+
                 // Обратная связь по трекеру: запрошена ли она для кого-то
                 // из учеников этого урока и что ответил родитель
                 let feedbackRows = [];
@@ -29789,7 +29816,7 @@
             // Показывается на публичной странице Wowspace: родителям
             // важно знать, что взять на мастер-класс. Отдельное поле,
             // потому что description синк перезаписывает из МойКласс.
-            const publicDescSection = `
+            const publicDescSection = !isWowspaceLesson(lesson.class_name) ? '' : `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">👪 Описание для родителей</div>
                     ${canEdit
@@ -29815,7 +29842,7 @@
 
             const fbLabel = (r) => {
                 const s = (students || []).find(x => x.student_id === r.student_id);
-                const who = s?.name || '';
+                const who = s?.student_name || '';
                 if (r.status === 'pending') return `⏳ ${escapeHtml(who)} — ждём ответа родителя`;
                 if (r.auto_chosen) return `📝 ${escapeHtml(who)} — родитель не ответил, отчёт письменный`;
                 if (r.format === 'written') return `📝 ${escapeHtml(who)} — родитель выбрал письменный отчёт`;
