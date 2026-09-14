@@ -33582,6 +33582,12 @@
                 const b = parseInt(mRange[2], 10);
                 return { min: Math.min(a, b), max: Math.max(a, b) };
             }
+            // Одиночное число — это фильтр "13", он же "13 и старше".
+            // Без этого занятия вида "Gaming club 7+" не попадали
+            // в старшую группу: разбор возвращал null и сравнение
+            // шло по тексту, а слова "13" в названии нет.
+            const mOne = name.trim().match(/^(\d{1,2})$/);
+            if (mOne) return { min: parseInt(mOne[1], 10), max: 99 };
             return null;
         }
 
