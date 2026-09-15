@@ -10298,12 +10298,11 @@
 
         async function loadMyAssessorTeachers() {
             if (!isLimitedAssessor()) { window._myAssessorTeachers = null; return; }
-            const ym = new Date().toISOString().slice(0, 7);
             try {
-                const { data } = await sb.from('assessor_month_assignment')
-                    .select('teacher_id')
-                    .eq('year_month', ym)
-                    .eq('assessor_user_id', currentAppUser?.id);
+                // Через функцию, а не напрямую из таблицы: она сама знает,
+                // кто её вызвал, и список не зависит от политик доступа
+                const { data, error } = await sb.rpc('my_assessor_teachers');
+                if (error) throw error;
                 window._myAssessorTeachers = new Set((data || []).map(r => r.teacher_id));
             } catch (e) {
                 console.warn('[assessor] назначения не загрузились', e);
