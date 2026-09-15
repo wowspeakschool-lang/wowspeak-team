@@ -29370,11 +29370,30 @@
                 days.push(d.toISOString().slice(0, 10));
             }
 
+            // Сетка календаря в поясе преподавателя: расписание хранится
+            // по Москве, а зоны от +1 до +10. Считаем местные дату и время
+            // один раз, дальше вся сетка работает с ними.
+            const _cTz = getUserTzOffset();
+            const _cShift = _cTz !== SCHOOL_TZ_OFFSET;
+            for (const l of lessons) {
+                if (_cShift) {
+                    const b = eventTimeToUserTz(l.lesson_date, l.begin_time, _cTz);
+                    const e = eventTimeToUserTz(l.lesson_date, l.end_time, _cTz);
+                    l._localDate = b.date;
+                    l._localBegin = b.time;
+                    l._localEnd = e.time;
+                } else {
+                    l._localDate = l.lesson_date;
+                    l._localBegin = (l.begin_time || '').slice(0, 5);
+                    l._localEnd = (l.end_time || '').slice(0, 5);
+                }
+            }
+
             // Диапазон часов (8:00 - 22:00 по умолчанию, но расширяется по lessons)
             let minH = 8, maxH = 22;
             for (const l of lessons) {
-                const h = parseInt((l.begin_time || '08:00').slice(0, 2), 10);
-                const eh = parseInt((l.end_time || '22:00').slice(0, 2), 10);
+                const h = parseInt((l._localBegin || '08:00').slice(0, 2), 10);
+                const eh = parseInt((l._localEnd || '22:00').slice(0, 2), 10);
                 if (h < minH) minH = h;
                 if (eh + 1 > maxH) maxH = Math.min(24, eh + 1);
             }
@@ -29384,8 +29403,9 @@
             // Группируем уроки по дате
             const byDate = new Map();
             for (const l of lessons) {
-                if (!byDate.has(l.lesson_date)) byDate.set(l.lesson_date, []);
-                byDate.get(l.lesson_date).push(l);
+                const k = l._localDate || l.lesson_date;
+                if (!byDate.has(k)) byDate.set(k, []);
+                byDate.get(k).push(l);
             }
 
             const ROW_PX = 50; // высота одного часа
@@ -29424,16 +29444,16 @@
                     body += `<div style="position:absolute; top:${i * ROW_PX}px; left:0; right:0; height:${ROW_PX}px; border-top:1px solid #f1f5f9;"></div>`;
                 }
                 // Уроки
-                const dayLessons = (byDate.get(date) || []).slice().sort((a, b) => (a.begin_time || '').localeCompare(b.begin_time || ''));
+                const dayLessons = (byDate.get(date) || []).slice().sort((a, b) => (a._localBegin || '').localeCompare(b._localBegin || ''));
                 // Алгоритм колонок для наслаивающихся
                 const lanes = []; // массив массивов уроков, каждый lane — колонка
                 for (const l of dayLessons) {
-                    const bStart = timeToMin(l.begin_time);
-                    const bEnd = timeToMin(l.end_time);
+                    const bStart = timeToMin(l._localBegin);
+                    const bEnd = timeToMin(l._localEnd);
                     let placed = false;
                     for (const lane of lanes) {
                         const last = lane[lane.length - 1];
-                        if (timeToMin(last.end_time) <= bStart) {
+                        if (timeToMin(last._localEnd) <= bStart) {
                             lane.push(l); placed = true; break;
                         }
                     }
@@ -29442,8 +29462,8 @@
                 const totalLanes = Math.max(1, lanes.length);
                 lanes.forEach((lane, laneIdx) => {
                     for (const l of lane) {
-                        const startMin = timeToMin(l.begin_time);
-                        const endMin = timeToMin(l.end_time);
+                        const startMin = timeToMin(l._localBegin);
+                        const endMin = timeToMin(l._localEnd);
                         const topPx = ((startMin / 60) - minH) * ROW_PX;
                         const heightPx = Math.max(20, ((endMin - startMin) / 60) * ROW_PX - 2);
                         const widthPct = 100 / totalLanes;
@@ -29464,7 +29484,7 @@
                         const cName = lessonDisplayTitle(l);
                         const lessonJson = encodeURIComponent(JSON.stringify({
                             id: l.id,
-                            t: l.begin_time?.slice(0,5) + '–' + l.end_time?.slice(0,5),
+                            t: (l._localBegin || '') + '–' + (l._localEnd || ''),
                             class_name: l.class_name || '',
                             cName: cName,
                             tName: tName,
@@ -29479,7 +29499,7 @@
                             onmouseenter="_showLessonHover(event, '${lessonJson}')"
                             onmouseleave="_hideLessonHover()"
                             style="position:absolute; top:${topPx}px; height:${heightPx}px; left:calc(${leftPct}% + 2px); width:calc(${widthPct}% - 4px); background:${bgColor}; border:1px solid ${borderColor}; border-radius:6px; padding:3px 6px; cursor:pointer; overflow:hidden; font-size:11px; color:${textColor};">
-                            <div style="font-weight:600; line-height:1.2;">${escapeHtml(l.begin_time?.slice(0,5) || '')}–${escapeHtml(l.end_time?.slice(0,5) || '')}</div>
+                            <div style="font-weight:600; line-height:1.2;">${escapeHtml(l._localBegin || '')}–${escapeHtml(l._localEnd || '')}</div>
                             <div style="line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(cName)}</div>
                             ${tName ? `<div style="font-size:10px; opacity:0.7; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(tName)}</div>` : ''}
                         </div>`;
