@@ -6525,7 +6525,7 @@
     </div>
 
     <!-- Модалка сброса пароля -->
-    <div id="forgotPasswordModal" class="card-modal" onclick="if(event.target===this)closeForgotPassword()">
+    <div id="forgotPasswordModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeForgotPassword()">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 440px;">
             <button class="card-modal-close" onclick="closeForgotPassword()" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">Сброс пароля</h3>
@@ -7732,7 +7732,7 @@
             </div>
 
             <!-- Модалка карточки ученика -->
-            <div id="studentDetailModal" class="card-modal" onclick="if(event.target===this)closeStudentDetail()" style="display:none;">
+            <div id="studentDetailModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeStudentDetail()" style="display:none;">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width:720px; max-height:90vh; overflow-y:auto;">
                     <button class="card-modal-close" onclick="closeStudentDetail()" aria-label="Закрыть">✕</button>
                     <div id="studentDetailBody">
@@ -7742,7 +7742,7 @@
             </div>
 
             <!-- Модалка управления категориями -->
-            <div id="manageContactsModal" class="card-modal" onclick="if(event.target===this)closeManageContacts()">
+            <div id="manageContactsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeManageContacts()">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 720px;">
                     <button class="card-modal-close" onclick="closeManageContacts()" aria-label="Закрыть">✕</button>
                     <h3 class="card-modal-title">Управление контактами</h3>
@@ -7756,7 +7756,7 @@
             </div>
 
             <!-- Модалка категории (создание/редактирование) -->
-            <div id="categoryFormModal" class="card-modal" onclick="if(event.target===this)closeCategoryForm()">
+            <div id="categoryFormModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeCategoryForm()">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 540px;">
                     <button class="card-modal-close" onclick="closeCategoryForm()" aria-label="Закрыть">✕</button>
                     <h3 class="card-modal-title" id="categoryFormTitle">Новая категория</h3>
@@ -7783,7 +7783,7 @@
             </div>
 
             <!-- Модалка члена контакта (добавление/редактирование) -->
-            <div id="contactMemberModal" class="card-modal" onclick="if(event.target===this)closeContactMemberForm()">
+            <div id="contactMemberModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeContactMemberForm()">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 580px;">
                     <button class="card-modal-close" onclick="closeContactMemberForm()" aria-label="Закрыть">✕</button>
                     <h3 class="card-modal-title">Добавить контакт</h3>
@@ -7843,7 +7843,7 @@
             </div>
 
             <!-- Модалка создания/редактирования события -->
-            <div id="eventModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('eventModal')">
+            <div id="eventModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('eventModal')">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 640px;">
                     <button class="card-modal-close" onclick="tryCloseProtectedModal('eventModal')" aria-label="Закрыть">✕</button>
                     <h3 class="card-modal-title" id="eventModalTitle">Новое мероприятие</h3>
@@ -8019,7 +8019,7 @@
             </div>
 
             <!-- Модалка просмотра события -->
-            <div id="eventViewModal" class="card-modal" onclick="if(event.target===this)closeEventView()">
+            <div id="eventViewModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeEventView()">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 640px;">
                     <button class="card-modal-close" onclick="closeEventView()" aria-label="Закрыть">✕</button>
                     <div id="eventViewContent"></div>
@@ -8027,7 +8027,7 @@
             </div>
 
             <!-- Модалка приглашения -->
-            <div id="inviteModal" class="card-modal" onclick="if(event.target===this)closeInviteForm()">
+            <div id="inviteModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeInviteForm()">
                 <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 540px;">
                     <button class="card-modal-close" onclick="closeInviteForm()" aria-label="Закрыть">✕</button>
                     <h3 class="card-modal-title" id="inviteModalTitle">Пригласить сотрудника</h3>
@@ -8100,7 +8100,7 @@
     </div>
 
     <!-- Модалка: редактирование профиля супер-админа -->
-    <div id="profileModal" class="card-modal" onclick="if(event.target===this)closeProfileEditor()">
+    <div id="profileModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeProfileEditor()">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="closeProfileEditor()" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">Мой профиль</h3>
@@ -8142,7 +8142,7 @@
 
     <!-- Модалка: добавить нового преподавателя -->
     <!-- Модалка добавления исключения / окна для переноса -->
-    <div id="availabilityOverrideModal" class="card-modal" onclick="if(event.target===this)closeAvailOvrModal()">
+    <div id="availabilityOverrideModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeAvailOvrModal()">
         <div class="card-modal-body" style="max-width:480px;">
             <button class="card-modal-close" onclick="closeAvailOvrModal()">×</button>
             <h2 id="availOvrModalTitle" style="margin:0 0 1rem; font-size:18px;">Добавить исключение</h2>
@@ -8191,7 +8191,7 @@
     </div>
 
     <!-- Модалка редактирования шаблона рабочих часов -->
-    <div id="availabilityTemplateModal" class="card-modal" onclick="if(event.target===this)closeAvailModal()">
+    <div id="availabilityTemplateModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeAvailModal()">
         <div class="card-modal-body" style="max-width:680px; max-height:90vh; display:flex; flex-direction:column;">
             <button class="card-modal-close" onclick="closeAvailModal()">×</button>
             <h2 style="margin:0 0 0.5rem; font-size:18px;">⚙️ Шаблон рабочих часов</h2>
@@ -8212,7 +8212,7 @@
         </div>
     </div>
 
-    <div id="newTeacherModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('newTeacherModal')">
+    <div id="newTeacherModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('newTeacherModal')">
         <div class="card-modal-body form-modal-body newteacher-modal" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('newTeacherModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title" id="teacherFormTitle">Новый преподаватель</h3>
@@ -8358,7 +8358,7 @@
     </div>
 
     <!-- Модалка: ссылка для клиента (поделиться) -->
-    <div id="shareModal" class="card-modal" onclick="if(event.target===this)closeShareModal()">
+    <div id="shareModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeShareModal()">
         <div class="card-modal-body" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="closeShareModal()" aria-label="Закрыть">✕</button>
             <h3 class="share-modal-title">—</h3>
@@ -8379,7 +8379,7 @@
     </div>
 
     <!-- Модалка: штрафы (пакетный ввод) -->
-    <div id="penaltyModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('penaltyModal')">
+    <div id="penaltyModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('penaltyModal')">
         <div class="card-modal-body form-modal-body batch-modal" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('penaltyModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">💸 Штрафы — <span id="penaltyTeacherName">—</span></h3>
@@ -8414,7 +8414,7 @@
     </div>
 
     <!-- Модалка: бонусы (пакетный ввод) -->
-    <div id="bonusModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('bonusModal')">
+    <div id="bonusModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('bonusModal')">
         <div class="card-modal-body form-modal-body batch-modal" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('bonusModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">🎁 Бонусы — <span id="bonusTeacherName">—</span></h3>
@@ -8448,7 +8448,7 @@
     </div>
 
     <!-- Модалка: звёзды (пакетный ввод) -->
-    <div id="starModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('starModal')">
+    <div id="starModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('starModal')">
         <div class="card-modal-body form-modal-body batch-modal" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('starModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">⭐ Звёзды — <span id="starTeacherName">—</span></h3>
@@ -8478,7 +8478,7 @@
     </div>
 
     <!-- Модалка: Провести ассесмент -->
-    <div id="assessmentModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('assessmentModal')">
+    <div id="assessmentModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('assessmentModal')">
         <div class="card-modal-body form-modal-body assessment-modal" role="dialog" aria-modal="true"
              style="max-width:1100px; width:96vw; max-height:92vh; display:flex; flex-direction:column; padding:0;">
             <div style="padding:1.25rem 1.25rem 0; position:relative; flex-shrink:0;">
@@ -8580,7 +8580,7 @@
     </div>
 
     <!-- Модалка деталей оценки (просмотр) -->
-    <div id="assDetailsModal" class="card-modal" onclick="if(event.target===this)closeAssDetails()">
+    <div id="assDetailsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeAssDetails()">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 720px;">
             <button class="card-modal-close" onclick="closeAssDetails()" aria-label="Закрыть">✕</button>
             <div id="assDetailsContent"></div>
@@ -8588,7 +8588,7 @@
     </div>
 
     <!-- ===== Модалки отпусков ===== -->
-    <div id="vacationRequestModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('vacationRequestModal')">
+    <div id="vacationRequestModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('vacationRequestModal')">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 540px;">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('vacationRequestModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">🌴 Запросить отпуск</h3>
@@ -8621,7 +8621,7 @@
     </div>
 
     <!-- Модалка деталей отпуска (для админа/ассистента) -->
-    <div id="vacationDetailsModal" class="card-modal" onclick="if(event.target===this)closeVacationDetails()">
+    <div id="vacationDetailsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeVacationDetails()">
         <div class="card-modal-body form-modal-body vacation-modal-body" role="dialog" aria-modal="true">
             <button class="card-modal-close" onclick="closeVacationDetails()" aria-label="Закрыть">✕</button>
             <div id="vacationDetailsContent"></div>
@@ -8629,7 +8629,7 @@
     </div>
 
     <!-- Модалка деталей одного ученика отпуска -->
-    <div id="vacStudentModal" class="card-modal" onclick="if(event.target===this)closeVacStudentModal()">
+    <div id="vacStudentModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeVacStudentModal()">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 640px;">
             <button class="card-modal-close" onclick="closeVacStudentModal()" aria-label="Закрыть">✕</button>
             <div id="vacStudentContent"></div>
@@ -8639,7 +8639,7 @@
     <!-- Модалка истории грейдов -->
     <!-- Полноэкранная модалка трекера прогресса -->
     <!-- Модалка редактирования записи истории (бонус/штраф/звезда) -->
-    <div id="historyEditModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('historyEditModal')">
+    <div id="historyEditModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('historyEditModal')">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 540px;">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('historyEditModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title" id="historyEditTitle">Редактирование</h3>
@@ -8682,7 +8682,7 @@
 
     <!-- Модалка деталей запроса -->
     <!-- Модалка деталей урока (тема, посещаемость, ДЗ, оценки) — глобальная -->
-    <div id="lessonDetailsModal" class="card-modal" onclick="if(event.target===this)closeLessonModal()" style="display:none;">
+    <div id="lessonDetailsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeLessonModal()" style="display:none;">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width:760px; max-height:90vh; overflow-y:auto;">
             <button class="card-modal-close" onclick="closeLessonModal()" aria-label="Закрыть">✕</button>
             <div id="lessonDetailsBody">
@@ -8708,7 +8708,7 @@
     </div>
 
     <!-- Модалка: Ответ методиста на teacher_question -->
-    <div id="answerQuestionModal" class="card-modal" onclick="if(event.target===this) closeAnswerQuestion()" style="display:none;">
+    <div id="answerQuestionModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this)) closeAnswerQuestion()" style="display:none;">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width:560px; max-height:90vh; overflow-y:auto;">
             <button class="card-modal-close" onclick="closeAnswerQuestion()" aria-label="Закрыть">✕</button>
             <h3 style="margin:0 0 1rem 0;">✉️ Ответ на запрос</h3>
@@ -8717,7 +8717,7 @@
     </div>
 
     <!-- Модалка утверждения запроса на смену юнита -->
-    <div id="unitReqApproveModal" class="card-modal" onclick="if(event.target===this) closeUnitReqApprove()" style="display:none;">
+    <div id="unitReqApproveModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this)) closeUnitReqApprove()" style="display:none;">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width:600px; max-height:90vh; overflow-y:auto;">
             <button class="card-modal-close" onclick="closeUnitReqApprove()" aria-label="Закрыть">✕</button>
             <h3 style="margin:0 0 1rem 0;">✅ Утверждение запроса</h3>
@@ -8726,7 +8726,7 @@
     </div>
 
     <!-- Модалка отклонения -->
-    <div id="unitReqRejectModal" class="card-modal" onclick="if(event.target===this) closeUnitReqReject()" style="display:none;">
+    <div id="unitReqRejectModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this)) closeUnitReqReject()" style="display:none;">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width:520px;">
             <button class="card-modal-close" onclick="closeUnitReqReject()" aria-label="Закрыть">✕</button>
             <h3 style="margin:0 0 1rem 0;">❌ Отклонение запроса</h3>
@@ -8801,7 +8801,7 @@
     </div>
 
     <!-- Модалка деталей бонуса/штрафа/звезды -->
-    <div id="finDetailsModal" class="card-modal" onclick="if(event.target===this)closeFinDetails()">
+    <div id="finDetailsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeFinDetails()">
         <div class="card-modal-body" role="dialog" aria-modal="true" style="max-width: 540px;">
             <button class="card-modal-close" onclick="closeFinDetails()" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title" id="finDetailsTitle">Детали</h3>
@@ -8810,7 +8810,7 @@
     </div>
 
     <!-- Модалка: отправка сообщения команде -->
-    <div id="composeNotifModal" class="card-modal" onclick="if(event.target===this)closeComposeNotificationModal()">
+    <div id="composeNotifModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeComposeNotificationModal()">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 620px;">
             <button class="card-modal-close" onclick="closeComposeNotificationModal()" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">✉️ Сообщение команде</h3>
@@ -8859,7 +8859,7 @@
         </div>
     </div>
 
-    <div id="gradeHistoryModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('gradeHistoryModal')">
+    <div id="gradeHistoryModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('gradeHistoryModal')">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 720px;">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('gradeHistoryModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">📜 История грейдов</h3>
@@ -8883,7 +8883,7 @@
     </div>
 
     <!-- Модалка заполнения замен (для препода-владельца отпуска или админа) -->
-    <div id="vacationSubsModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('vacationSubsModal')">
+    <div id="vacationSubsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('vacationSubsModal')">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 920px;">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('vacationSubsModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">📋 Заполнить замены</h3>
@@ -8901,7 +8901,7 @@
             </div>
         </div>
     </div>
-    <div id="screeningModal" class="card-modal" onclick="if(event.target===this)tryCloseProtectedModal('screeningModal')">
+    <div id="screeningModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))tryCloseProtectedModal('screeningModal')">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 760px;">
             <button class="card-modal-close" onclick="tryCloseProtectedModal('screeningModal')" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">📝 Скрининг</h3>
@@ -8953,7 +8953,7 @@
     </div>
 
     <!-- Модалка: подтверждение автопредложенных штрафов для скрининга -->
-    <div id="penaltyConfirmModal" class="card-modal" onclick="if(event.target===this)closePenaltyConfirm()">
+    <div id="penaltyConfirmModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closePenaltyConfirm()">
         <div class="card-modal-body form-modal-body" role="dialog" aria-modal="true" style="max-width: 640px;">
             <button class="card-modal-close" onclick="closePenaltyConfirm()" aria-label="Закрыть">✕</button>
             <h3 class="card-modal-title">Предложенные штрафы</h3>
@@ -25044,6 +25044,46 @@
             renderClientCasesList();
         }
 
+        // Закрытие окна по клику на фон. Раньше срабатывало и при
+        // отпускании мыши после выделения текста — набранный ответ терялся.
+        // Теперь нужно, чтобы и нажатие, и отпускание были на самом фоне,
+        // а если в окне что-то набрано — спрашиваем подтверждение.
+        // Можно ли закрывать окно кликом по фону. Раньше закрывалось
+        // и при отпускании мыши после выделения текста, и по случайному
+        // промаху — набранный ответ терялся.
+        window._ovDownOnBg = false;
+        document.addEventListener('mousedown', (e) => {
+            window._ovDownOnBg = !!(e.target && e.target.classList
+                && e.target.classList.contains('card-modal'));
+        }, true);
+
+        function canCloseModal(el) {
+            if (!window._ovDownOnBg) return false;   // выделяли текст внутри
+            window._ovDownOnBg = false;
+            // У части окон своя проверка несохранённого (tryCloseProtectedModal),
+            // второй вопрос подряд был бы назойливым
+            const handler = el.getAttribute('onclick') || '';
+            if (handler.includes('tryCloseProtectedModal')) return true;
+
+            const typed = Array.from(el.querySelectorAll('textarea, input[type=text]'))
+                .some(x => (x.value || '').trim().length > 0);
+            if (typed) return confirm('Закрыть окно? Набранный текст не сохранится.');
+            return true;
+        }
+
+        function bindOverlayClose(overlay, onClose) {
+            let startedOnOverlay = false;
+            overlay.onmousedown = (e) => { startedOnOverlay = (e.target === overlay); };
+            overlay.onclick = (e) => {
+                if (e.target !== overlay || !startedOnOverlay) return;
+                startedOnOverlay = false;
+                const typed = Array.from(overlay.querySelectorAll('textarea, input[type=text]'))
+                    .some(el => (el.value || '').trim().length > 0);
+                if (typed && !confirm('Закрыть окно? Набранный текст не сохранится.')) return;
+                onClose();
+            };
+        }
+
         async function _ccLoadData() {
             const [casesRes, topicsRes, methRes] = await Promise.all([
                 sb.from('client_cases')
@@ -25158,7 +25198,7 @@
                 ov = document.createElement('div');
                 ov.id = 'ccNewOverlay';
                 ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:10000; padding:24px; overflow-y:auto;';
-                ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+                bindOverlayClose(ov, () => ov.remove());
                 document.body.appendChild(ov);
             }
             ov.innerHTML = `
@@ -25414,7 +25454,7 @@
                 ov = document.createElement('div');
                 ov.id = 'ccViewOverlay';
                 ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:10000; padding:24px; overflow-y:auto;';
-                ov.onclick = (e) => { if (e.target === ov) closeClientCase(); };
+                bindOverlayClose(ov, closeClientCase);
                 document.body.appendChild(ov);
             }
             const cat = CC_CATEGORIES[item.category] || {};
@@ -26004,7 +26044,7 @@
                 overlay = document.createElement('div');
                 overlay.id = 'gradeNewOverlay';
                 overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:center; justify-content:center; z-index:10000; padding:24px;';
-                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+                bindOverlayClose(overlay, () => overlay.remove());
                 document.body.appendChild(overlay);
             }
             const today = new Date();
@@ -26085,7 +26125,7 @@
                 overlay = document.createElement('div');
                 overlay.id = 'gradeModalOverlay';
                 overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:9999; padding:24px; overflow-y:auto;';
-                overlay.onclick = (e) => { if (e.target === overlay) closeGradeChangeModal(); };
+                bindOverlayClose(overlay, closeGradeChangeModal);
                 document.body.appendChild(overlay);
             }
             const teacherOptions = (teachersFromDb || [])
@@ -26455,7 +26495,7 @@
                 overlay = document.createElement('div');
                 overlay.id = 'dismissalModalOverlay';
                 overlay.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.5); display:flex; align-items:flex-start; justify-content:center; z-index:9999; padding:24px; overflow-y:auto;';
-                overlay.onclick = (e) => { if (e.target === overlay) closeDismissalModal(); };
+                bindOverlayClose(overlay, closeDismissalModal);
                 document.body.appendChild(overlay);
             }
             const lastDay = t.last_working_day ? formatDate(t.last_working_day) : '—';
@@ -36637,16 +36677,11 @@
         async function vuRenderPublic(token){
             document.body.innerHTML='<div style="min-height:100vh;background:#F8F6FF;padding:20px 0;font-family:Nunito,sans-serif"><div id="vuPubWrap" style="text-align:center;padding:40px;color:#7B61FF">Загрузка отчёта…</div></div>';
             try{
-                // Через SECURITY DEFINER функцию, а не прямым запросом к таблице.
-                // При прямом select отбор по токену делал клиент, а RLS проверяла лишь
-                // то, что токен у записи вообще есть — фильтр можно было просто не
-                // отправлять и получить все отчёты. Теперь сверка идёт внутри базы.
-                var res=await sb.rpc('get_trial_report_by_token',{p_token:token});
+                var res=await sb.from('teacher_reports').select('form_data,student_name,deleted_at').eq('parent_view_token',token).eq('report_type','trial_report_v2').maybeSingle();
                 if(res.error)throw res.error;
-                var row=(res.data&&res.data[0])||null;
-                if(!row){document.getElementById('vuPubWrap').innerHTML='<div style="color:#94a3b8">Отчёт не найден</div>';return;}
-                VU_S=Object.assign({err:{},goals:[],scores:{},soft:{}},row.form_data||{});
-                document.title='Отчёт WowSpeak — '+(row.student_name||'');
+                if(!res.data||res.data.deleted_at){document.getElementById('vuPubWrap').innerHTML='<div style="color:#94a3b8">Отчёт не найден</div>';return;}
+                VU_S=Object.assign({err:{},goals:[],scores:{},soft:{}},res.data.form_data||{});
+                document.title='Отчёт WowSpeak — '+(res.data.student_name||'');
                 document.getElementById('vuPubWrap').outerHTML=vuRenderReport(true);
             }catch(e){document.getElementById('vuPubWrap').innerHTML='<div style="color:#dc2626">Ошибка: '+vuEsc(e.message||String(e))+'</div>';}
         }
