@@ -29657,6 +29657,7 @@
                     draft: {
                         topic: lesson.topic || '',
                         description_local: lesson.description_local || '',
+                        was_test: !!lesson.was_test,
                         webinar_url: lesson.webinar_url || '',
                         homework: homeTask?.text || '',
                         students: students.map(s => ({
@@ -29917,7 +29918,27 @@
             // которое уходит в МойКласс как обычное ДЗ
             const TRACKER_HW_TEXT = 'На уроке был тест и обратная связь, домашнего задания нет';
 
-            const homeworkSection = fbPending.length ? `
+            // Отметка «был тест»: после теста домашку не задают.
+            // Гасит всё связанное с ДЗ — поле, файлы, оценку и монетки,
+            // чтобы преподаватель не заполнял его по привычке.
+            const wasTest = !!draft.was_test;
+            const testCheckbox = canEdit ? `
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:10px; font-size:13px; color:#475569;">
+                    <input type="checkbox" ${wasTest ? 'checked' : ''}
+                           onchange="_lessonModalState.draft.was_test = this.checked; renderLessonModalBody();"
+                           style="width:17px; height:17px; cursor:pointer;">
+                    📝 Сегодня был тест — домашнее задание не задаётся
+                </label>` : (wasTest
+                    ? `<div style="font-size:13px; color:#475569; margin-bottom:10px;">📝 На уроке был тест</div>` : '');
+
+            const homeworkSection = wasTest ? `
+                <div style="${sectionStyle}">
+                    <div style="${labelStyle}">📚 Домашнее задание</div>
+                    ${testCheckbox}
+                    <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
+                        На уроке был тест, домашнего задания нет
+                    </div>
+                </div>` : fbPending.length ? `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
                     <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
@@ -29927,6 +29948,7 @@
                 </div>` : `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
+                    ${testCheckbox}
                     ${prevHomeworkBlock}
                     ${canEdit
                         ? `<div style="display:flex; gap:4px; flex-wrap:wrap; padding:6px 8px; background:#f8fafc; border:1px solid #e5e7eb; border-bottom:none; border-radius:8px 8px 0 0;">
@@ -30045,8 +30067,9 @@
                                         <div>${attendanceButtons(ds)}</div>
                                         <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
                                         <div style="text-align:center;">
-                                            <div id="wowHw_${ds.student_id}" style="margin-bottom:4px;"></div>
-                                            ${markInput(ds, 'home')}
+                                            ${wasTest ? '<span style="color:#cbd5e1; font-size:12px;">—</span>' : `
+                                                <div id="wowHw_${ds.student_id}" style="margin-bottom:4px;"></div>
+                                                ${markInput(ds, 'home')}`}
                                         </div>
                                     </div>
                                     ${studentNoteBox(ds)}
@@ -30079,7 +30102,8 @@
                             ${markInput(ds, 'lesson')}
                             ${canEdit ? markHint : ''}
                         </div>`;
-                    homeMarkSection = `
+                    // После теста домашки нет — секцию не показываем вовсе
+                    homeMarkSection = wasTest ? '' : `
                         <div style="${sectionStyle}">
                             <div style="${labelStyle}">⭐ Домашнее задание</div>
                             <div id="wowHw_${ds.student_id}" style="margin-bottom:10px;"></div>
@@ -30207,9 +30231,11 @@
                 const visited = d.students.filter(s => s.visited === true);
                 const allNoHw = visited.length > 0
                     && visited.every(s => _wowHwState[s.student_id] === 'none');
-                if (!allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
-                // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет
-                const notMarked = d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
+                if (!d.was_test && !allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
+                // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет.
+                // После теста домашки не было — отмечать нечего
+                const notMarked = d.was_test ? []
+                    : d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
                 if (notMarked.length) {
                     return notMarked.length === 1
                         ? 'Отметьте, сделал ли ученик домашнее задание'
@@ -30241,6 +30267,13 @@
 
                 // Описание для родителей живёт только у нас: в МойКласс
                 // его слать не нужно, а синк это поле не трогает
+                if (!!d.was_test !== !!lesson.was_test) {
+                    const { error: testErr } = await sb.from('mk_lessons')
+                        .update({ was_test: !!d.was_test })
+                        .eq('id', lesson.id);
+                    if (testErr) throw testErr;
+                }
+
                 if ((d.description_local || '') !== (lesson.description_local || '')) {
                     const { error: descErr } = await sb.from('mk_lessons')
                         .update({ description_local: (d.description_local || '').trim() || null })
@@ -30252,7 +30285,9 @@
                 // На уроке с трекером домашки нет: вместо неё уходит
                 // пояснение, чтобы родитель в МойКласс не искал задание
                 const _fbPending = (st.feedback || []).filter(r => r.lesson_id !== lesson.id);
-                if (_fbPending.length) {
+                if (d.was_test) {
+                    d.homework = 'На уроке был тест, домашнего задания нет';
+                } else if (_fbPending.length) {
                     d.homework = 'На уроке был тест и обратная связь, домашнего задания нет';
                 }
                 const newHw = (d.homework || '').trim();
