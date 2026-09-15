@@ -30868,12 +30868,35 @@
                 return;
             }
 
-            // Группируем по дате
+            // Группируем по дате в поясе преподавателя. Расписание хранится
+            // по Москве, а зоны у людей от +1 до +10: при большой разнице
+            // вечерний урок уезжает на следующий день, и попасть он должен
+            // в другую группу списка, иначе время верное, а день — нет.
+            const _tz = getUserTzOffset();
+            const _shift = _tz !== SCHOOL_TZ_OFFSET;
+            for (const l of lessons) {
+                if (_shift) {
+                    const b = eventTimeToUserTz(l.lesson_date, l.begin_time, _tz);
+                    const e = eventTimeToUserTz(l.lesson_date, l.end_time, _tz);
+                    l._localDate = b.date;
+                    l._localBegin = b.time;
+                    l._localEnd = e.time;
+                } else {
+                    l._localDate = l.lesson_date;
+                    l._localBegin = (l.begin_time || '').slice(0, 5);
+                    l._localEnd = (l.end_time || '').slice(0, 5);
+                }
+            }
+
             const byDate = new Map();
             for (const l of lessons) {
-                const k = l.lesson_date;
+                const k = l._localDate;
                 if (!byDate.has(k)) byDate.set(k, []);
                 byDate.get(k).push(l);
+            }
+            // После перевода порядок внутри дня мог сбиться
+            for (const ls of byDate.values()) {
+                ls.sort((a, b) => (a._localBegin || '').localeCompare(b._localBegin || ''));
             }
 
             const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -30898,7 +30921,7 @@
         }
 
         function renderLessonRow(l) {
-            const time = `${(l.begin_time || '').slice(0, 5)}–${(l.end_time || '').slice(0, 5)}`;
+            const time = `${l._localBegin || (l.begin_time || '').slice(0, 5)}–${l._localEnd || (l.end_time || '').slice(0, 5)}`;
             const statusBadge = l.status === 1
                 ? '<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">✓ проведён</span>'
                 : '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">⏰ запланирован</span>';
