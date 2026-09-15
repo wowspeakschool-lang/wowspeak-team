@@ -30171,7 +30171,12 @@
             const anyVisited = d.students.some(s => s.visited === true);
             if (anyVisited) {
                 if (!(d.topic || '').trim()) return 'Заполните тему урока (хотя бы один ученик отмечен как присутствовавший)';
-                if (!(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
+                // Домашку не требуем, если её и не задавали: на уроке с трекером,
+                // после теста, на клубе — преподаватель отмечает «ДЗ не было»
+                const visited = d.students.filter(s => s.visited === true);
+                const allNoHw = visited.length > 0
+                    && visited.every(s => _wowHwState[s.student_id] === 'none');
+                if (!allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
                 // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет
                 const notMarked = d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
                 if (notMarked.length) {
@@ -32400,8 +32405,12 @@
         // Отметка «не сделал» — без монеток, но фиксируется в журнале,
         // чтобы отметка пережила закрытие урока и не блокировала сохранение
         const WOW_HW_NOT_DONE = { reason:'homework_not_done', amount:0 };
+        // Домашки не задавали: на уроке с трекером, после теста, на клубе.
+        // Монеток нет, но отметка нужна — иначе урок не сохранить,
+        // а требовать «сделал/не сделал» там, где задания не было, нельзя.
+        const WOW_HW_NONE = { reason:'homework_none', amount:0 };
         const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason)
-            .concat([WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason]);
+            .concat([WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason, WOW_HW_NONE.reason]);
         const WOW_MANUAL_REASONS = WOW_PRESETS.map(p => p.reason);
         const WOW_DAILY_LIMIT = 10;
 
@@ -32432,7 +32441,8 @@
                 const doneToday = new Set(rowsToday.map(r => r.reason));
                 const limitLeft = WOW_DAILY_LIMIT - today;
                 const hwState = doneToday.has(WOW_HOMEWORK.reason) ? 'done'
-                              : doneToday.has(WOW_HW_NOT_DONE.reason) ? 'not_done' : null;
+                              : doneToday.has(WOW_HW_NOT_DONE.reason) ? 'not_done'
+                              : doneToday.has(WOW_HW_NONE.reason) ? 'none' : null;
 
                 box.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
@@ -32525,7 +32535,8 @@
                 const done = new Set(mine.map(r => r.reason));
                 const left = WOW_DAILY_LIMIT - today_;
                 const hwState = done.has(WOW_HOMEWORK.reason) ? 'done'
-                              : done.has(WOW_HW_NOT_DONE.reason) ? 'not_done' : null;
+                              : done.has(WOW_HW_NOT_DONE.reason) ? 'not_done'
+                              : done.has(WOW_HW_NONE.reason) ? 'none' : null;
 
                 box.innerHTML = `
                     <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -32550,7 +32561,9 @@
                 // Кнопка «ДЗ сделал» живёт в секции оценки за ДЗ, а не в ряду поощрений
                 const hwBox = document.getElementById('wowHw_' + sid);
                 if (hwBox) hwBox.innerHTML = wowHomeworkButtons(sid, lessonId, hwState);
-                _wowHwState[sid] = !!hwState;
+                // Храним саму отметку, а не признак: нужно отличать
+                // «ДЗ не было» от «сделал» и «не сделал»
+                _wowHwState[sid] = hwState || false;
                 updateSaveButtonState();
             }
         }
@@ -32576,6 +32589,7 @@
             return `<div style="display:flex; gap:6px; flex-wrap:wrap;">
                 ${btn('done', 'Сделал +' + WOW_HOMEWORK.amount, '#dcfce7', '#86efac', '#166534')}
                 ${btn('not_done', 'Не сделал', '#fee2e2', '#fca5a5', '#991b1b')}
+                ${btn('none', 'ДЗ не было', '#f1f5f9', '#cbd5e1', '#475569')}
             </div>`;
         }
 
@@ -32588,14 +32602,16 @@
             if (!awardedBy) { alert('Не удалось определить, кто отмечает'); return; }
 
             const today = _wowToday();
-            const target = value === 'done' ? WOW_HOMEWORK : WOW_HW_NOT_DONE;
+            const target = value === 'done' ? WOW_HOMEWORK
+                         : value === 'none' ? WOW_HW_NONE
+                         : WOW_HW_NOT_DONE;
 
             // Что уже стоит по этому ученику за сегодня
             const { data: existing } = await sb.from('wow_coins_ledger')
                 .select('id, reason')
                 .eq('student_id', studentId)
                 .eq('award_date', today)
-                .in('reason', [WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason]);
+                .in('reason', [WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason, WOW_HW_NONE.reason]);
 
             const already = (existing || []).find(r => r.reason === target.reason);
             const other   = (existing || []).filter(r => r.reason !== target.reason);
