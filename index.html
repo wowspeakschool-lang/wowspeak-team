@@ -29768,7 +29768,18 @@
             const { lesson, students, homeTask, previousTopic, previousLessonDate, previousHomework, draft } = st;
             const body = document.getElementById('lessonDetailsBody');
             const canEdit = canEditLesson(lesson);
-            const dt = `${lesson.lesson_date} · ${lesson.begin_time?.slice(0,5)}–${lesson.end_time?.slice(0,5)}`;
+            // Время урока в поясе преподавателя. Расписание хранится
+            // по Москве, а преподаватели работают из разных часовых зон —
+            // от +1 до +10. При большой разнице урок уезжает на соседний
+            // день, поэтому переводим дату и время вместе.
+            const _tzOff = getUserTzOffset();
+            const _b = eventTimeToUserTz(lesson.lesson_date, lesson.begin_time, _tzOff);
+            const _e = eventTimeToUserTz(lesson.lesson_date, lesson.end_time, _tzOff);
+            const _tzShift = _tzOff !== SCHOOL_TZ_OFFSET;
+            const dt = `${_b.date} · ${_b.time}–${_e.time}`
+                + (_tzShift
+                    ? ` <span style="color:#94a3b8; font-weight:400;">(${lesson.begin_time?.slice(0,5)} МСК)</span>`
+                    : '');
             const isDone = lesson.status === 1;
             const isGroup = students.length > 1;
             let headerTitle;
