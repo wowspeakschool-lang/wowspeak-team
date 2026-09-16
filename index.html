@@ -6850,6 +6850,7 @@
                     <div class="ass-main-tabs" style="margin-bottom:1rem; padding-left:0;">
                         <button class="ass-filter-tab active" data-repsumtab="trackers" onclick="setReportsAdminSubTab('trackers')">📋 Трекеры прогресса</button>
                         <button class="ass-filter-tab" data-repsumtab="trial" onclick="setReportsAdminSubTab('trial')">📄 Отчёты после пробного</button>
+                        <button class="ass-filter-tab" data-repsumtab="vu" onclick="setReportsAdminSubTab('vu')">🚀 Отчёты после ВУ</button>
                     </div>
                     <div id="adminTrackersTab">
                         <div class="summaries-toolbar">
@@ -6892,6 +6893,28 @@
                                    style="flex: 1; min-width: 280px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
                         </div>
                         <div id="adminTrialReportsListWrap">
+                            <div class="analytics-loading">Загрузка…</div>
+                        </div>
+                    </div>
+                    <div id="adminVuTab" style="display:none;">
+                        <div class="summaries-toolbar">
+                            <div class="summaries-month-picker">
+                                <button class="btn btn-secondary btn-small" onclick="changeAdminVuReportsMonth(-1)" title="Предыдущий">‹</button>
+                                <input type="month" id="adminVuReportsMonthInput" onchange="onAdminVuReportsMonthChange(this.value)">
+                                <button class="btn btn-secondary btn-small" onclick="changeAdminVuReportsMonth(+1)" title="Следующий">›</button>
+                                <button class="btn btn-small" style="background:#eef2ff;color:#4338ca;" onclick="setAdminVuReportsMonthToday()">Текущий</button>
+                                <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; color:#475569; cursor:pointer; padding:0.3rem 0.6rem; background:#fff; border:1px solid #cbd5e1; border-radius:8px; margin-left:0.5rem;">
+                                    <input type="checkbox" id="adminVuReportsAllMonths" onchange="renderAdminVuReportsList()" style="width:auto; margin:0;">
+                                    Все месяцы
+                                </label>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+                            <input type="search" id="adminVuReportsSearch" placeholder="🔍 Поиск по преподавателю / ученику / программе"
+                                   oninput="renderAdminVuReportsList()"
+                                   style="flex: 1; min-width: 280px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
+                        </div>
+                        <div id="adminVuReportsListWrap">
                             <div class="analytics-loading">Загрузка…</div>
                         </div>
                     </div>
@@ -29084,8 +29107,11 @@
             });
             document.getElementById('adminTrackersTab').style.display = tab === 'trackers' ? '' : 'none';
             document.getElementById('adminTrialTab').style.display    = tab === 'trial' ? '' : 'none';
+            const advu = document.getElementById('adminVuTab');
+            if (advu) advu.style.display = tab === 'vu' ? '' : 'none';
             if (tab === 'trackers') renderAdminTrackersList();
             if (tab === 'trial') renderAdminTrialReportsList();
+            if (tab === 'vu') renderAdminVuReportsList();
         }
 
         // Вызывается из switchTab при открытии секции отчётов
@@ -36724,6 +36750,10 @@
                 if(hasAnyRole(['super_admin','methodist'])) document.getElementById('vuDeleteBtn').style.display='';
                 if(typeof _showToast==='function')_showToast('✅ Отчёт сохранён');
                 if(typeof renderVuReportsList==='function')renderVuReportsList();
+                // если открыта сводка по отчётам — обновим и её, иначе там
+                // останется список без только что сохранённого отчёта
+                if(document.getElementById('summSubReports')?.classList.contains('active')
+                   && typeof renderAdminVuReportsList==='function') renderAdminVuReportsList();
             }catch(e){alert('Не удалось сохранить: '+(e.message||e));}
         }
 
@@ -36901,6 +36931,33 @@
             const inp = document.getElementById('adminTrialReportsMonthInput');
             if (inp) inp.value = _adminTrialReportsState.yearMonth;
             renderAdminTrialReportsList();
+        }
+
+        // Пикер месяца для сводки по отчётам после ВУ — отдельный от остальных,
+        // чтобы выбор месяца на одной вкладке не сбивал соседние.
+        let _adminVuReportsState = { yearMonth: null };
+        function ensureAdminVuReportsMonth() {
+            if (!_adminVuReportsState.yearMonth) _adminVuReportsState.yearMonth = currentYearMonth();
+            const inp = document.getElementById('adminVuReportsMonthInput');
+            if (inp) inp.value = _adminVuReportsState.yearMonth;
+        }
+        function onAdminVuReportsMonthChange(value) {
+            if (/^\d{4}-\d{2}$/.test(value)) { _adminVuReportsState.yearMonth = value; renderAdminVuReportsList(); }
+        }
+        function changeAdminVuReportsMonth(delta) {
+            const cur = _adminVuReportsState.yearMonth || currentYearMonth();
+            const [y, m] = cur.split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            _adminVuReportsState.yearMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const inp = document.getElementById('adminVuReportsMonthInput');
+            if (inp) inp.value = _adminVuReportsState.yearMonth;
+            renderAdminVuReportsList();
+        }
+        function setAdminVuReportsMonthToday() {
+            _adminVuReportsState.yearMonth = currentYearMonth();
+            const inp = document.getElementById('adminVuReportsMonthInput');
+            if (inp) inp.value = _adminVuReportsState.yearMonth;
+            renderAdminVuReportsList();
         }
 
         // ============================================================
@@ -37139,6 +37196,92 @@
                         <button class="btn btn-secondary btn-small" onclick="openTrialReportForEdit('${r.id}')">Открыть</button>
                     </div>
                 `).join('');
+            } catch (e) {
+                console.error(e);
+                wrap.innerHTML = '<div class="analytics-empty">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
+            }
+        }
+
+        // ----- Сводка по отчётам после ВУ (все преподаватели) -----
+        // В «Сводки → Отчёты» были только трекеры прогресса и отчёты после
+        // пробного, а отчётов после вводного не было вовсе: увидеть их можно
+        // было лишь на вкладке препода, и только тому, кто сам вправе их
+        // создавать. Админам и методистам они не показывались нигде.
+        async function renderAdminVuReportsList() {
+            ensureAdminVuReportsMonth();
+            const wrap = document.getElementById('adminVuReportsListWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+
+            try {
+                const { data, error } = await sb.from('teacher_reports')
+                    .select('id, teacher_id, student_name, program, created_at, updated_at')
+                    .eq('report_type', 'trial_report_v2')
+                    .is('deleted_at', null)
+                    .order('updated_at', { ascending: false })
+                    .limit(500);
+                if (error) throw error;
+
+                let rows = (data || []).map(r => {
+                    const t = teachersFromDb.find(x => x.id === r.teacher_id);
+                    return { ...r, teacherName: t ? t.name : '?' };
+                });
+
+                // Пометка о нескольких отчётах одному ученику — как на вкладке
+                // препода. Считаем до фильтров, иначе копия из другого месяца
+                // пропадёт из виду и отчёт покажется единственным.
+                const sameName = new Map();
+                for (const row of rows) {
+                    const key = (row.student_name || '').trim().toLowerCase();
+                    if (!key) continue;
+                    if (!sameName.has(key)) sameName.set(key, []);
+                    sameName.get(key).push(row);
+                }
+
+                const allMonths = document.getElementById('adminVuReportsAllMonths')?.checked || false;
+                if (!allMonths) rows = filterByCreatedMonth(rows, _adminVuReportsState.yearMonth);
+
+                const search = (document.getElementById('adminVuReportsSearch')?.value || '').trim().toLowerCase();
+                if (search) {
+                    rows = rows.filter(r =>
+                        (r.student_name || '').toLowerCase().includes(search) ||
+                        (r.program || '').toLowerCase().includes(search) ||
+                        (r.teacherName || '').toLowerCase().includes(search)
+                    );
+                }
+
+                if (!rows.length) {
+                    const msg = allMonths ? 'Отчётов после ВУ пока нет' : 'За выбранный месяц отчётов после ВУ нет.';
+                    wrap.innerHTML = `<div class="analytics-empty" style="padding:2rem; text-align:center; color:#94a3b8;">${msg}</div>`;
+                    return;
+                }
+
+                wrap.innerHTML = rows.map(r => {
+                    const group = sameName.get((r.student_name || '').trim().toLowerCase()) || [r];
+                    let dup = '';
+                    if (group.length > 1) {
+                        const newest = group.reduce((a, b) => new Date(b.created_at) > new Date(a.created_at) ? b : a);
+                        const sameDay = new Date(r.created_at).toDateString() === new Date(newest.created_at).toDateString();
+                        dup = newest.id === r.id
+                            ? `<span class="tracker-row-pill vu-dup-last">✅ последний из ${group.length}</span>`
+                            : `<span class="tracker-row-pill vu-dup">⚠️ не последний — свежий ${sameDay ? 'в ' + vuHhMm(newest.created_at) : formatDateRu(newest.created_at)}</span>`;
+                    }
+                    return `
+                    <div class="tracker-row">
+                        <div class="tracker-row-info">
+                            <div class="tracker-row-title">
+                                <span>📚 ${escapeHtml(r.teacherName)}</span>
+                                <span style="color:#94a3b8;">→</span>
+                                <span>👤 ${escapeHtml(r.student_name || '—')}</span>
+                                ${r.program ? `<span class="tracker-row-pill">${escapeHtml(r.program)}</span>` : ''}
+                                ${dup}
+                            </div>
+                            <div class="tracker-row-meta">📅 ${formatDateRu(r.created_at)}, ${vuHhMm(r.created_at)}${r.updated_at && r.updated_at !== r.created_at ? ' · обновлён ' + formatDateRu(r.updated_at) : ''}</div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="vuOpenEdit('${r.id}')">Открыть</button>
+                    </div>
+                `;
+                }).join('');
             } catch (e) {
                 console.error(e);
                 wrap.innerHTML = '<div class="analytics-empty">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
