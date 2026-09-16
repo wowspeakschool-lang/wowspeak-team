@@ -9322,6 +9322,24 @@
 
         let _sbHostIdx = 0;   // какой адрес сейчас рабочий
 
+        // Функции базы, которые только читают. Их запрос можно переотправить
+        // на запасной адрес: дубля не будет, потому что писать они не могут.
+        //
+        // Это не догадка по имени: в Postgres такая функция помечена STABLE
+        // или IMMUTABLE, и попытка записи из неё завершится ошибкой. Список
+        // ведём руками и добавляем функцию только после проверки пометки —
+        // get_wowspace_schedule и get_report_by_parent_token, например,
+        // помечены VOLATILE, и их здесь быть не должно.
+        const SB_READONLY_RPC = new Set([
+            'get_trial_report_by_token',   // публичный отчёт после вводного
+            'public_teacher_view',         // публичная карточка преподавателя
+        ]);
+
+        function _sbIsReadOnlyRpc(urlStr) {
+            const m = urlStr.match(/\/rest\/v1\/rpc\/([A-Za-z0-9_]+)/);
+            return !!m && SB_READONLY_RPC.has(m[1]);
+        }
+
         function _sbSwapHost(url) {
             return url.startsWith(SUPABASE_PROXY)
                 ? SUPABASE_HOSTS[_sbHostIdx] + url.slice(SUPABASE_PROXY.length)
@@ -9363,7 +9381,13 @@
             // Повторять можно только то, что безопасно повторить: чтение и авторизацию.
             // Запись не переотправляем — иначе при таймауте после реального сохранения
             // получили бы дубль. Адрес всё равно переключится для следующего запроса.
-            const canRetry = method === 'GET' || method === 'HEAD' || urlStr.includes('/auth/v1/');
+            // Чтение через rpc уходит методом POST, поэтому по одному методу
+            // его не отличить от записи. Без проверки имени функции публичные
+            // страницы теряли переключение на запасной адрес: медленный прокси
+            // давал AbortError на первом же хосте вместо отчёта.
+            const canRetry = method === 'GET' || method === 'HEAD'
+                || urlStr.includes('/auth/v1/')
+                || _sbIsReadOnlyRpc(urlStr);
 
             while (true) {
                 const target = _sbSwapHost(urlStr);
