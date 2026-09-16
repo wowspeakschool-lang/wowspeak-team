@@ -1,0 +1,101 @@
+name: Проверки index.html
+
+# Быстрые проверки правил, которые легко нарушить случайно — например,
+# сохранив index.html из старой копии файла или из редактора с другими
+# настройками. Ничего не собирают и на публикацию сайта не влияют:
+# GitHub Pages разворачивает страницу отдельным процессом.
+#
+# Если проверка упала — страница уже опубликована. Красная отметка говорит
+# «посмотрите, что уехало», а не «сайт сломан».
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  index-html:
+    name: index.html
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Файл целиком в CRLF. Редактор, сохраняющий в LF, меняет все 43 тысячи
+      # строк сразу: в таком коммите не видно настоящей правки, и ревью
+      # становится невозможным.
+      - name: Переводы строк остались CRLF
+        run: |
+          total=$(wc -l < index.html)
+          crlf=$(grep -c $'\r$' index.html || true)
+          echo "строк: $total, из них CRLF: $crlf"
+          if [ "$total" != "$crlf" ]; then
+            echo "::error file=index.html::Переводы строк изменились с CRLF на LF."
+            echo "Весь файл записан в CRLF. Сохранение в LF превращает правку в одну"
+            echo "строку в изменение всех 43 тысяч строк, и увидеть её в коммите нельзя."
+            echo "Что делать: откатить этот коммит и сохранить файл заново, не меняя"
+            echo "переводы строк (в VS Code — переключатель CRLF в правом нижнем углу)."
+            exit 1
+          fi
+
+      # Публичные страницы (?t=, ?wowspace=, ?vu_report=, ?parent_view=)
+      # читают данные только через функции базы. Прямое обращение к таблице
+      # отчётов с этих страниц — нарушение правила, а не стилевая придирка.
+      # Ищем именно ОТБОР по токену на стороне браузера: .eq('parent_view_token', …).
+      # Сам по себе parent_view_token в строке — это нормально: сохранение
+      # отчёта возвращает токен обратно через insert(...).select(...), и такие
+      # места трогать не нужно.
+      - name: Публичные страницы читают данные через функции базы
+        run: |
+          if grep -n "eq('parent_view_token'" index.html; then
+            echo "::error file=index.html::Отбор по parent_view_token делается в браузере."
+            echo "Публичные страницы читают данные только через функции базы"
+            echo "(get_trial_report_by_token, get_report_by_parent_token) — они сверяют"
+            echo "токен на сервере."
+            echo "Чаще всего это след сохранения файла из более старой копии:"
+            echo "правка была, а в сохранённой версии её уже нет."
+            exit 1
+          fi
+          echo "отбора по токену в браузере нет"
+
+      # Переключение на запасной адрес — единственная защита от медленного
+      # прокси. Чтение через rpc уходит методом POST, поэтому без списка
+      # читающих функций оно теряет право на повтор.
+      - name: Переключение адресов для читающих функций на месте
+        run: |
+          missing=0
+          for needle in "SB_READONLY_RPC" "_sbIsReadOnlyRpc" "get_trial_report_by_token" "public_teacher_view" "get_report_by_parent_token" "get_wowspace_schedule"; do
+            if ! grep -q "$needle" index.html; then
+              echo "::error file=index.html::В файле нет '$needle'."
+              missing=1
+            fi
+          done
+          if [ "$missing" != "0" ]; then
+            echo "Список читающих функций и его проверка нужны, чтобы запрос к базе"
+            echo "уходил на запасной адрес, если основной отвечает медленно."
+            echo "Чаще всего это след сохранения файла из более старой копии."
+            exit 1
+          fi
+          echo "список читающих функций и его проверка на месте"
+
+      # В список повтора может попасть только функция, помеченная в базе
+      # STABLE или IMMUTABLE. Имена ниже меняют данные, и повтор запроса
+      # к ним создал бы второе начисление или второй платёж.
+      - name: В списке повтора нет функций, меняющих данные
+        run: |
+          block=$(sed -n '/SB_READONLY_RPC = new Set(\[/,/\]);/p' index.html)
+          bad=0
+          for fn in redeem_stars recalc_teacher_finances recalc_auto_bonuses recalc_auto_penalties hr_set_password hr_reset_password learn_submit_exam issue_learn_certificate hr_grant_access_manual hr_revoke_access; do
+            if echo "$block" | grep -q "'$fn'"; then
+              echo "::error file=index.html::В списке повтора оказалась '$fn' — она меняет данные."
+              bad=1
+            fi
+          done
+          if [ "$bad" != "0" ]; then
+            echo "Повтор такого запроса создал бы второе начисление, списание или платёж."
+            echo "В список добавляют только функции с пометкой STABLE или IMMUTABLE:"
+            echo "  select proname, provolatile from pg_proc"
+            echo "  where pronamespace = 'public'::regnamespace and proname = '...';"
+            exit 1
+          fi
+          echo "функций, меняющих данные, в списке нет"
