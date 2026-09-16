@@ -36686,11 +36686,18 @@
         async function vuRenderPublic(token){
             document.body.innerHTML='<div style="min-height:100vh;background:#F8F6FF;padding:20px 0;font-family:Nunito,sans-serif"><div id="vuPubWrap" style="text-align:center;padding:40px;color:#7B61FF">Загрузка отчёта…</div></div>';
             try{
-                var res=await sb.from('teacher_reports').select('form_data,student_name,deleted_at').eq('parent_view_token',token).eq('report_type','trial_report_v2').maybeSingle();
+                // Через SECURITY DEFINER функцию, а не прямым запросом к таблице.
+                // Прямой select здесь НЕ работает: у anon нет ни одной RLS-политики на
+                // teacher_reports, и родитель без входа видит «Отчёт не найден».
+                // И возвращать прямой select нельзя: отбор по токену делал клиент,
+                // а фильтр можно было просто не отправить и получить все отчёты
+                // целиком, вместе с form_data и самими токенами.
+                var res=await sb.rpc('get_trial_report_by_token',{p_token:token});
                 if(res.error)throw res.error;
-                if(!res.data||res.data.deleted_at){document.getElementById('vuPubWrap').innerHTML='<div style="color:#94a3b8">Отчёт не найден</div>';return;}
-                VU_S=Object.assign({err:{},goals:[],scores:{},soft:{}},res.data.form_data||{});
-                document.title='Отчёт WowSpeak — '+(res.data.student_name||'');
+                var row=(res.data&&res.data[0])||null;
+                if(!row){document.getElementById('vuPubWrap').innerHTML='<div style="color:#94a3b8">Отчёт не найден</div>';return;}
+                VU_S=Object.assign({err:{},goals:[],scores:{},soft:{}},row.form_data||{});
+                document.title='Отчёт WowSpeak — '+(row.student_name||'');
                 document.getElementById('vuPubWrap').outerHTML=vuRenderReport(true);
             }catch(e){document.getElementById('vuPubWrap').innerHTML='<div style="color:#dc2626">Ошибка: '+vuEsc(e.message||String(e))+'</div>';}
         }
