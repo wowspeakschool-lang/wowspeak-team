@@ -36310,7 +36310,14 @@
                 var res=await sb.from('teacher_reports').select('*').eq('id',reportId).single();
                 if(res.error)throw res.error;
                 var d=res.data; var fd=d.form_data||{};
-                VU_S=Object.assign({step:-1,reportId:d.id,token:d.parent_view_token,createdAt:d.created_at,show:true,err:{}},fd);
+                // Значения из строки БД идут ПОСЛЕ form_data, а не до.
+                // form_data — снимок всего состояния мастера, и при первом
+                // сохранении reportId и token в нём ещё null: их выдаёт insert
+                // уже после того, как payload собран. Пока они шли до fd,
+                // эти null затирали настоящие id и токен: кнопка «Ссылка
+                // родителю» отвечала «Сначала сформируйте отчёт», а
+                // повторное сохранение уходило в insert и создавало двойника.
+                VU_S=Object.assign({step:-1,show:true,err:{}},fd,{reportId:d.id,token:d.parent_view_token,createdAt:d.created_at});
                 VU_S.teacherId=d.teacher_id;
                 // Блокировка редактирования через 24ч (кроме super_admin/methodist)
                 var isStaff=hasAnyRole(['super_admin','methodist']);
