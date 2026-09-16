@@ -3788,6 +3788,7 @@
         .role-manager     { background: #e0e7ff; color: #3730a3; }
         .role-buddy       { background: #fae8ff; color: #86198f; }
         .role-assessor    { background: #ccfbf1; color: #0f766e; }
+        .role-recruiter   { background: #cffafe; color: #155e75; }
         .role-teacher     { background: #f1f5f9; color: #475569; }
 
         .team-field {
@@ -7219,6 +7220,7 @@
                                 <option value="manager">Менеджер</option>
                                 <option value="buddy">Бадди</option>
                                 <option value="assessor">Ассессор</option>
+                                <option value="recruiter">Рекрутер</option>
                             </select>
                             <select id="teamActiveFilter" onchange="renderTeamList()" style="padding:0.5rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.9rem;">
                                 <option value="active" selected>Активные</option>
@@ -8066,6 +8068,10 @@
                             <label style="display:flex; gap:0.5rem; align-items:center; cursor:pointer;">
                                 <input type="checkbox" value="assessor" class="invite-role-cb">
                                 <span class="team-role-badge role-assessor">Ассессор</span>
+                            </label>
+                            <label style="display:flex; gap:0.5rem; align-items:center; cursor:pointer;">
+                                <input type="checkbox" value="recruiter" class="invite-role-cb">
+                                <span class="team-role-badge role-recruiter">Рекрутер</span>
                             </label>
                             <label style="display:flex; gap:0.5rem; align-items:center; cursor:pointer;">
                                 <input type="checkbox" value="super_admin" class="invite-role-cb">
@@ -10282,7 +10288,8 @@
                 'manager':     'Менеджер',
                 'teacher':     'Преподаватель',
                 'buddy':       'Бадди',
-                'assessor':    'Ассессор'
+                'assessor':    'Ассессор',
+                'recruiter':   'Рекрутер'
             };
             if (!roles || !roles.length) return '';
             return roles.map(r => map[r] || r).join(' · ');
@@ -14761,6 +14768,7 @@
             manager:     'Менеджер',
             buddy:       'Бадди',
             assessor:    'Ассессор',
+            recruiter:   'Рекрутер',
             teacher:     'Преподаватель'
         };
         const ROLE_COLORS = {
@@ -14770,7 +14778,8 @@
             assistant:   'linear-gradient(135deg, #f59e0b, #b45309)',
             manager:     'linear-gradient(135deg, #6366f1, #4338ca)',
             buddy:       'linear-gradient(135deg, #d946ef, #86198f)',
-            assessor:    'linear-gradient(135deg, #14b8a6, #0f766e)'
+            assessor:    'linear-gradient(135deg, #14b8a6, #0f766e)',
+            recruiter:   'linear-gradient(135deg, #06b6d4, #0e7490)'
         };
 
         // ============================================================
