@@ -9293,8 +9293,24 @@
         </div>
     </div>
 
-    <!-- Supabase JS SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase JS SDK — лежит в репозитории, а НЕ грузится с чужого CDN.
+         Причина: без window.supabase строка const sb = ... бросает исключение,
+         и тогда НЕ объявляется ничего ниже неё — платформа умирает целиком,
+         а человек видит только «sb is not defined». Так и случилось 16.09.2026:
+         у сотрудника не открывался cdn.jsdelivr.net (блокировщик, DNS
+         или провайдер), и весь интерфейс перестал работать.
+         Версия зафиксирована: раньше адрес @2 отдавал «последнюю вторую»,
+         то есть библиотека могла обновиться сама, без нашего участия. -->
+    <script src="/lib/supabase-js-2.116.0.js"></script>
+    <script>
+      // Запасной путь — только если локальный файл почему-то не выложился.
+      // document.write здесь намеренно: он подключает скрипт СИНХРОННО,
+      // до разбора остальной страницы. Через createElement библиотека
+      // догрузилась бы асинхронно, уже после строки const sb = ...
+      if (!window.supabase) {
+        document.write('<scr' + 'ipt src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/scr' + 'ipt>');
+      }
+    </script>
     <!-- Chart.js для графиков в Аналитике -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- SheetJS для генерации XLSX -->
