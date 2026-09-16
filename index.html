@@ -36489,7 +36489,87 @@
             if(step===4){if(!VU_S.comment.trim())VU_S.err.comment=true;}
             return Object.keys(VU_S.err).length===0;
         }
-        function vuNext(){if(!vuValidate(VU_S.step))return vuRender();if(VU_S.step===3){var r=vuAutoRec();VU_S.prog=r.prog;VU_S.unit=r.unit;VU_S.dur=r.dur;VU_S.freq=r.freq;VU_S.grade=r.grade;}VU_S.step=Math.min(4,VU_S.step+1);vuRender();}
+        // Ищем уже существующий отчёт этому же ученику.
+        //
+        // Сверяем по ИМЕНИ: поле student_id в этой таблице не заполняется
+        // никогда — на 16.09.2026 оно пустое у всех 223 отчётов, и другого
+        // признака ученика нет. Сравнение без краевых пробелов и без учёта
+        // регистра; % и _ в имени экранируем, иначе ilike примет их за
+        // подстановочные знаки.
+        //
+        // Видно то, что разрешает RLS: преподаватель — свои отчёты,
+        // super_admin / methodist / assistant — все. Наблюдавшиеся дубли были
+        // сделаны одним и тем же преподавателем, так что для него проверка
+        // полная.
+        async function vuFindExisting(studentName){
+            var name=(studentName||'').trim().replace(/\s+/g,' ');
+            if(name.length<3) return null;
+            var pattern=name.replace(/([%_\\])/g,'\\$1');
+            var res=await sb.from('teacher_reports')
+                .select('id,student_name,created_at')
+                .eq('report_type','trial_report_v2')
+                .is('deleted_at',null)
+                .ilike('student_name',pattern)
+                .order('created_at',{ascending:false})
+                .limit(1);
+            if(res.error) throw res.error;
+            return (res.data&&res.data[0])||null;
+        }
+
+        async function vuNext(){
+            if(!vuValidate(VU_S.step))return vuRender();
+            // Уходя с шага, где введено имя, предупреждаем про уже
+            // существующий отчёт. Второй отчёт получает ДРУГУЮ ссылку, и та,
+            // что уже отправлена родителю, навсегда остаётся с прежней
+            // версией — на 16.09.2026 так набралось 19 лишних ссылок у
+            // 16 учеников.
+            //
+            // Спрашиваем здесь, а не при сохранении: на этом шаге заполнены
+            // только имя и возраст, поэтому переход к существующему отчёту
+            // ничего не теряет.
+            if(VU_S.step===0 && !VU_S.reportId && !VU_S.dupAsked){
+                VU_S.dupAsked=true;   // спрашиваем один раз за сеанс
+                try{
+                    var ex=await vuFindExisting((VU_S.name+' '+(VU_S.surname||'')).trim());
+                    if(ex){
+                        var when=new Date(ex.created_at).toLocaleDateString('ru-RU');
+                        // Предлагать «открыть и поправить» можно только если правка
+                        // этого отчёта вообще доступна. Через 24 часа она закрыта для
+                        // всех, кроме super_admin и methodist (см. vuOpenEdit), и
+                        // человек, выбравший «открыть», остался бы и без правки,
+                        // и без своего черновика.
+                        var canFix=hasAnyRole(['super_admin','methodist'])
+                            || (Date.now()-new Date(ex.created_at).getTime())<=24*3600*1000;
+                        if(canFix){
+                            if(confirm('У этого ученика уже есть отчёт от '+when+'.\n\n'
+                                +'Новый отчёт получит ДРУГУЮ ссылку. Та, что уже у родителя, '
+                                +'останется с прежней версией.\n\n'
+                                +'ОК — открыть существующий отчёт и поправить его.\n'
+                                +'Отмена — всё равно создать новый.')){
+                                vuOpenEdit(ex.id);
+                                return;
+                            }
+                        }else{
+                            if(!confirm('У этого ученика уже есть отчёт от '+when+', '
+                                +'и его правка закрыта: прошло больше 24 часов.\n\n'
+                                +'Новый отчёт получит ДРУГУЮ ссылку — прежнюю родителю '
+                                +'придётся отправить заново.\n\n'
+                                +'ОК — создать новый отчёт.\n'
+                                +'Отмена — вернуться (если нужна правка старого, '
+                                +'попросите методиста).')){
+                                return vuRender();
+                            }
+                        }
+                    }
+                }catch(e){
+                    // Проверка не должна мешать работе: не получилось — идём дальше.
+                    console.warn('vuNext: не удалось проверить существующий отчёт', e);
+                }
+            }
+            if(VU_S.step===3){var r=vuAutoRec();VU_S.prog=r.prog;VU_S.unit=r.unit;VU_S.dur=r.dur;VU_S.freq=r.freq;VU_S.grade=r.grade;}
+            VU_S.step=Math.min(4,VU_S.step+1);
+            vuRender();
+        }
         function vuPrev(){if(VU_S.show){VU_S.show=false;vuRender();return;}VU_S.step=Math.max(-1,VU_S.step-1);vuRender();}
         function vuGenerate(){if(!vuValidate(4))return vuRender();VU_S.show=true;vuRender();vuSave();}
 
