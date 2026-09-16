@@ -1476,6 +1476,17 @@
             background: #dbeafe;
             color: #1e40af;
         }
+        /* Пометка о нескольких отчётах у одного ученика: зелёная на самом
+           свежем, янтарная на остальных. Нужна менеджеру, чтобы отправить
+           родителю ссылку на последний отчёт, а не на первый. */
+        .tracker-row-pill.vu-dup-last {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .tracker-row-pill.vu-dup {
+            background: #fef3c7;
+            color: #92400e;
+        }
         /* ===== Конец трекеров ===== */
 
         /* ===== История начислений ===== */
@@ -36921,6 +36932,16 @@
             renderVuReportsList();
         }
 
+        // Время СОЗДАНИЯ отчёта часами и минутами. В списке нужно потому,
+        // что несколько отчётов одного ученика обычно созданы в один день,
+        // и одна дата их не различает.
+        function vuHhMm(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
         async function renderVuReportsList() {
             ensureVuReportsMonth();
             const wrap = document.getElementById('vuReportsListWrap');
@@ -36953,18 +36974,49 @@
                     return;
                 }
 
-                wrap.innerHTML = rows.map(r => `
+                // У одного ученика может оказаться несколько отчётов: так
+                // получалось, когда открытый отчёт сохраняли заново. Причина
+                // устранена в vuOpenEdit, но записи остались, и удалять их
+                // нельзя — неизвестно, какую ссылку уже отправили родителю,
+                // а удалённый отчёт по ссылке не открывается. Поэтому просто
+                // показываем это в списке: на самом свежем отчёте зелёная
+                // пометка, на остальных янтарная с датой свежего.
+                // Группируем по загруженным записям (последние 200 по дате
+                // изменения) — этого хватает на текущий и прошлый месяц.
+                const sameName = new Map();
+                for (const row of (data || [])) {
+                    const key = (row.student_name || '').trim().toLowerCase();
+                    if (!key) continue;
+                    if (!sameName.has(key)) sameName.set(key, []);
+                    sameName.get(key).push(row);
+                }
+
+                wrap.innerHTML = rows.map(r => {
+                    const group = sameName.get((r.student_name || '').trim().toLowerCase()) || [r];
+                    let dup = '';
+                    if (group.length > 1) {
+                        const newest = group.reduce((a, b) => new Date(b.created_at) > new Date(a.created_at) ? b : a);
+                        // Двойники почти всегда созданы в один день, поэтому внутри
+                        // одного дня различаем их временем, а не датой.
+                        const sameDay = new Date(r.created_at).toDateString() === new Date(newest.created_at).toDateString();
+                        dup = newest.id === r.id
+                            ? `<span class="tracker-row-pill vu-dup-last">✅ последний из ${group.length}</span>`
+                            : `<span class="tracker-row-pill vu-dup">⚠️ не последний — свежий ${sameDay ? 'в ' + vuHhMm(newest.created_at) : formatDateRu(newest.created_at)}</span>`;
+                    }
+                    return `
                     <div class="tracker-row">
                         <div class="tracker-row-info">
                             <div class="tracker-row-title">
                                 <span>👤 ${escapeHtml(r.student_name || '—')}</span>
                                 ${r.program ? `<span class="tracker-row-pill">${escapeHtml(r.program)}</span>` : ''}
+                                ${dup}
                             </div>
-                            <div class="tracker-row-meta">📅 ${formatDateRu(r.created_at)}${r.updated_at && r.updated_at !== r.created_at ? ' · обновлён ' + formatDateRu(r.updated_at) : ''}</div>
+                            <div class="tracker-row-meta">📅 ${formatDateRu(r.created_at)}, ${vuHhMm(r.created_at)}${r.updated_at && r.updated_at !== r.created_at ? ' · обновлён ' + formatDateRu(r.updated_at) : ''}</div>
                         </div>
                         <button class="btn btn-secondary btn-small" onclick="vuOpenEdit('${r.id}')">Открыть</button>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             } catch (e) {
                 console.error(e);
                 wrap.innerHTML = '<div class="analytics-empty">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
