@@ -19789,6 +19789,35 @@
             }
         }
 
+        // Перенос трекера на следующий урок.
+        //
+        // «Какой урок трекерный» нигде не хранится: запрос считается
+        // ожидающим в любом уроке ученика, кроме того, что записан в
+        // `lesson_id`. Поэтому перенос — это сдвиг `lesson_id` на текущий
+        // урок: здесь трекер перестаёт быть ожидающим и становится
+        // ожидающим в следующем. Отдельного поля для этого не нужно.
+        async function postponeFeedback() {
+            const st = _lessonModalState;
+            if (!st) return;
+            const pending = (st.feedback || []).filter(r => r.lesson_id !== st.lesson.id);
+            if (!pending.length) return;
+            if (!confirm(pending.length > 1
+                ? `Перенести трекер на следующий урок для ${pending.length} учеников?`
+                : 'Перенести трекер на следующий урок?')) return;
+            try {
+                const ids = pending.map(r => r.id);
+                const { error } = await sb.from('feedback_requests')
+                    .update({ lesson_id: st.lesson.id, updated_at: new Date().toISOString() })
+                    .in('id', ids);
+                if (error) throw error;
+                // Обновляем состояние на месте, чтобы не перезагружать модалку
+                for (const r of pending) r.lesson_id = st.lesson.id;
+                renderLessonModalBody();
+            } catch (e) {
+                alert('Не удалось перенести: ' + (e.message || e));
+            }
+        }
+
         // Открывает форму трекера прогресса для ученика из этого урока
         function openTrackerFromLesson() {
             const st = _lessonModalState;
@@ -30018,14 +30047,20 @@
                     <div style="${labelStyle}">📊 Трекер прогресса</div>
                     ${fbPending.length ? `
                         <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
-                            <div style="font-size:13px; color:#1e40af; font-weight:600; margin-bottom:6px;">Трекер запрошен на этот урок</div>
+                            <div style="font-size:13px; color:#1e40af; font-weight:600; margin-bottom:6px;">Трекер на этот урок</div>
                             ${fbPending.map(r => `<div style="font-size:13px; color:#1e3a8a; margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
-                            ${canEdit ? `<button class="btn btn-small" style="margin-top:8px; background:#2563eb; color:white;"
-                                    onclick="openTrackerFromLesson()">Сформировать трекер прогресса</button>` : ''}
+                            ${canEdit ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+                                    <button class="btn btn-small" style="background:#2563eb; color:white;"
+                                        onclick="openTrackerFromLesson()">Сформировать трекер прогресса</button>
+                                    <button class="btn btn-small btn-secondary"
+                                        title="Трекер уйдёт на следующий урок с этим учеником, домашку можно будет задать как обычно"
+                                        onclick="postponeFeedback()">Перенести на следующий урок</button>
+                                </div>` : ''}
                         </div>` : ''}
 
                     ${fbHere.length ? `
                         <div style="font-size:13px; color:#475569;">
+                            <div style="margin-bottom:4px;">Трекер будет на следующем уроке с этим учеником.</div>
                             ${fbHere.map(r => `<div style="margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
                         </div>`
                     : (canEdit && !fbPending.length ? `
@@ -30043,59 +30078,61 @@
             // которое уходит в МойКласс как обычное ДЗ
             const TRACKER_HW_TEXT = 'На уроке был тест и обратная связь, домашнего задания нет';
 
-            // Отметка «был тест»: после теста домашку не задают.
-            // Гасит всё связанное с ДЗ — поле, файлы, оценку и монетки,
-            // чтобы преподаватель не заполнял его по привычке.
-            const wasTest = !!draft.was_test;
-            const testCheckbox = canEdit ? `
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:10px; font-size:13px; color:#475569;">
-                    <input type="checkbox" ${wasTest ? 'checked' : ''}
-                           onchange="_lessonModalState.draft.was_test = this.checked; renderLessonModalBody();"
-                           style="width:17px; height:17px; cursor:pointer;">
-                    📝 Сегодня был тест — домашнее задание не задаётся
-                </label>` : (wasTest
-                    ? `<div style="font-size:13px; color:#475569; margin-bottom:10px;">📝 На уроке был тест</div>` : '');
+            // Задаётся ли домашка на этом уроке — один выбор, а не набор
+            // независимых галочек. Раньше их было две, обе со словами
+            // «не задаётся», и они могли стоять одновременно.
+            //
+            // Трекера среди вариантов нет намеренно: если трекер сегодня
+            // не нужен, его переносят кнопкой в блоке трекера, и домашка
+            // становится обычной. Иначе один и тот же смысл жил бы в двух
+            // местах, и в модалке мельтешило бы лишнее.
+            const hwMode = draft.was_test ? 'test'
+                : fbPending.length ? 'tracker'
+                : 'set';
+            // Домашки на этом уроке нет — значит и отмечать по ученику
+            // нечего: ни «сделал ли», ни оценку за ДЗ. Раньше это
+            // учитывалось только для теста, и на уроке с трекером
+            // преподавателю предлагали оценить несуществующее задание.
+            const hwNone = hwMode !== 'set';
 
-            // То же для урока с трекером. Раньше выхода из этого состояния не
-            // было вовсе: поле ДЗ не показывалось, а при сохранении текст про
-            // обратную связь затирал то, что преподаватель успел задать.
-            // Галочка стоит по умолчанию — поведение не меняется, — но её
-            // можно снять и задать домашку, если трекер не состоялся или
-            // кнопку нажали по ошибке.
-            const trackerCheckbox = canEdit ? `
-                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:10px; font-size:13px; color:#475569;">
-                    <input type="checkbox" checked
-                           onchange="_lessonModalState.draft.hw_despite_tracker = !this.checked; renderLessonModalBody();"
-                           style="width:17px; height:17px; cursor:pointer;">
-                    📊 Трекер прогресса — домашнее задание не задаётся
-                </label>` : '';
+            // На трекерном уроке выбирать нечего: домашки нет, а чтобы она
+            // появилась, трекер переносят выше.
+            const hwModeOptions = hwMode === 'tracker' ? [] : [
+                { v: 'set',  t: 'Задаю домашнее задание' },
+                { v: 'test', t: '📝 Не задаю: был тест' },
+            ];
 
-            const homeworkSection = wasTest ? `
+            const hwModePicker = (canEdit && hwModeOptions.length)
+                ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+                    ${hwModeOptions.map(o => {
+                        const on = hwMode === o.v;
+                        return `<button type="button" onclick="setHomeworkMode('${o.v}')"
+                            style="padding:7px 13px; border-radius:8px; font-family:inherit; font-size:13px;
+                                   font-weight:${on ? '700' : '500'};
+                                   border:1px solid ${on ? '#7c3aed' : '#e5e7eb'};
+                                   background:${on ? '#7c3aed' : '#fff'};
+                                   color:${on ? '#fff' : '#64748b'}; cursor:pointer;">${o.t}</button>`;
+                    }).join('')}
+                   </div>`
+                : (hwMode === 'test' && !canEdit
+                    ? `<div style="font-size:13px; color:#475569; margin-bottom:10px;">📝 На уроке был тест</div>`
+                    : '');
+
+            const homeworkSection = hwMode !== 'set' ? `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
-                    ${testCheckbox}
+                    ${hwModePicker}
                     <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
-                        На уроке был тест, домашнего задания нет
+                        ${hwMode === 'test' ? 'На уроке был тест, домашнего задания нет' : TRACKER_HW_TEXT}
                     </div>
-                </div>` : (fbPending.length && !draft.hw_despite_tracker) ? `
-                <div style="${sectionStyle}">
-                    <div style="${labelStyle}">📚 Домашнее задание</div>
-                    ${trackerCheckbox}
-                    <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
-                        ${TRACKER_HW_TEXT}
+                    <div style="font-size:12px; color:#94a3b8; margin-top:6px;">
+                        Этот текст отправится в МойКласс при сохранении.${hwMode === 'tracker' && canEdit
+                            ? ' Если домашку всё-таки надо задать — перенесите трекер на следующий урок выше.' : ''}
                     </div>
-                    <div style="font-size:12px; color:#94a3b8; margin-top:6px;">Текст отправится в МойКласс при сохранении</div>
                 </div>` : `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
-                    ${testCheckbox}
-                    ${(fbPending.length && draft.hw_despite_tracker && canEdit) ? `
-                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:10px; font-size:13px; color:#475569;">
-                            <input type="checkbox"
-                                   onchange="_lessonModalState.draft.hw_despite_tracker = !this.checked; renderLessonModalBody();"
-                                   style="width:17px; height:17px; cursor:pointer;">
-                            📊 Трекер прогресса — домашнее задание не задаётся
-                        </label>` : ''}
+                    ${hwModePicker}
                     ${prevHomeworkBlock}
                     ${canEdit
                         ? `<div style="display:flex; gap:4px; flex-wrap:wrap; padding:6px 8px; background:#f8fafc; border:1px solid #e5e7eb; border-bottom:none; border-radius:8px 8px 0 0;">
@@ -30214,7 +30251,7 @@
                                         <div>${attendanceButtons(ds)}</div>
                                         <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
                                         <div style="text-align:center;">
-                                            ${wasTest ? '<span style="color:#cbd5e1; font-size:12px;">—</span>' : `
+                                            ${hwNone ? '<span style="color:#cbd5e1; font-size:12px;">—</span>' : `
                                                 <div id="wowHw_${ds.student_id}" style="margin-bottom:4px;"></div>
                                                 ${markInput(ds, 'home')}`}
                                         </div>
@@ -30249,8 +30286,8 @@
                             ${markInput(ds, 'lesson')}
                             ${canEdit ? markHint : ''}
                         </div>`;
-                    // После теста домашки нет — секцию не показываем вовсе
-                    homeMarkSection = wasTest ? '' : `
+                    // Домашки на уроке нет — секцию не показываем вовсе
+                    homeMarkSection = hwNone ? '' : `
                         <div style="${sectionStyle}">
                             <div style="${labelStyle}">⭐ Домашнее задание</div>
                             <div id="wowHw_${ds.student_id}" style="margin-bottom:10px;"></div>
@@ -30374,8 +30411,16 @@
         function trackerBlocksHomework() {
             const st = _lessonModalState;
             if (!st) return false;
-            if (st.draft?.hw_despite_tracker) return false;
             return (st.feedback || []).some(r => r.lesson_id !== st.lesson.id);
+        }
+
+        // Переключение режима домашки: задаю или не задаю, потому что был
+        // тест. Трекера здесь нет — он переносится кнопкой в своём блоке.
+        function setHomeworkMode(mode) {
+            const d = _lessonModalState?.draft;
+            if (!d) return;
+            d.was_test = (mode === 'test');
+            renderLessonModalBody();
         }
 
         function validateLessonDraft() {
