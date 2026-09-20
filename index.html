@@ -29804,6 +29804,11 @@
                     lesson, students, homeTask, lessonTask, marks,
                     previousTopic: null, previousLessonDate: null,
                     previousHomework: null,
+                    // Прошлый урок ищется в фоне, уже после первой отрисовки.
+                    // Пока не нашли — ведём себя как раньше и спрашиваем про
+                    // домашку: иначе при медленном или неудачном поиске
+                    // преподавателя просто не спросят.
+                    prevChecked: false,
                     feedback: feedbackRows,
                     answers: [],
                     answersLoading: false,
@@ -29881,6 +29886,7 @@
                                 .limit(10);
                             prevLessons = r.data;
                         }
+                        _lessonModalState.prevChecked = true;
                         if (prevLessons && prevLessons.length) {
                             for (const pl of prevLessons) {
                                 if (pl.topic && pl.topic.trim()) {
@@ -29897,6 +29903,7 @@
                                             _lessonModalState.previousHomework = tasks[0].text;
                                         }
                                     } catch (_) {}
+                                    _lessonModalState.prevChecked = true;
                                     // Желтая подсказка с предыдущей темой/ДЗ ВЫШЕ — её достаточно;
                                     // НЕ заполняем поля draft автоматически — препод сам впишет
                                     renderLessonModalBody();
@@ -30093,7 +30100,25 @@
             // нечего: ни «сделал ли», ни оценку за ДЗ. Раньше это
             // учитывалось только для теста, и на уроке с трекером
             // преподавателю предлагали оценить несуществующее задание.
+            //
+            // Второй случай — домашку не задавали на ПРОШЛОМ уроке. Тогда
+            // спрашивать «сделал ли ученик задание» тоже не о чем.
+            // Внимание: «не задавали» хранится не пустотой, а текстом —
+            // при выборе «не задаю» в МойКласс уходит пояснение, и оно же
+            // приезжает обратно как ДЗ прошлого урока. Поэтому сверяем и с
+            // пустотой, и с этими двумя фразами.
+            const NO_HW_TEXTS = [
+                'На уроке был тест, домашнего задания нет',
+                'На уроке был тест и обратная связь, домашнего задания нет',
+            ];
+            const prevHwText = (previousHomework || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            const prevHwNone = st.prevChecked
+                && (prevHwText === '' || NO_HW_TEXTS.some(t => prevHwText === t));
+
             const hwNone = hwMode !== 'set';
+            // Отметка «сделал ли домашку» относится к прошлому уроку,
+            // а оценка за ДЗ — к нему же. Скрываем их вместе.
+            const askAboutPrevHw = !hwNone && !prevHwNone;
 
             // На трекерном уроке выбирать нечего: домашки нет, а чтобы она
             // появилась, трекер переносят выше.
@@ -30233,11 +30258,10 @@
                     <div style="${sectionStyle}">
                         <div style="${labelStyle}">👥 Ученики · посещаемость и оценки</div>
                         <div style="display:flex; flex-direction:column; gap:6px;">
-                            <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; padding:6px 12px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.4px;">
+                            <div style="display:grid; grid-template-columns: 1fr auto auto; gap:10px; padding:6px 12px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.4px;">
                                 <div>Ученик</div>
                                 <div style="min-width:130px; text-align:center;">Посещение</div>
-                                <div style="min-width:64px; text-align:center;">Урок</div>
-                                <div style="min-width:64px; text-align:center;">ДЗ</div>
+                                <div style="min-width:64px; text-align:center;">${askAboutPrevHw ? 'ДЗ' : ''}</div>
                             </div>
                             ${draft.students.map(ds => {
                                 const orig = students.find(s => s.student_id === ds.student_id);
@@ -30246,14 +30270,13 @@
                                 const bd = st==='present'?'#bbf7d0':st==='absent'?'#fecaca':st==='good_reason'?'#fde68a':'#e2e8f0';
                                 return `
                                 <div style="padding:10px 12px; background:${bg}; border:1px solid ${bd}; border-radius:10px;">
-                                    <div style="display:grid; grid-template-columns: 1fr auto auto auto; gap:10px; align-items:center;">
+                                    <div style="display:grid; grid-template-columns: 1fr auto auto; gap:10px; align-items:center;">
                                         <div style="font-weight:600; color:#0f172a; font-size:14px;">${escapeHtml(orig?.student_name || '')}${studentNoteBtn(ds)}</div>
                                         <div>${attendanceButtons(ds)}</div>
-                                        <div style="text-align:center;">${markInput(ds, 'lesson')}</div>
                                         <div style="text-align:center;">
-                                            ${hwNone ? '<span style="color:#cbd5e1; font-size:12px;">—</span>' : `
+                                            ${askAboutPrevHw ? `
                                                 <div id="wowHw_${ds.student_id}" style="margin-bottom:4px;"></div>
-                                                ${markInput(ds, 'home')}`}
+                                                ${markInput(ds, 'home')}` : '<span style="color:#cbd5e1; font-size:12px;">—</span>'}
                                         </div>
                                     </div>
                                     ${studentNoteBox(ds)}
@@ -30264,10 +30287,9 @@
                         ${canEdit ? markHint : ''}
                     </div>`;
             } else {
-                // Индивидуальный: ссылка → посещение → тема → оценка урок → ДЗ → оценка ДЗ
+                // Индивидуальный: ссылка → посещение → тема → ДЗ → оценка ДЗ
                 const ds = draft.students[0];
                 let attendanceSection = '';
-                let lessonMarkSection = '';
                 let homeMarkSection = '';
                 let coinsSection = '';
                 if (ds) {
@@ -30280,20 +30302,15 @@
                             <div style="margin-top:6px; font-size:12px; color:#64748b;">${stateLabel}</div>
                             ${studentNoteBox(ds)}
                         </div>`;
-                    lessonMarkSection = `
+                    // Домашку не задавали — ни на этом уроке, ни на прошлом:
+                    // отмечать нечего
+                    homeMarkSection = askAboutPrevHw ? `
                         <div style="${sectionStyle}">
-                            <div style="${labelStyle}">⭐ Оценка за урок</div>
-                            ${markInput(ds, 'lesson')}
-                            ${canEdit ? markHint : ''}
-                        </div>`;
-                    // Домашки на уроке нет — секцию не показываем вовсе
-                    homeMarkSection = hwNone ? '' : `
-                        <div style="${sectionStyle}">
-                            <div style="${labelStyle}">⭐ Домашнее задание</div>
+                            <div style="${labelStyle}">⭐ Домашнее задание с прошлого урока</div>
                             <div id="wowHw_${ds.student_id}" style="margin-bottom:10px;"></div>
                             ${markInput(ds, 'home')}
                             ${canEdit ? markHint : ''}
-                        </div>`;
+                        </div>` : '';
                     coinsSection = `
                         <div style="${sectionStyle}">
                             <div style="${labelStyle}">💰 WOW-монетки</div>
@@ -30318,7 +30335,6 @@
                         ${attendanceSection}
                         ${topicSection}
                         ${publicDescSection}
-                        ${lessonMarkSection}
                         ${feedbackSection}
                     ${homeworkSection}
                         ${homeMarkSection}
@@ -30416,6 +30432,22 @@
 
         // Переключение режима домашки: задаю или не задаю, потому что был
         // тест. Трекера здесь нет — он переносится кнопкой в своём блоке.
+        // Спрашиваем ли на этом уроке «сделал ли ученик домашку». Нет, если
+        // домашки не было на этом уроке или её не задавали на прошлом.
+        // Правило нужно и разметке, и проверке перед сохранением.
+        function askedAboutPrevHomework() {
+            const st = _lessonModalState;
+            if (!st) return true;
+            if (st.draft?.was_test || trackerBlocksHomework()) return false;
+            if (!st.prevChecked) return true;
+            const NO_HW = [
+                'На уроке был тест, домашнего задания нет',
+                'На уроке был тест и обратная связь, домашнего задания нет',
+            ];
+            const txt = (st.previousHomework || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            return !(txt === '' || NO_HW.includes(txt));
+        }
+
         function setHomeworkMode(mode) {
             const d = _lessonModalState?.draft;
             if (!d) return;
@@ -30429,6 +30461,9 @@
             // На уроке с трекером поля ДЗ на экране нет, поэтому и требовать
             // его нельзя: иначе сохранение просит то, чего негде ввести.
             const hwOff = !!d.was_test || trackerBlocksHomework();
+            // Отметку «сделал ли домашку» не требуем, если её не задавали
+            // на прошлом уроке: кнопок для неё на экране тоже нет.
+            const prevHwOff = !askedAboutPrevHomework();
             const anyVisited = d.students.some(s => s.visited === true);
             if (anyVisited) {
                 if (!(d.topic || '').trim()) return 'Заполните тему урока (хотя бы один ученик отмечен как присутствовавший)';
@@ -30440,7 +30475,7 @@
                 if (!hwOff && !allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
                 // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет.
                 // После теста и на уроке с трекером домашки не было — отмечать нечего
-                const notMarked = hwOff ? []
+                const notMarked = (hwOff || prevHwOff) ? []
                     : d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
                 if (notMarked.length) {
                     return notMarked.length === 1
