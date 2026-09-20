@@ -30056,6 +30056,20 @@
                 </label>` : (wasTest
                     ? `<div style="font-size:13px; color:#475569; margin-bottom:10px;">📝 На уроке был тест</div>` : '');
 
+            // То же для урока с трекером. Раньше выхода из этого состояния не
+            // было вовсе: поле ДЗ не показывалось, а при сохранении текст про
+            // обратную связь затирал то, что преподаватель успел задать.
+            // Галочка стоит по умолчанию — поведение не меняется, — но её
+            // можно снять и задать домашку, если трекер не состоялся или
+            // кнопку нажали по ошибке.
+            const trackerCheckbox = canEdit ? `
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:10px; font-size:13px; color:#475569;">
+                    <input type="checkbox" checked
+                           onchange="_lessonModalState.draft.hw_despite_tracker = !this.checked; renderLessonModalBody();"
+                           style="width:17px; height:17px; cursor:pointer;">
+                    📊 Трекер прогресса — домашнее задание не задаётся
+                </label>` : '';
+
             const homeworkSection = wasTest ? `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
@@ -30063,9 +30077,10 @@
                     <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
                         На уроке был тест, домашнего задания нет
                     </div>
-                </div>` : fbPending.length ? `
+                </div>` : (fbPending.length && !draft.hw_despite_tracker) ? `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
+                    ${trackerCheckbox}
                     <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
                         ${TRACKER_HW_TEXT}
                     </div>
@@ -30074,6 +30089,13 @@
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
                     ${testCheckbox}
+                    ${(fbPending.length && draft.hw_despite_tracker && canEdit) ? `
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:10px; font-size:13px; color:#475569;">
+                            <input type="checkbox"
+                                   onchange="_lessonModalState.draft.hw_despite_tracker = !this.checked; renderLessonModalBody();"
+                                   style="width:17px; height:17px; cursor:pointer;">
+                            📊 Трекер прогресса — домашнее задание не задаётся
+                        </label>` : ''}
                     ${prevHomeworkBlock}
                     ${canEdit
                         ? `<div style="display:flex; gap:4px; flex-wrap:wrap; padding:6px 8px; background:#f8fafc; border:1px solid #e5e7eb; border-bottom:none; border-radius:8px 8px 0 0;">
@@ -30345,9 +30367,23 @@
             btn.title = err || '';
         }
 
+        // Трекер запрошен на этот урок, и преподаватель не снял галочку:
+        // домашку в таком уроке не задают. Правило нужно в трёх местах —
+        // в разметке, в проверке перед сохранением и в самом сохранении, —
+        // поэтому живёт здесь одно.
+        function trackerBlocksHomework() {
+            const st = _lessonModalState;
+            if (!st) return false;
+            if (st.draft?.hw_despite_tracker) return false;
+            return (st.feedback || []).some(r => r.lesson_id !== st.lesson.id);
+        }
+
         function validateLessonDraft() {
             const d = _lessonModalState?.draft;
             if (!d) return 'Нет данных';
+            // На уроке с трекером поля ДЗ на экране нет, поэтому и требовать
+            // его нельзя: иначе сохранение просит то, чего негде ввести.
+            const hwOff = !!d.was_test || trackerBlocksHomework();
             const anyVisited = d.students.some(s => s.visited === true);
             if (anyVisited) {
                 if (!(d.topic || '').trim()) return 'Заполните тему урока (хотя бы один ученик отмечен как присутствовавший)';
@@ -30356,10 +30392,10 @@
                 const visited = d.students.filter(s => s.visited === true);
                 const allNoHw = visited.length > 0
                     && visited.every(s => _wowHwState[s.student_id] === 'none');
-                if (!d.was_test && !allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
+                if (!hwOff && !allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
                 // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет.
-                // После теста домашки не было — отмечать нечего
-                const notMarked = d.was_test ? []
+                // После теста и на уроке с трекером домашки не было — отмечать нечего
+                const notMarked = hwOff ? []
                     : d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
                 if (notMarked.length) {
                     return notMarked.length === 1
@@ -30409,10 +30445,9 @@
                 // 2. ДЗ — через mk-write-lesson (text как HTML).
                 // На уроке с трекером домашки нет: вместо неё уходит
                 // пояснение, чтобы родитель в МойКласс не искал задание
-                const _fbPending = (st.feedback || []).filter(r => r.lesson_id !== lesson.id);
                 if (d.was_test) {
                     d.homework = 'На уроке был тест, домашнего задания нет';
-                } else if (_fbPending.length) {
+                } else if (trackerBlocksHomework()) {
                     d.homework = 'На уроке был тест и обратная связь, домашнего задания нет';
                 }
                 const newHw = (d.homework || '').trim();
