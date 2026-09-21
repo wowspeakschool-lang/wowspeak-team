@@ -30275,6 +30275,13 @@
                 { v: 'none', t: 'Не задаю' },
             ];
 
+            // Выбор «задаю / не задаю» показываем только там, где отказ от
+            // домашки осмыслен: день трекера или теста. На обычном уроке
+            // домашка обязательна, и кнопки «не задаю» там быть не должно.
+            // Если «не задаю» уже выбрано, оставляем выбор видимым — иначе
+            // его нельзя было бы вернуть.
+            const showHwPicker = trackerDue || !!draft.was_test || !!draft.hw_none;
+
             // Отметка о тесте — свойство урока, а не домашки, поэтому
             // отдельным переключателем и над блоком ДЗ.
             //
@@ -30296,7 +30303,7 @@
                     ? `<div style="${sectionStyle}"><div style="font-size:14px; color:#334155;">📝 На уроке был тест</div></div>`
                     : '');
 
-            const hwModePicker = (canEdit && hwModeOptions.length)
+            const hwModePicker = (canEdit && showHwPicker)
                 ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
                     ${hwModeOptions.map(o => {
                         const on = hwMode === o.v;
