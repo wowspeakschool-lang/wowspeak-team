@@ -19799,7 +19799,7 @@
         async function postponeFeedback() {
             const st = _lessonModalState;
             if (!st) return;
-            const pending = (st.feedback || []).filter(r => r.lesson_id !== st.lesson.id);
+            const pending = (st.feedback || []).filter(r => r.lesson_id !== st.lesson.id && !r.tracker_done);
             if (!pending.length) return;
             if (!confirm(pending.length > 1
                 ? `Перенести трекер на следующий урок для ${pending.length} учеников?`
@@ -19826,7 +19826,7 @@
         // Открывает форму трекера прогресса для ученика из этого урока
         function openTrackerFromLesson() {
             const st = _lessonModalState;
-            const pending = (st?.feedback || []).filter(r => r.lesson_id !== st.lesson.id);
+            const pending = (st?.feedback || []).filter(r => r.lesson_id !== st.lesson.id && !r.tracker_done);
             if (!pending.length) return;
 
             const first = pending[0];
@@ -29882,6 +29882,47 @@
                     }
                 } catch (e) { console.warn('[feedback] не загрузилось', e); }
 
+                // Трекеры этих учеников: нужны, чтобы показать уже
+                // сформированный трекер вместо кнопки «Сформировать» —
+                // раньше кнопка висела, даже если трекер давно готов, и
+                // преподаватель делал его второй раз.
+                let trackerRows = [];
+                try {
+                    const sids = students.map(s => s.student_id).filter(Boolean);
+                    if (sids.length) {
+                        const { data: tr } = await sb.from('teacher_reports')
+                            .select('id, student_id, parent_view_token, created_at, program')
+                            .in('student_id', sids)
+                            .eq('report_type', 'progress_tracker')
+                            .is('deleted_at', null)
+                            .order('created_at', { ascending: false })
+                            .limit(50);
+                        trackerRows = tr || [];
+                    }
+                } catch (e) { console.warn('[tracker] не загрузилось', e); }
+
+                // Запрос считаем выполненным, если после него появился трекер
+                for (const r of feedbackRows) {
+                    const done = trackerRows.find(t => t.student_id === r.student_id
+                        && t.created_at >= r.created_at);
+                    if (done) r.tracker_done = done;
+                }
+                // ...и закрываем такой запрос, чтобы он не тянулся дальше.
+                // Раньше он закрывался только если трекер открыли из урока,
+                // а открытый из «Отчётов» оставлял запрос висеть навсегда.
+                for (const r of feedbackRows.filter(x => x.tracker_done && !x.report_id)) {
+                    sb.from('feedback_requests').update({
+                        report_id: r.tracker_done.id,
+                        report_url: r.tracker_done.parent_view_token
+                            ? location.origin + '/?parent_view=' + r.tracker_done.parent_view_token
+                            : null,
+                        status: 'done',
+                        updated_at: new Date().toISOString(),
+                    }).eq('id', r.id).then(({ error }) => {
+                        if (error) console.warn('[feedback] не закрылся', error);
+                    });
+                }
+
                 _lessonModalState = {
                     lesson, students, homeTask, lessonTask, marks,
                     previousTopic: null, previousLessonDate: null,
@@ -29892,6 +29933,7 @@
                     // преподавателя просто не спросят.
                     prevChecked: false,
                     feedback: feedbackRows,
+                    trackers: trackerRows,
                     answers: [],
                     answersLoading: false,
                     expandedAnswers: {},
@@ -29909,7 +29951,7 @@
                         hw_none: (homeTask?.text || '').trim()
                             ? NO_HW_ON_SAVE.includes((homeTask.text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim())
                             : (!!lesson.was_test
-                               || feedbackRows.some(r => r.lesson_id !== lesson.id)),
+                               || feedbackRows.some(r => r.lesson_id !== lesson.id && !r.tracker_done)),
                         webinar_url: lesson.webinar_url || '',
                         homework: homeTask?.text || '',
                         students: students.map(s => ({
@@ -30123,7 +30165,9 @@
             // нельзя, поэтому ищем по ученику и преподавателю.
             const fbRows = _lessonModalState?.feedback || [];
             const fbHere = fbRows.filter(r => r.lesson_id === lesson.id);
-            const fbPending = fbRows.filter(r => r.lesson_id !== lesson.id);
+            // Трекер на этот урок: ещё не сделанный — и уже готовый
+            const fbPending = fbRows.filter(r => r.lesson_id !== lesson.id && !r.tracker_done);
+            const fbDone = fbRows.filter(r => r.lesson_id !== lesson.id && r.tracker_done);
             const isGroupLesson = (students || []).length > 1;
 
             const fbLabel = (r) => {
@@ -30156,6 +30200,21 @@
                                         title="Трекер уйдёт на следующий урок с этим учеником, домашку можно будет задать как обычно"
                                         onclick="postponeFeedback()">Перенести на следующий урок</button>
                                 </div>` : ''}
+                        </div>` : ''}
+
+                    ${fbDone.length ? `
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+                            <div style="font-size:13px; color:#166534; font-weight:600; margin-bottom:6px;">Трекер на этот урок уже сформирован</div>
+                            ${fbDone.map(r => {
+                                const s = (students || []).find(x => x.student_id === r.student_id);
+                                const when = new Date(r.tracker_done.created_at)
+                                    .toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+                                return `<div style="font-size:13px; color:#14532d; margin-bottom:6px;">
+                                        ✅ ${escapeHtml(s?.student_name || '')} — ${escapeHtml(when)}
+                                        <button class="btn btn-small btn-secondary" style="margin-left:8px;"
+                                            onclick="openTrackerForEdit('${r.tracker_done.id}')">Открыть трекер</button>
+                                    </div>`;
+                            }).join('')}
                         </div>` : ''}
 
                     ${fbHere.length ? `
@@ -30528,7 +30587,7 @@
         function trackerDueNow() {
             const st = _lessonModalState;
             if (!st) return false;
-            return (st.feedback || []).some(r => r.lesson_id !== st.lesson.id);
+            return (st.feedback || []).some(r => r.lesson_id !== st.lesson.id && !r.tracker_done);
         }
         // Прежнее имя: трекер домашку больше не блокирует, оставлено,
         // чтобы не переписывать вызовы в стендах.
