@@ -11299,6 +11299,11 @@
             hasAnyRole(['super_admin', 'admin', 'assistant', 'curator', 'methodist', 'teacher']);
         const canEditStudents = () =>
             hasAnyRole(['super_admin', 'admin', 'assistant', 'curator']);
+        // Учебник и юнит в карточке правят методисты и супер-админы.
+        // Преподаватель сюда не ходит — он идёт через запрос на переход,
+        // иначе теряется смысл согласования.
+        const canEditTextbook = () =>
+            hasAnyRole(['super_admin', 'methodist']);
         const canIssueBonus = () =>
             hasAnyRole(['super_admin', 'methodist', 'assistant']);
         const canIssueStar = () =>
@@ -33255,16 +33260,7 @@
                         <div>${teachersTags}</div>
                     </div>` : ''}
 
-                    <div style="display:flex; gap:1rem; margin-bottom:1.25rem; flex-wrap:wrap;">
-                        <div style="flex:1; min-width:200px;">
-                            <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">📘 Учебник</div>
-                            <div style="background:#dbeafe; color:#1e40af; padding:8px 12px; border-radius:8px; font-size:14px; font-weight:500; min-height:38px; box-sizing:border-box; display:flex; align-items:center;">${stu.level ? escapeHtml(stu.level) : '<span style="color:#94a3b8;">не задан (из МК)</span>'}</div>
-                        </div>
-                        <div style="flex:1; min-width:200px;">
-                            <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">📍 Юнит</div>
-                            ${canEditStudents() ? `<input type="text" id="studentUnitInput" value="${stu.unit ? escapeHtml(stu.unit) : ''}" placeholder="Например: Unit 7" onblur="saveStudentUnit('${stu.id}', this.value)" style="width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; box-sizing:border-box;">` : `<div style="background:#f8fafc; color:#475569; padding:8px 12px; border-radius:8px; font-size:14px; min-height:38px; box-sizing:border-box; display:flex; align-items:center;">${stu.unit ? escapeHtml(stu.unit) : '<span style="color:#94a3b8;">не задан</span>'}</div>`}
-                        </div>
-                    </div>
+                    ${_renderStudentTextbookBlock(stu)}
                     ${(stu.test_level || stu.learning_goal) ? `
                     <div style="display:flex; gap:1rem; margin-bottom:1.25rem; flex-wrap:wrap;">
                         ${stu.test_level ? `
@@ -33338,6 +33334,149 @@
             const s = (_studentsListCache || []).find(x => x.id === studentId);
             if (s) s.attends_space = value;
             renderStudentsRows();
+        }
+
+        // Учебник и юнит в карточке ученика.
+        //
+        // Учебник приходит из МойКласса (атрибут «Уровень подготовки») только
+        // пока поле пустое: как только его поставил методист или выпустил
+        // трекер, синхронизация его не трогает — это делает триггер
+        // students_keep_local_level в базе. Юнит МойКласс не знает вовсе,
+        // его ведём только мы.
+        //
+        // Выбор из каталога, а не свободный текст: иначе в базе накапливаются
+        // «Go getter 1» и «Go Getter 1» как два разных учебника.
+        function _renderStudentTextbookBlock(stu) {
+            const TB = window.tr_TEXTBOOKS || {};
+            const canEdit = canEditTextbook();
+            const lvl = (stu.level || '').trim();
+            const unit = (stu.unit || '').trim();
+
+            if (!canEdit) {
+                const unitEditable = canEditStudents();
+                return `<div style="display:flex; gap:1rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">📘 Учебник</div>
+                        <div style="background:#dbeafe; color:#1e40af; padding:8px 12px; border-radius:8px; font-size:14px; font-weight:500; min-height:38px; box-sizing:border-box; display:flex; align-items:center;">${lvl ? escapeHtml(lvl) : '<span style="color:#94a3b8;">не задан (из МК)</span>'}</div>
+                    </div>
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">📍 Юнит</div>
+                        ${unitEditable
+                            ? `<input type="text" id="studentUnitInput" value="${escapeHtml(unit)}" placeholder="Например: Unit 7" onblur="saveStudentUnit('${stu.id}', this.value)" style="width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; box-sizing:border-box;">`
+                            : `<div style="background:#f8fafc; color:#475569; padding:8px 12px; border-radius:8px; font-size:14px; min-height:38px; box-sizing:border-box; display:flex; align-items:center;">${unit ? escapeHtml(unit) : '<span style="color:#94a3b8;">не задан</span>'}</div>`}
+                    </div>
+                </div>`;
+            }
+
+            // Ключ каталога по названию: в базе хранится название, а не код
+            const keyByName = {};
+            for (const k of Object.keys(TB)) keyByName[(TB[k].name || k).trim()] = k;
+            const curKey = keyByName[lvl] || '';
+            // Значение не из каталога не выбрасываем, а показываем отдельно —
+            // иначе методист не увидит, что там стоит, и молча его затрёт
+            const offCatalog = lvl && !curKey;
+
+            const tbOptions = ['<option value="">— не задан —</option>']
+                .concat(offCatalog ? [`<option value="__keep__" selected>${escapeHtml(lvl)} — не из каталога</option>`] : [])
+                .concat(Object.keys(TB).map(k =>
+                    `<option value="${escapeHtml(k)}"${k === curKey ? ' selected' : ''}>${escapeHtml(TB[k].name || k)}</option>`))
+                .join('');
+
+            return `<div style="display:flex; gap:1rem; margin-bottom:0.35rem; flex-wrap:wrap;">
+                <div style="flex:1; min-width:200px;">
+                    <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">📘 Учебник</div>
+                    <select id="studentTextbookSel" onchange="_studentTextbookChanged()"
+                        style="width:100%; padding:8px 12px; border:1px solid #bfdbfe; border-radius:8px; font-size:14px; font-family:inherit; background:#eff6ff; color:#1e40af; font-weight:500; box-sizing:border-box;">
+                        ${tbOptions}
+                    </select>
+                </div>
+                <div style="flex:1; min-width:200px;">
+                    <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">📍 Юнит</div>
+                    <select id="studentUnitSel"
+                        style="width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; background:white; box-sizing:border-box;">
+                        ${_studentUnitOptions(curKey, unit)}
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:1.25rem;">
+                <button class="btn btn-primary btn-small" onclick="saveStudentTextbook('${stu.id}')">Сохранить учебник и юнит</button>
+                <span style="font-size:12px; color:#94a3b8;">Учебник приходит из МойКласса, пока не задан здесь. Юнит ведём только мы.</span>
+            </div>`;
+        }
+
+        // Юниты выбранного учебника. Юнит из другой книги выбрать нельзя —
+        // раньше это было свободное поле, и юниты разъезжались с учебником.
+        function _studentUnitOptions(tbKey, currentUnit) {
+            const TB = window.tr_TEXTBOOKS || {};
+            const tb = tbKey ? TB[tbKey] : null;
+            const cur = (currentUnit || '').trim();
+            const labels = tb ? (tb.unitOrder || []).map(k => tb.units[k].label || k) : [];
+            const known = labels.includes(cur);
+            return ['<option value="">— не задан —</option>']
+                .concat(cur && !known ? [`<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}${tb ? ' — не из этого учебника' : ''}</option>`] : [])
+                .concat(labels.map(l => `<option value="${escapeHtml(l)}"${l === cur ? ' selected' : ''}>${escapeHtml(l)}</option>`))
+                .join('');
+        }
+
+        function _studentTextbookChanged() {
+            const sel = document.getElementById('studentTextbookSel');
+            const unitSel = document.getElementById('studentUnitSel');
+            if (!sel || !unitSel) return;
+            // «не из каталога» оставляет и юнит как есть
+            if (sel.value === '__keep__') return;
+            unitSel.innerHTML = _studentUnitOptions(sel.value, '');
+        }
+
+        async function saveStudentTextbook(studentId) {
+            const sel = document.getElementById('studentTextbookSel');
+            const unitSel = document.getElementById('studentUnitSel');
+            if (!sel || !unitSel) return;
+            const TB = window.tr_TEXTBOOKS || {};
+            const stu = (_studentsListCache || []).find(x => x.id === studentId);
+            const oldLevel = (stu?.level || '').trim() || null;
+            const oldUnit = (stu?.unit || '').trim() || null;
+
+            const newLevel = sel.value === '__keep__'
+                ? oldLevel
+                : (sel.value ? (TB[sel.value]?.name || sel.value) : null);
+            const newUnit = unitSel.value.trim() || null;
+
+            if (newLevel === oldLevel && newUnit === oldUnit) {
+                _showToast('Ничего не изменилось');
+                return;
+            }
+            if (!confirm(`Учебник: ${oldLevel || 'не задан'} → ${newLevel || 'не задан'}\n`
+                + `Юнит: ${oldUnit || 'не задан'} → ${newUnit || 'не задан'}\n\nСохранить?`)) return;
+
+            try {
+                const { error } = await sb.from('students')
+                    .update({ level: newLevel, unit: newUnit })
+                    .eq('id', studentId);
+                if (error) throw error;
+
+                // История переходов живёт в одном месте — там же, где
+                // утверждения запросов, чтобы ручную правку было видно рядом
+                const { error: histErr } = await sb.from('unit_change_requests').insert({
+                    student_id: studentId,
+                    current_textbook: oldLevel,
+                    current_unit: oldUnit,
+                    new_textbook: newLevel,
+                    new_unit: newUnit,
+                    reason: 'manual_edit',
+                    status: 'approved',
+                    handled_by_user_id: currentAppUser?.id || null,
+                    handled_at: new Date().toISOString(),
+                    student_name_text: stu?.name || null,
+                });
+                if (histErr) console.warn('история правки не записалась', histErr);
+
+                if (stu) { stu.level = newLevel; stu.unit = newUnit; }
+                _showToast('📘 Учебник и юнит сохранены');
+                renderStudentsRows();
+                openStudentDetail(studentId);
+            } catch (e) {
+                alert('Не удалось сохранить: ' + (e.message || e));
+            }
         }
 
         async function saveStudentUnit(studentId, value) {
