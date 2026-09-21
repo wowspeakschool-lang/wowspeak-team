@@ -29794,6 +29794,20 @@
         }
 
         // === МОДАЛКА УРОКА (тема, посещаемость, ДЗ, оценки) ===
+
+        // Когда домашку не задают, в МойКласс всё равно уходит текст —
+        // иначе родитель ищет задание, которого нет. Эти же фразы
+        // приезжают обратно как «ДЗ прошлого урока», поэтому по ним же
+        // и узнаём, что на прошлом уроке домашки не было.
+        const NO_HW_ON_SAVE = [
+            'Домашнее задание не задаётся',
+            'На уроке был тест, домашнего задания нет',
+            'На уроке был тест и обратная связь, домашнего задания нет',
+        ];
+        const hwNoneText = (wasTest) => wasTest
+            ? 'На уроке был тест, домашнего задания нет'
+            : 'Домашнее задание не задаётся';
+
         let _lessonModalState = null;
 
         async function openLessonModal(lessonId) {
@@ -29879,6 +29893,13 @@
                         topic: lesson.topic || '',
                         description_local: lesson.description_local || '',
                         was_test: !!lesson.was_test,
+                        // «Был тест» и «домашки нет» — разные вещи: после
+                        // теста преподаватель иногда всё равно задаёт ДЗ.
+                        // Раньше это был один флаг was_test, и чтобы задать
+                        // домашку, приходилось снимать отметку о тесте.
+                        hw_none: (homeTask?.text || '').trim()
+                            ? NO_HW_ON_SAVE.includes((homeTask.text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim())
+                            : !!lesson.was_test,
                         webinar_url: lesson.webinar_url || '',
                         homework: homeTask?.text || '',
                         students: students.map(s => ({
@@ -30155,8 +30176,11 @@
             // не нужен, его переносят кнопкой в блоке трекера, и домашка
             // становится обычной. Иначе один и тот же смысл жил бы в двух
             // местах, и в модалке мельтешило бы лишнее.
-            const hwMode = draft.was_test ? 'test'
-                : fbPending.length ? 'tracker'
+            //
+            // Отметка о тесте на режим домашки больше не влияет: после
+            // теста её тоже можно задать.
+            const hwMode = fbPending.length ? 'tracker'
+                : draft.hw_none ? 'none'
                 : 'set';
             // Домашки на этом уроке нет — значит и отмечать по ученику
             // нечего: ни «сделал ли», ни оценку за ДЗ. Раньше это
@@ -30169,10 +30193,7 @@
             // при выборе «не задаю» в МойКласс уходит пояснение, и оно же
             // приезжает обратно как ДЗ прошлого урока. Поэтому сверяем и с
             // пустотой, и с этими двумя фразами.
-            const NO_HW_TEXTS = [
-                'На уроке был тест, домашнего задания нет',
-                'На уроке был тест и обратная связь, домашнего задания нет',
-            ];
+            const NO_HW_TEXTS = NO_HW_ON_SAVE;
             const prevHwText = (previousHomework || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
             const prevHwNone = st.prevChecked
                 && (prevHwText === '' || NO_HW_TEXTS.some(t => prevHwText === t));
@@ -30186,8 +30207,23 @@
             // появилась, трекер переносят выше.
             const hwModeOptions = hwMode === 'tracker' ? [] : [
                 { v: 'set',  t: 'Задаю домашнее задание' },
-                { v: 'test', t: '📝 Не задаю: был тест' },
+                { v: 'none', t: 'Не задаю' },
             ];
+
+            // Отметка о тесте — свойство урока, а не домашки, поэтому
+            // отдельным переключателем и над блоком ДЗ.
+            const wasTestToggle = canEdit
+                ? `<div style="${sectionStyle}">
+                    <label style="display:flex; align-items:center; gap:9px; cursor:pointer; font-size:14px; color:#334155;">
+                        <input type="checkbox" ${draft.was_test ? 'checked' : ''}
+                            onchange="setLessonWasTest(this.checked)"
+                            style="width:17px; height:17px; cursor:pointer;">
+                        <span>📝 На уроке был тест</span>
+                    </label>
+                   </div>`
+                : (draft.was_test
+                    ? `<div style="${sectionStyle}"><div style="font-size:14px; color:#334155;">📝 На уроке был тест</div></div>`
+                    : '');
 
             const hwModePicker = (canEdit && hwModeOptions.length)
                 ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
@@ -30201,16 +30237,14 @@
                                    color:${on ? '#fff' : '#64748b'}; cursor:pointer;">${o.t}</button>`;
                     }).join('')}
                    </div>`
-                : (hwMode === 'test' && !canEdit
-                    ? `<div style="font-size:13px; color:#475569; margin-bottom:10px;">📝 На уроке был тест</div>`
-                    : '');
+                : '';
 
             const homeworkSection = hwMode !== 'set' ? `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
                     ${hwModePicker}
                     <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
-                        ${hwMode === 'test' ? 'На уроке был тест, домашнего задания нет' : TRACKER_HW_TEXT}
+                        ${hwMode === 'tracker' ? TRACKER_HW_TEXT : hwNoneText(draft.was_test)}
                     </div>
                     <div style="font-size:12px; color:#94a3b8; margin-top:6px;">
                         Этот текст отправится в МойКласс при сохранении.${hwMode === 'tracker' && canEdit
@@ -30316,6 +30350,7 @@
                     ${topicSection}
                     ${publicDescSection}
                     ${feedbackSection}
+                    ${wasTestToggle}
                     ${homeworkSection}
                     <div style="${sectionStyle}">
                         <div style="${labelStyle}">👥 Ученики · посещаемость и оценки</div>
@@ -30385,6 +30420,7 @@
                         ${topicSection}
                         ${publicDescSection}
                         ${feedbackSection}
+                    ${wasTestToggle}
                     ${homeworkSection}
                         <div style="padding:18px; text-align:center; background:#fafbfc; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b; font-size:13px;">
                             <div style="font-size:24px; margin-bottom:6px;">👤</div>
@@ -30398,6 +30434,7 @@
                         ${topicSection}
                         ${publicDescSection}
                         ${feedbackSection}
+                    ${wasTestToggle}
                     ${homeworkSection}
                         ${homeMarkSection}
                         ${coinsSection}`;
@@ -30500,20 +30537,29 @@
         function askedAboutPrevHomework() {
             const st = _lessonModalState;
             if (!st) return true;
-            if (st.draft?.was_test || trackerBlocksHomework()) return false;
+            if (st.draft?.hw_none || trackerBlocksHomework()) return false;
             if (!st.prevChecked) return true;
-            const NO_HW = [
-                'На уроке был тест, домашнего задания нет',
-                'На уроке был тест и обратная связь, домашнего задания нет',
-            ];
             const txt = (st.previousHomework || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-            return !(txt === '' || NO_HW.includes(txt));
+            return !(txt === '' || NO_HW_ON_SAVE.includes(txt));
         }
 
         function setHomeworkMode(mode) {
             const d = _lessonModalState?.draft;
             if (!d) return;
-            d.was_test = (mode === 'test');
+            d.hw_none = (mode === 'none');
+            renderLessonModalBody();
+        }
+
+        // Отметка о тесте живёт сама по себе и домашку не отменяет.
+        function setLessonWasTest(on) {
+            const d = _lessonModalState?.draft;
+            if (!d) return;
+            d.was_test = !!on;
+            // Чаще всего после теста домашку не задают — подставляем это
+            // по умолчанию, чтобы не заставлять жать лишнюю кнопку. Но
+            // выбор остаётся: переключатель ниже на месте, и задать ДЗ
+            // после теста можно как обычно.
+            if (on && !(d.homework || '').trim()) d.hw_none = true;
             renderLessonModalBody();
         }
 
@@ -30522,7 +30568,7 @@
             if (!d) return 'Нет данных';
             // На уроке с трекером поля ДЗ на экране нет, поэтому и требовать
             // его нельзя: иначе сохранение просит то, чего негде ввести.
-            const hwOff = !!d.was_test || trackerBlocksHomework();
+            const hwOff = !!d.hw_none || trackerBlocksHomework();
             // Отметку «сделал ли домашку» не требуем, если её не задавали
             // на прошлом уроке: кнопок для неё на экране тоже нет.
             const prevHwOff = !askedAboutPrevHomework();
@@ -30587,10 +30633,10 @@
                 // 2. ДЗ — через mk-write-lesson (text как HTML).
                 // На уроке с трекером домашки нет: вместо неё уходит
                 // пояснение, чтобы родитель в МойКласс не искал задание
-                if (d.was_test) {
-                    d.homework = 'На уроке был тест, домашнего задания нет';
-                } else if (trackerBlocksHomework()) {
+                if (trackerBlocksHomework()) {
                     d.homework = 'На уроке был тест и обратная связь, домашнего задания нет';
+                } else if (d.hw_none) {
+                    d.homework = hwNoneText(d.was_test);
                 }
                 const newHw = (d.homework || '').trim();
                 const oldHw = (st.homeTask?.text || '').trim();
