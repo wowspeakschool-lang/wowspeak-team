@@ -19812,6 +19812,11 @@
                 if (error) throw error;
                 // Обновляем состояние на месте, чтобы не перезагружать модалку
                 for (const r of pending) r.lesson_id = st.lesson.id;
+                // Кнопка обещает «домашку можно будет задать как обычно» —
+                // значит и режим возвращаем к обычному, если ничего не введено.
+                if (st.draft && !(st.draft.homework || '').trim() && !st.draft.was_test) {
+                    st.draft.hw_none = false;
+                }
                 renderLessonModalBody();
             } catch (e) {
                 alert('Не удалось перенести: ' + (e.message || e));
@@ -29804,9 +29809,10 @@
             'На уроке был тест, домашнего задания нет',
             'На уроке был тест и обратная связь, домашнего задания нет',
         ];
-        const hwNoneText = (wasTest) => wasTest
-            ? 'На уроке был тест, домашнего задания нет'
-            : 'Домашнее задание не задаётся';
+        const TRACKER_HW_TEXT = 'На уроке был тест и обратная связь, домашнего задания нет';
+        const hwNoneText = (wasTest, trackerDue) => trackerDue
+            ? TRACKER_HW_TEXT
+            : (wasTest ? 'На уроке был тест, домашнего задания нет' : 'Домашнее задание не задаётся');
 
         let _lessonModalState = null;
 
@@ -29897,9 +29903,13 @@
                         // теста преподаватель иногда всё равно задаёт ДЗ.
                         // Раньше это был один флаг was_test, и чтобы задать
                         // домашку, приходилось снимать отметку о тесте.
+                        // По умолчанию домашки нет, если был тест или на этот урок
+                        // пришёл трекер. Это только значение по умолчанию:
+                        // переключатель «Задаю домашнее задание» на месте всегда.
                         hw_none: (homeTask?.text || '').trim()
                             ? NO_HW_ON_SAVE.includes((homeTask.text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim())
-                            : !!lesson.was_test,
+                            : (!!lesson.was_test
+                               || feedbackRows.some(r => r.lesson_id !== lesson.id)),
                         webinar_url: lesson.webinar_url || '',
                         homework: homeTask?.text || '',
                         students: students.map(s => ({
@@ -30164,24 +30174,15 @@
                         </div>` : '')}
                 </div>`;
 
-            // На уроке с трекером домашки нет: вместо неё пояснение,
-            // которое уходит в МойКласс как обычное ДЗ
-            const TRACKER_HW_TEXT = 'На уроке был тест и обратная связь, домашнего задания нет';
-
             // Задаётся ли домашка на этом уроке — один выбор, а не набор
             // независимых галочек. Раньше их было две, обе со словами
             // «не задаётся», и они могли стоять одновременно.
             //
-            // Трекера среди вариантов нет намеренно: если трекер сегодня
-            // не нужен, его переносят кнопкой в блоке трекера, и домашка
-            // становится обычной. Иначе один и тот же смысл жил бы в двух
-            // местах, и в модалке мельтешило бы лишнее.
-            //
-            // Отметка о тесте на режим домашки больше не влияет: после
-            // теста её тоже можно задать.
-            const hwMode = fbPending.length ? 'tracker'
-                : draft.hw_none ? 'none'
-                : 'set';
+            // Ни отметка о тесте, ни трекер на этом уроке домашку не
+            // отменяют: и после теста, и в день трекера преподаватель
+            // иногда её задаёт. Они лишь задают значение по умолчанию.
+            const trackerDue = fbPending.length > 0;
+            const hwMode = draft.hw_none ? 'none' : 'set';
             // Домашки на этом уроке нет — значит и отмечать по ученику
             // нечего: ни «сделал ли», ни оценку за ДЗ. Раньше это
             // учитывалось только для теста, и на уроке с трекером
@@ -30205,7 +30206,7 @@
 
             // На трекерном уроке выбирать нечего: домашки нет, а чтобы она
             // появилась, трекер переносят выше.
-            const hwModeOptions = hwMode === 'tracker' ? [] : [
+            const hwModeOptions = [
                 { v: 'set',  t: 'Задаю домашнее задание' },
                 { v: 'none', t: 'Не задаю' },
             ];
@@ -30244,11 +30245,10 @@
                     <div style="${labelStyle}">📚 Домашнее задание</div>
                     ${hwModePicker}
                     <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:12px; color:#64748b; font-size:13px;">
-                        ${hwMode === 'tracker' ? TRACKER_HW_TEXT : hwNoneText(draft.was_test)}
+                        ${hwNoneText(draft.was_test, trackerDue)}
                     </div>
                     <div style="font-size:12px; color:#94a3b8; margin-top:6px;">
-                        Этот текст отправится в МойКласс при сохранении.${hwMode === 'tracker' && canEdit
-                            ? ' Если домашку всё-таки надо задать — перенесите трекер на следующий урок выше.' : ''}
+                        Этот текст отправится в МойКласс при сохранении.
                     </div>
                 </div>` : `
                 <div style="${sectionStyle}">
@@ -30523,21 +30523,27 @@
         // домашку в таком уроке не задают. Правило нужно в трёх местах —
         // в разметке, в проверке перед сохранением и в самом сохранении, —
         // поэтому живёт здесь одно.
-        function trackerBlocksHomework() {
+        // Пришёл ли трекер на этот урок. Домашку это не отменяет: влияет
+        // только на текст, который уходит в МойКласс, если её не задают.
+        function trackerDueNow() {
             const st = _lessonModalState;
             if (!st) return false;
             return (st.feedback || []).some(r => r.lesson_id !== st.lesson.id);
         }
+        // Прежнее имя: трекер домашку больше не блокирует, оставлено,
+        // чтобы не переписывать вызовы в стендах.
+        const trackerBlocksHomework = trackerDueNow;
 
-        // Переключение режима домашки: задаю или не задаю, потому что был
-        // тест. Трекера здесь нет — он переносится кнопкой в своём блоке.
+        // Переключение режима домашки: задаю или не задаю. И тест, и трекер
+        // лишь подставляют «не задаю» по умолчанию, выбор всегда за
+        // преподавателем.
         // Спрашиваем ли на этом уроке «сделал ли ученик домашку». Нет, если
         // домашки не было на этом уроке или её не задавали на прошлом.
         // Правило нужно и разметке, и проверке перед сохранением.
         function askedAboutPrevHomework() {
             const st = _lessonModalState;
             if (!st) return true;
-            if (st.draft?.hw_none || trackerBlocksHomework()) return false;
+            if (st.draft?.hw_none) return false;
             if (!st.prevChecked) return true;
             const txt = (st.previousHomework || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
             return !(txt === '' || NO_HW_ON_SAVE.includes(txt));
@@ -30568,7 +30574,7 @@
             if (!d) return 'Нет данных';
             // На уроке с трекером поля ДЗ на экране нет, поэтому и требовать
             // его нельзя: иначе сохранение просит то, чего негде ввести.
-            const hwOff = !!d.hw_none || trackerBlocksHomework();
+            const hwOff = !!d.hw_none;
             // Отметку «сделал ли домашку» не требуем, если её не задавали
             // на прошлом уроке: кнопок для неё на экране тоже нет.
             const prevHwOff = !askedAboutPrevHomework();
@@ -30633,10 +30639,8 @@
                 // 2. ДЗ — через mk-write-lesson (text как HTML).
                 // На уроке с трекером домашки нет: вместо неё уходит
                 // пояснение, чтобы родитель в МойКласс не искал задание
-                if (trackerBlocksHomework()) {
-                    d.homework = 'На уроке был тест и обратная связь, домашнего задания нет';
-                } else if (d.hw_none) {
-                    d.homework = hwNoneText(d.was_test);
+                if (d.hw_none) {
+                    d.homework = hwNoneText(d.was_test, trackerDueNow());
                 }
                 const newHw = (d.homework || '').trim();
                 const oldHw = (st.homeTask?.text || '').trim();
