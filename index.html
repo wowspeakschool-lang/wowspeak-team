@@ -29731,6 +29731,68 @@
             openLessonModal(lessonId);
         }
 
+        // Запрос на трекер ставят в одном уроке, а трекер делают на следующем
+        // занятии с этим же учеником. Фильтра по уроку раньше не было вовсе:
+        // запрос показывался в КАЖДОМ уроке этого ученика с этим преподавателем,
+        // включая уроки до запроса, и блокировал там домашнее задание.
+        // Теперь у запроса ровно один адресат — ближайший ещё не прошедший урок
+        // после урока-источника. Если он проходит без трекера, адресат сам
+        // сдвигается на следующий урок с этим учеником.
+        async function _feedbackRowsForLesson(rows, lesson) {
+            if (!rows.length) return [];
+            // База хранит московское время, поэтому «сегодня» тоже московское
+            const today = new Date(Date.now() + 180 * 60000).toISOString().slice(0, 10);
+
+            const after = (a, b) => a.lesson_date !== b.lesson_date
+                ? a.lesson_date > b.lesson_date
+                : timeToMin(a.begin_time) > timeToMin(b.begin_time);
+
+            // Уроки-источники: нужны их дата и время, чтобы понять, что позже
+            const originIds = [...new Set(rows.map(r => r.lesson_id).filter(Boolean))];
+            const originById = new Map();
+            if (originIds.length) {
+                const { data: origins } = await sb.from('mk_lessons')
+                    .select('id, lesson_date, begin_time')
+                    .in('id', originIds);
+                for (const o of origins || []) originById.set(o.id, o);
+            }
+
+            // В уроке-источнике запрос показывается как «трекер будет на
+            // следующем уроке» — это отдельная ветка, её не трогаем
+            const here = rows.filter(r => r.lesson_id === lesson.id);
+            const rest = rows.filter(r => r.lesson_id !== lesson.id);
+            if (!rest.length) return here;
+
+            // Прошедший урок трекер не адресует: заполнять там уже нечего,
+            // а домашка должна задаваться как обычно
+            if (!lesson.lesson_date || lesson.lesson_date < today) return here;
+
+            // Кандидаты в адресаты: уроки этого преподавателя от сегодня до
+            // текущего урока включительно. Если между источником и текущим
+            // уроком есть занятие с этим учеником — адресат оно, а не текущий.
+            const { data: cand } = await sb.from('mk_lessons_with_details')
+                .select('id, lesson_date, begin_time, students')
+                .eq('primary_teacher_id', lesson.primary_teacher_id)
+                .gte('lesson_date', today)
+                .lte('lesson_date', lesson.lesson_date)
+                .order('lesson_date', { ascending: true })
+                .order('begin_time', { ascending: true });
+            const candidates = cand || [];
+
+            const targeted = rest.filter(r => {
+                const origin = originById.get(r.lesson_id);
+                // Урок-источник удалён из МК — оставляем запрос видимым здесь,
+                // иначе его нельзя будет ни заполнить, ни перенести
+                if (!origin) return true;
+                if (!after(lesson, origin)) return false;
+                const target = candidates.find(c => after(c, origin)
+                    && (c.students || []).some(s => s.student_id === r.student_id));
+                return !!target && target.id === lesson.id;
+            });
+
+            return here.concat(targeted);
+        }
+
         // === МОДАЛКА УРОКА (тема, посещаемость, ДЗ, оценки) ===
         let _lessonModalState = null;
 
@@ -29796,7 +29858,7 @@
                             .eq('teacher_id', lesson.primary_teacher_id)
                             .is('report_id', null)
                             .order('created_at', { ascending: false });
-                        feedbackRows = fr || [];
+                        feedbackRows = await _feedbackRowsForLesson(fr || [], lesson);
                     }
                 } catch (e) { console.warn('[feedback] не загрузилось', e); }
 
