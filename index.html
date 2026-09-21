@@ -30272,7 +30272,13 @@
 
             // Отметка о тесте — свойство урока, а не домашки, поэтому
             // отдельным переключателем и над блоком ДЗ.
-            const wasTestToggle = canEdit
+            //
+            // Показываем её только на уроке с трекером: трекер почти всегда
+            // приходится на день теста, а в остальных уроках галочка была
+            // лишним визуальным шумом. Если отметка уже стоит, оставляем её
+            // видимой — иначе её нельзя было бы снять.
+            const showWasTest = trackerDue || !!draft.was_test;
+            const wasTestToggle = !showWasTest ? '' : canEdit
                 ? `<div style="${sectionStyle}">
                     <label style="display:flex; align-items:center; gap:9px; cursor:pointer; font-size:14px; color:#334155;">
                         <input type="checkbox" ${draft.was_test ? 'checked' : ''}
@@ -32496,9 +32502,13 @@
 
                 // Сертификат за ЗАВЕРШЁННЫЙ учебник — создаёт методист при одобрении.
                 try {
+                    // Проверяем и по запросу, и по «ученик + учебник»: у
+                    // родителя в личном кабинете должен быть ровно один
+                    // сертификат за учебник, а запросов могло быть два.
                     const { data: existCert } = await sb.from('certificates')
                         .select('id')
-                        .eq('unit_change_request_id', requestId)
+                        .eq('student_id', req.student_id)
+                        .eq('textbook', req.current_textbook)
                         .is('deleted_at', null)
                         .limit(1);
                     if (!existCert || existCert.length === 0) {
@@ -36134,6 +36144,20 @@
         }
 
         // Авто-обновление students.unit после сохранения трекера
+        // Уйдёт ли при сохранении запрос методистам: трекер заполнен по
+        // финальному тесту. Английский трекер кодирует финал как
+        // unitSelect === 'final', русский — признаком isFinal у юнита.
+        function _trackerSendsRequest(formData) {
+            if (!_trackerState?.studentId) return false;
+            const tbKey = formData.textbookSelect;
+            const unitKey = formData.unitSelect;
+            if (!tbKey || !unitKey) return false;
+            if (unitKey === 'final') return true;
+            const TEXTBOOKS = window.tr_TEXTBOOKS;
+            const unit = TEXTBOOKS?.[tbKey]?.units?.[unitKey];
+            return !!unit?.isFinal;
+        }
+
         async function _maybeProgressStudentUnit(formData) {
             console.log('[unit-progress] called, state:', _trackerState?.studentId, 'tb:', formData.textbookSelect, 'unit:', formData.unitSelect);
             if (!_trackerState.studentId) { console.log('[unit-progress] EXIT: no studentId'); return; }
@@ -36195,7 +36219,32 @@
 
         // Создаёт запрос методисту о завершении курса + уведомляет всех методистов.
         // Используется обоими трекерами: русским (currentUnit.isFinal) и английским (unitSelect==='final').
+        // Уже есть запрос на этот же переход? Тогда второй не создаём.
+        // Раньше проверки не было вовсе: повторное сохранение трекера
+        // плодило запросы методистам и лишние сертификаты.
+        async function _courseRequestExists(textbookName, unitLabel) {
+            try {
+                const { data } = await sb.from('unit_change_requests')
+                    .select('id, status, created_at')
+                    .eq('student_id', _trackerState.studentId)
+                    .eq('current_textbook', textbookName)
+                    .eq('current_unit', unitLabel)
+                    .in('status', ['pending', 'approved'])
+                    .limit(1);
+                return (data || [])[0] || null;
+            } catch (e) {
+                console.warn('unit_change_requests check failed', e);
+                // Не смогли проверить — лучше не создавать дубль
+                return { id: null, status: 'unknown' };
+            }
+        }
+
         async function _createCourseCompletedRequest(textbookName, unitLabel) {
+            const already = await _courseRequestExists(textbookName, unitLabel);
+            if (already) {
+                console.log('[unit-progress] запрос уже есть, второй не создаём', already);
+                return;
+            }
             try {
                 const { data: reqData, error: reqErr } = await sb.from('unit_change_requests').insert({
                     student_id: _trackerState.studentId,
@@ -36243,6 +36292,22 @@
                     ? 'Please enter student first and last name'
                     : 'Введите имя и фамилию ученика');
                 return;
+            }
+
+            // Финальный тест уходит методистам, и второй раз его отправить
+            // будет нельзя — предупреждаем заранее, чтобы преподаватель не
+            // отправил случайно и не искал потом, как отменить.
+            if (_trackerSendsRequest(formData) && !_trackerState.requestWarned) {
+                const already = await _courseRequestExists(
+                    (window.tr_TEXTBOOKS?.[formData.textbookSelect]?.name) || formData.textbookSelect,
+                    '🎓 Final Test — All Units');
+                if (!already) {
+                    const ok = confirm(_trackerState.language === 'en'
+                        ? 'This is the final test. Saving will send a request to the methodists to choose the next textbook. The request can be sent only once — after that you can edit the tracker, but not send it again.\n\nSave and send?'
+                        : 'Это финальный тест. При сохранении запрос уйдёт методистам — они подберут следующий учебник и юнит.\n\nОтправить его можно только один раз: потом трекер можно будет только исправить, но не отправить заново.\n\nСохранить и отправить?');
+                    if (!ok) return;
+                }
+                _trackerState.requestWarned = true;
             }
 
             // Без привязки к карточке отчёт не найдут ни сертификат, ни история ученика
