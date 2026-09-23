@@ -36959,8 +36959,11 @@
         function vuStep2(){
             var g=vuAg();var h='<h2 style="font-size:18px;font-weight:700;margin-bottom:6px">Чек-лист оценки '+vuAg().icon+'</h2><p style="font-size:13px;color:#6B6B80;margin-bottom:10px">0 = не знает, 1 = с подсказкой, 2 = сам, — = не проверялось</p>';
             if(VU_S.err.scores) h+='<p style="color:#FF4444;font-size:13px;margin-bottom:8px">Оцените хотя бы 3 темы</p>';
-            // Для 7-9: вопрос про чтение решает Starter vs SM1+
-            if(VU_S.ageGroup==="7-9"||VU_S.ageGroup==="10-12"){
+            // Вопрос про чтение решает Super Minds 0 вместо Super Minds 1+.
+            // Только для 7-9: у 10-12 он ни на что не влиял — там всегда
+            // Go Getter, — а преподавателя заставляли отвечать. Решение
+            // владельца 23.09.2026.
+            if(VU_S.ageGroup==="7-9"){
                 var yesSel=VU_S.canRead===true, noSel=VU_S.canRead===false;
                 h+='<div style="margin-bottom:14px;background:#FFF7ED;border:1px solid '+(VU_S.err.canRead?'#DC2626':'#FED7AA')+';border-radius:10px;padding:12px 14px">'+
                     '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#9A3412">📖 Умеет читать по-английски? *</label>'+
@@ -36968,7 +36971,7 @@
                     '<button onclick="vuSetCanRead(true)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(yesSel?'#16A34A':'#E2E8F0')+';background:'+(yesSel?'#DCFCE7':'#fff')+';color:'+(yesSel?'#15803D':'#64748B')+';font-weight:600;cursor:pointer">Да</button>'+
                     '<button onclick="vuSetCanRead(false)" style="flex:1;padding:8px;border-radius:8px;border:2px solid '+(noSel?'#DC2626':'#E2E8F0')+';background:'+(noSel?'#FEE2E2':'#fff')+';color:'+(noSel?'#B91C1C':'#64748B')+';font-weight:600;cursor:pointer">Нет</button>'+
                     '</div>'+
-                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>'+(VU_S.ageGroup==="10-12"?'Reading Course, Модуль 1':'Super Minds 0')+'</b> (обучение чтению с нуля)</div>':'')+
+                    (noSel?'<div style="margin-top:8px;font-size:12px;color:#9A3412">→ Будет рекомендован <b>Super Minds 0</b> (обучение чтению с нуля)</div>':'')+
                     '</div>';
             }
             g.topics.forEach(function(mod){
@@ -37031,11 +37034,12 @@
                     : "40 минут";
             var grade = VU_S.ageGroup==="13+" ? "Expert" : "Basic";
 
-            // Не читает: 7-9 → Super Minds 0, 10-12 → Reading Course
+            // Не читает и ему 7-9 → Super Minds 0, обучение чтению с нуля.
+            // У 10-12 такой ветки нет: на этом возрасте рекомендуем только
+            // Go Getter. Раньше здесь был Reading Course — его в школе нет,
+            // и рекомендация вела в никуда. Решение владельца 23.09.2026.
             if(VU_S.ageGroup==="7-9" && VU_S.canRead===false)
                 return{prog:"Super Minds 0",unit:"",dur:dur,freq:"2",grade:grade};
-            if(VU_S.ageGroup==="10-12" && VU_S.canRead===false)
-                return{prog:"Reading Course",unit:"Модуль 1",dur:dur,freq:"2",grade:grade};
 
             // 4-6 остаётся на старой логике: в чек-листе модули, а не юниты
             if(VU_S.ageGroup==="4-6"){
@@ -37066,7 +37070,7 @@
             VU_S.err={};
             if(step===-1){if(!VU_S.ageGroup)VU_S.err.ageGroup=true;}
             if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;}
-            if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;if((VU_S.ageGroup==="7-9"||VU_S.ageGroup==="10-12")&&VU_S.canRead===null)VU_S.err.canRead=true;}
+            if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;if(VU_S.ageGroup==="7-9"&&VU_S.canRead===null)VU_S.err.canRead=true;}
             if(step===4){if(!VU_S.comment.trim())VU_S.err.comment=true;}
             return Object.keys(VU_S.err).length===0;
         }
