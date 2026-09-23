@@ -36987,17 +36987,22 @@
                 try{
                     var like='%'+q.trim().replace(/[%_\\]/g,function(c){return '\\'+c;})+'%';
                     var r=await sb.from('students')
-                        .select('id,name,birth_date,level,unit')
+                        .select('id,name,birth_date,parent_text')
                         .ilike('name',like).eq('is_archived',false).limit(8);
                     var rows=r.data||[];
                     box.innerHTML = rows.length
                       ? rows.map(function(x){
-                            var sub=[x.level,x.unit].filter(Boolean).join(' · ');
+                            // Возраст и родитель, а не учебник: по ним
+                            // отличают тёзок, а их среди учеников хватает.
+                            var age=_calcAgeFromBd(x.birth_date);
+                            var sub=[];
+                            if(age!==null&&age!==undefined) sub.push(age+' '+_retPlural(age,'год','года','лет'));
+                            if(x.parent_text) sub.push('родитель: '+x.parent_text);
                             return '<div onclick="vuPickStudent(\''+x.id+'\')" style="padding:8px 11px;border:1px solid #E8E0FF;border-radius:10px;margin-top:4px;cursor:pointer;font-size:13px">'
                                  + '<b>'+vuEsc(x.name)+'</b>'
-                                 + (sub?'<span style="color:#6B6B80"> · '+vuEsc(sub)+'</span>':'')+'</div>';
+                                 + (sub.length?'<div style="color:#6B6B80;font-size:12px;margin-top:2px">'+vuEsc(sub.join(' · '))+'</div>':'')+'</div>';
                         }).join('')
-                      : '<div style="font-size:12px;color:#6B6B80;padding:6px 2px">Никого не нашлось</div>';
+                      : '<div style="font-size:12px;color:#6B6B80;padding:6px 2px">Никого не нашлось. Проверьте написание фамилии.</div>';
                 }catch(e){
                     box.innerHTML='<div style="font-size:12px;color:#FF4444;padding:6px 2px">Поиск не сработал: '+vuEsc(e.message||e)+'</div>';
                 }
@@ -37026,9 +37031,10 @@
               ? '<div style="background:#E7F9EF;border:1px solid #86EFAC;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#0F7A3F;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
                 + '<span>✅ Ученик из базы: <b>'+vuEsc(((VU_S.surname||'')+' '+(VU_S.name||'')).trim())+'</b>. Учебник и юнит из отчёта запишутся в его карточку.</span>'
                 + '<button onclick="vuClearStudent()" style="padding:5px 11px;border-radius:8px;border:1px solid #86EFAC;background:#fff;color:#0F7A3F;font-family:inherit;font-size:12px;cursor:pointer">Выбрать другого</button></div>'
-              : '<div style="background:#FFF6E8;border:1px solid #F9C74F;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#92400E">'
-                + '<div style="font-weight:600;margin-bottom:6px">🔍 Найдите ученика в базе</div>'
-                + '<div style="margin-bottom:7px">Имя, фамилия и возраст подставятся сами, а учебник и юнит из отчёта запишутся в карточку. Без этого отчёт сохранится, но карточка останется пустой.</div>'
+              : '<div style="background:#FFF6E8;border:2px solid '+(VU_S.err.studentId?'#DC2626':'#F9C74F')+';border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#92400E">'
+                + '<div style="font-weight:600;margin-bottom:6px">🔍 Найдите ученика в базе *</div>'
+                + '<div style="margin-bottom:7px">Имя, фамилия и возраст подставятся сами, а учебник и юнит из отчёта запишутся в карточку.</div>'
+                + (VU_S.err.studentId?'<div style="color:#DC2626;font-weight:600;margin-bottom:7px">Выберите ученика из базы — без этого отчёт не сохранить.</div>':'')
                 + '<input type="text" placeholder="Начните вводить фамилию или имя…" autocomplete="off" oninput="vuSearchStudent(this.value)" style="width:100%;padding:9px 12px;border-radius:10px;border:2px solid #F9C74F;font-size:14px;font-family:inherit;box-sizing:border-box">'
                 + '<div id="vuStudentHits"></div></div>';
             return '<h2 style="font-size:18px;font-weight:700;margin-bottom:14px">Данные ребёнка '+vuAg().icon+'</h2>'+
@@ -37184,7 +37190,12 @@
         function vuValidate(step){
             VU_S.err={};
             if(step===-1){if(!VU_S.ageGroup)VU_S.err.ageGroup=true;}
-            if(step===0){if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;}
+            // Ученик из базы обязателен: без него отчёт ни к чему не
+            // привязан и учебник в карточку не попадёт. Решение владельца
+            // 23.09.2026. Проверено на 267 отчётах за два месяца: ФИО
+            // совпало ровно с одним человеком в 213 случаях, ещё в 41
+            // ученик находится по имени — искать почти всегда есть кого.
+            if(step===0){if(!VU_S.studentId)VU_S.err.studentId=true;if(!VU_S.name.trim())VU_S.err.name=true;if(!String(VU_S.age).trim())VU_S.err.age=true;}
             if(step===2){if(vuAllItems().filter(function(i){return VU_S.scores[i.id]>=0;}).length<3)VU_S.err.scores=true;if((VU_S.ageGroup==="7-9"||VU_S.ageGroup==="10-12")&&VU_S.canRead===null)VU_S.err.canRead=true;}
             if(step===4){if(!VU_S.comment.trim())VU_S.err.comment=true;}
             return Object.keys(VU_S.err).length===0;
