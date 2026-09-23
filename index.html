@@ -32539,7 +32539,8 @@
                     p_student_id: req.student_id,
                     p_level: newTextbook,
                     p_unit: newUnit,
-                    p_only_if_empty: false
+                    p_only_if_empty: false,
+                    p_source: 'unit_request'
                 });
                 if (progErr) throw progErr;
                 if (!progRes || progRes.ok !== true) throw new Error(_programErrText(progRes));
@@ -36405,7 +36406,8 @@
                     p_student_id: _trackerState.studentId,
                     p_level: tb.name || tbKey,
                     p_unit: (nextUnit || currentUnit).label,
-                    p_only_if_empty: false          // трекер — источник правды
+                    p_only_if_empty: false,
+                    p_source: 'tracker'
                 });
                 if (rpcErr) throw rpcErr;
                 if (!res || res.ok !== true) throw new Error(_programErrText(res));
@@ -37022,7 +37024,7 @@
             var picked=!!VU_S.studentId;
             var block=picked
               ? '<div style="background:#E7F9EF;border:1px solid #86EFAC;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#0F7A3F;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
-                + '<span>✅ Ученик из базы: <b>'+vuEsc(((VU_S.surname||'')+' '+(VU_S.name||'')).trim())+'</b>. Учебник и юнит из отчёта запишутся в его карточку, если там пусто.</span>'
+                + '<span>✅ Ученик из базы: <b>'+vuEsc(((VU_S.surname||'')+' '+(VU_S.name||'')).trim())+'</b>. Учебник и юнит из отчёта запишутся в его карточку.</span>'
                 + '<button onclick="vuClearStudent()" style="padding:5px 11px;border-radius:8px;border:1px solid #86EFAC;background:#fff;color:#0F7A3F;font-family:inherit;font-size:12px;cursor:pointer">Выбрать другого</button></div>'
               : '<div style="background:#FFF6E8;border:1px solid #F9C74F;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#92400E">'
                 + '<div style="font-weight:600;margin-bottom:6px">🔍 Найдите ученика в базе</div>'
@@ -37386,10 +37388,10 @@
                 VU_S.token=res.data.parent_view_token;
                 document.getElementById('vuCopyLinkBtn').style.display='';
                 if(hasAnyRole(['super_admin','methodist'])) document.getElementById('vuDeleteBtn').style.display='';
-                // Учебник и юнит из рекомендации — в карточку ученика, но
-                // только если там пусто. Вводный урок заводит программу
-                // впервые; у того, кто уже занимается, текущий юнит затирать
-                // нельзя. Решение владельца 23.09.2026.
+                // Учебник и юнит из рекомендации — в карточку ученика,
+                // поверх того, что там было. Решение владельца 23.09.2026:
+                // запретов на перезапись не ставим, важно хранить историю.
+                // Она пишется в student_program_history на каждое изменение.
                 var cardNote='';
                 if(VU_S.studentId && VU_S.prog){
                     try{
@@ -37397,13 +37399,14 @@
                             p_student_id: VU_S.studentId,
                             p_level: VU_S.prog,
                             p_unit: VU_S.unit || null,
-                            p_only_if_empty: true
+                            p_only_if_empty: false,
+                            p_source: 'trial_report'
                         });
                         if(progErr) throw progErr;
                         if(!prog || prog.ok!==true) throw new Error(_programErrText(prog));
                         cardNote = prog.changed
                             ? ' · в карточку записано: '+[prog.level,prog.unit].filter(Boolean).join(' · ')
-                            : ' · в карточке уже было заполнено, не трогали';
+                            : ' · в карточке уже было то же самое';
                     }catch(e){
                         console.warn('vuSave: карточка не обновилась', e);
                         alert('Отчёт сохранён, но учебник в карточке ученика не записался.\\n\\n'+(e.message||e));
