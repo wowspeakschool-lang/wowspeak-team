@@ -33497,10 +33497,19 @@
                 + `Юнит: ${oldUnit || 'не задан'} → ${newUnit || 'не задан'}\n\nСохранить?`)) return;
 
             try {
-                const { error } = await sb.from('students')
-                    .update({ level: newLevel, unit: newUnit })
-                    .eq('id', studentId);
+                // Через set_student_program: политика students_update_admins
+                // не пускает в карточку методистов (4 из 5), а именно они
+                // ведут учебник по решению владельца от 21.09. Прямой UPDATE
+                // отклонялся молча, и человек видел «сохранено».
+                const { data: prog, error } = await sb.rpc('set_student_program', {
+                    p_student_id: studentId,
+                    p_level: newLevel,
+                    p_unit: newUnit,
+                    p_only_if_empty: false,
+                    p_source: 'manual'
+                });
                 if (error) throw error;
+                if (!prog || prog.ok !== true) throw new Error(_programErrText(prog));
 
                 // История переходов живёт в одном месте — там же, где
                 // утверждения запросов, чтобы ручную правку было видно рядом
@@ -33529,9 +33538,17 @@
 
         async function saveStudentUnit(studentId, value) {
             const newUnit = (value || '').trim() || null;
-            const { error } = await sb.from('students').update({ unit: newUnit }).eq('id', studentId);
-            if (error) {
-                alert('Не удалось сохранить юнит: ' + error.message);
+            // Тем же путём, что и всё остальное: прямой UPDATE методисту
+            // недоступен и отклоняется без сообщения.
+            const { data: prog, error } = await sb.rpc('set_student_program', {
+                p_student_id: studentId,
+                p_level: null,              // учебник не трогаем
+                p_unit: newUnit,
+                p_only_if_empty: false,
+                p_source: 'manual'
+            });
+            if (error || !prog || prog.ok !== true) {
+                alert('Не удалось сохранить юнит: ' + (error ? error.message : _programErrText(prog)));
                 return;
             }
             const s = (_studentsListCache || []).find(x => x.id === studentId);
