@@ -32531,9 +32531,18 @@
             }
             const studentName = req.students?.name || '(ученик)';
             try {
-                await sb.from('students')
-                    .update({ level: newTextbook, unit: newUnit })
-                    .eq('id', req.student_id);
+                // Через функцию: методист (кроме того, у кого есть ещё и
+                // super_admin) политикой в карточку не пускается, и раньше
+                // «Утвердить» закрывало запрос и выдавало сертификат, а
+                // учебник в карточке не менялся.
+                const { data: progRes, error: progErr } = await sb.rpc('set_student_program', {
+                    p_student_id: req.student_id,
+                    p_level: newTextbook,
+                    p_unit: newUnit,
+                    p_only_if_empty: false
+                });
+                if (progErr) throw progErr;
+                if (!progRes || progRes.ok !== true) throw new Error(_programErrText(progRes));
                 await sb.from('unit_change_requests').update({
                     status: 'approved',
                     new_textbook: newTextbook,
@@ -36335,6 +36344,18 @@
             return !!unit?.isFinal;
         }
 
+        // Причина отказа set_student_program человеческими словами.
+        function _programErrText(res) {
+            const map = {
+                not_signed_in:         'Сессия истекла — войдите заново.',
+                not_allowed:           'Нет прав на запись в карточку ученика.',
+                no_report_for_student: 'Этот ученик не привязан к вашему отчёту.',
+                student_not_found:     'Ученик не найден.',
+                no_student:            'Не выбран ученик.'
+            };
+            return map[res && res.reason] || ('Не удалось записать (' + ((res && res.reason) || 'причина неизвестна') + ').');
+        }
+
         async function _maybeProgressStudentUnit(formData) {
             console.log('[unit-progress] called, state:', _trackerState?.studentId, 'tb:', formData.textbookSelect, 'unit:', formData.unitSelect);
             if (!_trackerState.studentId) { console.log('[unit-progress] EXIT: no studentId'); return; }
@@ -36373,17 +36394,30 @@
             // что реально происходит на уроках. Раньше учебник записывался
             // только в пустое поле, из-за чего карточка расходилась с трекером.
             // Юнит ставим следующий — трекер заполняют по завершении текущего.
+            // Пишем через set_student_program, а не прямым UPDATE. Политика
+            // students_update_admins не пускает преподавателей в карточку —
+            // а трекеры заполняют именно они. Прямой UPDATE отклонялся молча:
+            // supabase-js на отказ политики не бросает исключение, а ошибку в
+            // ответе здесь никто не читал. Из-за этого на 23.09.2026 у 231
+            // активного ученика юнит остался пустым, хотя трекеры заполнены.
             try {
-                await sb.from('students')
-                    .update({
-                        level: tb.name || tbKey,
-                        unit:  (nextUnit || currentUnit).label
-                    })
-                    .eq('id', _trackerState.studentId);
+                const { data: res, error: rpcErr } = await sb.rpc('set_student_program', {
+                    p_student_id: _trackerState.studentId,
+                    p_level: tb.name || tbKey,
+                    p_unit: (nextUnit || currentUnit).label,
+                    p_only_if_empty: false          // трекер — источник правды
+                });
+                if (rpcErr) throw rpcErr;
+                if (!res || res.ok !== true) throw new Error(_programErrText(res));
                 _trackerState.studentLevelLocked = true;
                 const tbSel = document.getElementById('textbookSelect');
                 if (tbSel) tbSel.disabled = true;
-            } catch (e) { console.warn('students level/unit save failed', e); }
+            } catch (e) {
+                // Молчать нельзя: именно молчание и спрятало проблему.
+                console.warn('students level/unit save failed', e);
+                alert('Трекер сохранён, но учебник и юнит в карточке ученика не обновились.\n\n'
+                    + (e.message || e) + '\n\nСообщите методисту.');
+            }
 
             // Запрос методисту создаём ТОЛЬКО когда заполнен финальный тест
             console.log('[unit-progress] decision: currentFinal=', currentUnit.isFinal);
