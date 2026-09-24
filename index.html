@@ -33247,7 +33247,7 @@
                         const name = _studentsTeachersDirectory[tid] || '???';
                         return `<span style="display:inline-block; background:#ede9fe; color:#5b21b6; padding:4px 10px; border-radius:6px; font-size:13px; font-weight:500; margin:2px;">🎓 ${escapeHtml(name)}</span>`;
                     }).join(' ')
-                    : '<span style="color:#94a3b8; font-size:13px;">не закреплён</span>';
+                    : '<span style="color:#94a3b8; font-size:13px;">нет уроков в расписании</span>';
 
                 // Список отчётов
                 const reportsHtml = reports.length
@@ -33587,7 +33587,7 @@
                     <td data-label="Родитель" style="padding:10px 14px; color:#64748b; overflow-wrap:break-word; word-break:break-word;">${escapeHtml(s.parent_text || '—')}</td>
                     ${hideTeachersCol ? '' : `<td data-label="Преподаватели" style="padding:10px 14px;" onclick="event.stopPropagation()">
                         <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-                            ${teachersHtml || (!s.attends_space ? '<span style="color:#94a3b8; font-size:12px;">не закреплён</span>' : '')}
+                            ${teachersHtml || (!s.attends_space ? '<span style="color:#94a3b8; font-size:12px;">нет уроков в расписании</span>' : '')}
                             ${spaceTag}
                             ${addBtn}
                             ${addSpaceBtn}
