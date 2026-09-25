@@ -29819,7 +29819,7 @@
             const originById = new Map();
             if (originIds.length) {
                 const { data: origins } = await sb.from('mk_lessons')
-                    .select('id, lesson_date, begin_time')
+                    .select('id, lesson_date, begin_time, external_class_id')
                     .in('id', originIds);
                 for (const o of origins || []) originById.set(o.id, o);
             }
@@ -29831,16 +29831,20 @@
             if (!rest.length) return here;
             if (!lesson.lesson_date) return here;
 
-            // Кандидаты в адресаты: уроки этого преподавателя от самого раннего
+            // Кандидаты в адресаты: уроки ТОЙ ЖЕ ГРУППЫ от самого раннего
             // урока-источника до текущего урока включительно. Если между
-            // источником и текущим уроком есть занятие с этим учеником —
-            // адресат оно, а не текущий.
+            // источником и текущим уроком есть занятие этой группы с этим
+            // учеником — адресат оно, а не текущий.
+            //
+            // По группе, а не по ученику: у ребёнка бывают занятия и по
+            // другому предмету. Трекер по английскому уезжал на ближайший
+            // урок китайского — за сентябрь так ушли три запроса.
             //
             // Окно начинается от источника, а не от сегодня: только так
             // прошедший урок остаётся адресатом своего трекера.
             //
             // Вглубь оно ограничено 90 днями. Иначе один старый запрос тянул бы
-            // в модалку всё расписание преподавателя за полгода — это сотни
+            // в модалку всё расписание группы за полгода — это сотни
             // уроков, каждый со списком учеников. Запрос старше 90 дней здесь
             // не показывается вовсе: обрезать ему окно нельзя, адресат
             // определился бы неверно.
@@ -29853,7 +29857,16 @@
             });
             if (!fresh.length) return here;
 
-            const originDates = fresh
+            // Запрос закрепляется за следующим уроком своей группы, поэтому
+            // чужие сюда не попадают вовсе. Урок-источник, удалённый из МК,
+            // оставляем: иначе запрос стало бы негде заполнить.
+            const mine = fresh.filter(r => {
+                const o = originById.get(r.lesson_id);
+                return !o || o.external_class_id === lesson.external_class_id;
+            });
+            if (!mine.length) return here;
+
+            const originDates = mine
                 .map(r => originById.get(r.lesson_id))
                 .filter(o => o && o.lesson_date)
                 .map(o => o.lesson_date)
@@ -29864,7 +29877,7 @@
             if (from && from <= lesson.lesson_date) {
                 const { data: cand } = await sb.from('mk_lessons_with_details')
                     .select('id, lesson_date, begin_time, students, class_name')
-                    .eq('primary_teacher_id', lesson.primary_teacher_id)
+                    .eq('external_class_id', lesson.external_class_id)
                     .gte('lesson_date', from)
                     .lte('lesson_date', lesson.lesson_date)
                     .order('lesson_date', { ascending: true })
@@ -29872,7 +29885,7 @@
                 candidates = cand || [];
             }
 
-            const targeted = fresh.filter(r => {
+            const targeted = mine.filter(r => {
                 const origin = originById.get(r.lesson_id);
                 // Урок-источник удалён из МК — оставляем запрос видимым здесь,
                 // иначе его нельзя будет ни заполнить, ни перенести
@@ -30345,6 +30358,9 @@
                             ${fbHere.map(r => `<div style="margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
                         </div>`
                     : (canEdit && !fbPending.length ? `
+                        <div style="font-size:13px; color:#475569; line-height:1.45; margin-bottom:6px;">
+                            На следующем уроке тест и обратная связь? Нажмите кнопку — и родители узнают об этом заранее.
+                        </div>
                         <button class="btn btn-secondary btn-small" onclick="requestFeedback()">
                             📊 Трекер прогресса на следующем уроке
                         </button>
