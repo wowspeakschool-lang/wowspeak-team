@@ -19759,6 +19759,30 @@
             return kw.some(k => n.includes(k));
         }
 
+        // Где на занятии WowSpace домашка всё-таки бывает — решение
+        // владельца 25.09.2026: только вебинары и Gravity Falls.
+        const SPACE_WITH_HOMEWORK = /вебинар|webinar|gravity/i;
+
+        // Задаётся ли на этом уроке домашка вообще. Если нет — в модалке
+        // не должно быть ни поля, ни выбора «задаю / не задаю», и в
+        // МойКласс не уходит текст-заглушка: писать «домашнее задание не
+        // задаётся» там, где его не бывает, — шум для родителя.
+        //
+        // Цифры на 25.09.2026 за 180 дней: клубных уроков 1793, из них
+        // вебинаров 172 и Gravity 20, остальные 1601 теряют поле.
+        function homeworkEnabled(className) {
+            if (!isWowspaceLesson(className)) return true;
+            return SPACE_WITH_HOMEWORK.test(className || '');
+        }
+
+        // Отмечать ли «сделал ли ученик домашку» и давать ли за это
+        // монетки. На занятиях WowSpace — нет нигде, включая вебинары:
+        // «не хочу чтобы они там баллы получали». За всё время на клубных
+        // уроках так начислили 1144 монетки.
+        function homeworkMarksEnabled(className) {
+            return !isWowspaceLesson(className);
+        }
+
         // ---------- Обратная связь по трекеру прогресса ----------
         // Преподаватель отмечает, что на следующем уроке будет трекер.
         // Родитель выбирает формат в своём кабинете, а здесь мы
@@ -30403,7 +30427,13 @@
                    </div>`
                 : '';
 
-            const homeworkSection = hwMode !== 'set' ? `
+            // На занятии WowSpace домашки не бывает — кроме вебинаров и
+            // Gravity Falls. Тогда блока нет вовсе, и в МойКласс ничего
+            // про домашку не уходит.
+            const hwEnabled = homeworkEnabled(lesson.class_name);
+            const hwMarks = homeworkMarksEnabled(lesson.class_name);
+
+            const homeworkSection = !hwEnabled ? '' : hwMode !== 'set' ? `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📚 Домашнее задание</div>
                     ${hwModePicker}
@@ -30564,7 +30594,7 @@
                         </div>`;
                     // Домашку не задавали — ни на этом уроке, ни на прошлом:
                     // отмечать нечего
-                    homeMarkSection = askAboutPrevHw ? `
+                    homeMarkSection = (askAboutPrevHw && hwMarks) ? `
                         <div style="${sectionStyle}">
                             <div style="${labelStyle}">⭐ Домашнее задание с прошлого урока</div>
                             <div id="wowHw_${ds.student_id}" style="margin-bottom:10px;"></div>
@@ -30737,7 +30767,11 @@
             if (!d) return 'Нет данных';
             // На уроке с трекером поля ДЗ на экране нет, поэтому и требовать
             // его нельзя: иначе сохранение просит то, чего негде ввести.
-            const hwOff = !!d.hw_none;
+            // На занятии WowSpace домашки нет: ни поля, ни отметок — значит
+            // и требовать их перед сохранением нельзя, иначе урок не закрыть.
+            const cls = _lessonModalState?.lesson?.class_name || null;
+            const hwOff = !!d.hw_none || !homeworkEnabled(cls);
+            const marksOff = !homeworkMarksEnabled(cls);
             // Отметку «сделал ли домашку» не требуем, если её не задавали
             // на прошлом уроке: кнопок для неё на экране тоже нет.
             const prevHwOff = !askedAboutPrevHomework();
@@ -30752,7 +30786,7 @@
                 if (!hwOff && !allNoHw && !(d.homework || '').trim()) return 'Заполните домашнее задание (хотя бы один ученик отмечен как присутствовавший)';
                 // По каждому присутствовавшему надо отметить, сделал он ДЗ или нет.
                 // После теста и на уроке с трекером домашки не было — отмечать нечего
-                const notMarked = (hwOff || prevHwOff) ? []
+                const notMarked = (hwOff || prevHwOff || marksOff) ? []
                     : d.students.filter(s => s.visited === true && !_wowHwState[s.student_id]);
                 if (notMarked.length) {
                     return notMarked.length === 1
@@ -30805,9 +30839,14 @@
                 if (d.hw_none) {
                     d.homework = hwNoneText(d.was_test, trackerDueNow());
                 }
-                const newHw = (d.homework || '').trim();
+                // На занятии WowSpace без домашки не трогаем её вовсе:
+                // пустая строка означала бы «удалить», а домашку там
+                // раньше задавали — 673 раза за 180 дней, и стирать её
+                // задним числом никто не просил.
+                const hwAllowed = homeworkEnabled(lesson.class_name);
+                const newHw = hwAllowed ? (d.homework || '').trim() : '';
                 const oldHw = (st.homeTask?.text || '').trim();
-                if (newHw !== oldHw) {
+                if (hwAllowed && newHw !== oldHw) {
                     if (newHw) {
                         await callMkWriteLesson({
                             action: 'set_task', lesson_id: lesson.id, mk_lesson_id: lesson.external_id,
