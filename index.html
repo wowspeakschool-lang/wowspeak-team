@@ -33110,19 +33110,22 @@
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         ${WOW_PRESETS.map(p => {
-                            const done = doneToday.has(p.reason);
-                            const noRoom = !done && p.amount > limitLeft;
-                            const off = done || noRoom;
-                            const title = done ? 'Уже начислено сегодня'
-                                        : noRoom ? 'Лимит на сегодня исчерпан' : '';
-                            return `<button ${off ? 'disabled' : ''} title="${title}"
+                            // Один и тот же повод можно давать несколько раз за
+                            // день: решение владельца 25.09.2026. Раньше каждый
+                            // повод разрешался один раз, поэтому потолок был 4
+                            // (1+1+2), а не 10, и кнопки гасли — преподаватели
+                            // видели «4 из 10» и не могли начислить больше.
+                            const given = doneToday.has(p.reason);
+                            const noRoom = p.amount > limitLeft;
+                            const title = noRoom ? 'Лимит на сегодня исчерпан' : '';
+                            return `<button ${noRoom ? 'disabled' : ''} title="${title}"
                                 onclick="awardWowCoins('${studentId}','${p.reason}')"
                                 style="padding:8px 12px; border-radius:9px; font-family:inherit; font-size:13px;
-                                       border:1px solid ${done ? '#86efac' : '#e5e7eb'};
-                                       background:${done ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
-                                       color:${done ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
-                                       cursor:${off ? 'default' : 'pointer'};">
-                                ${done ? '✓' : p.icon} ${escapeHtml(p.label)} +${p.amount}
+                                       border:1px solid ${given ? '#86efac' : '#e5e7eb'};
+                                       background:${given && !noRoom ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
+                                       color:${noRoom ? '#cbd5e1' : (given ? '#166534' : '#334155')};
+                                       cursor:${noRoom ? 'default' : 'pointer'};">
+                                ${given ? '✓' : p.icon} ${escapeHtml(p.label)} +${p.amount}
                             </button>`;
                         }).join('')}
                     </div>
@@ -33157,7 +33160,8 @@
                 reason: reason,
                 awarded_by: String(awardedBy),
             });
-            // 23505 — повтор того же повода за день. Не ошибка, просто уже начислено
+            // 23505 остался только у отметок о домашке: поощрения теперь
+            // можно повторять, и уникального индекса на них нет.
             if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
             renderWowCoins(studentId);
         }
@@ -33198,18 +33202,19 @@
                 box.innerHTML = `
                     <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                         ${WOW_PRESETS.map(p => {
-                            const isDone = done.has(p.reason);
-                            const noRoom = !isDone && p.amount > left;
-                            const off = isDone || noRoom;
-                            return `<button ${off ? 'disabled' : ''}
-                                title="${isDone ? 'Уже начислено сегодня' : (noRoom ? 'Лимит на сегодня исчерпан' : '')}"
+                            // Повторять повод можно, пока есть запас по лимиту
+                            // (см. карточку ученика выше).
+                            const given = done.has(p.reason);
+                            const noRoom = p.amount > left;
+                            return `<button ${noRoom ? 'disabled' : ''}
+                                title="${noRoom ? 'Лимит на сегодня исчерпан' : ''}"
                                 onclick="awardWowLesson('${lessonId}','${sid}','${p.reason}')"
                                 style="padding:5px 10px; border-radius:8px; font-family:inherit; font-size:12px;
-                                       border:1px solid ${isDone ? '#86efac' : '#e5e7eb'};
-                                       background:${isDone ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
-                                       color:${isDone ? '#166534' : (noRoom ? '#cbd5e1' : '#334155')};
-                                       cursor:${off ? 'default' : 'pointer'};">
-                                ${isDone ? '✓' : p.icon} ${escapeHtml(p.short)} +${p.amount}
+                                       border:1px solid ${given ? '#86efac' : '#e5e7eb'};
+                                       background:${given && !noRoom ? '#dcfce7' : (noRoom ? '#f8fafc' : '#fff')};
+                                       color:${noRoom ? '#cbd5e1' : (given ? '#166534' : '#334155')};
+                                       cursor:${noRoom ? 'default' : 'pointer'};">
+                                ${given ? '✓' : p.icon} ${escapeHtml(p.short)} +${p.amount}
                             </button>`;
                         }).join('')}
                         <span style="font-size:11px; color:#94a3b8;">💰 ${today_} / ${WOW_DAILY_LIMIT}</span>
