@@ -29863,7 +29863,7 @@
             let candidates = [];
             if (from && from <= lesson.lesson_date) {
                 const { data: cand } = await sb.from('mk_lessons_with_details')
-                    .select('id, lesson_date, begin_time, students')
+                    .select('id, lesson_date, begin_time, students, class_name')
                     .eq('primary_teacher_id', lesson.primary_teacher_id)
                     .gte('lesson_date', from)
                     .lte('lesson_date', lesson.lesson_date)
@@ -29878,7 +29878,10 @@
                 // иначе его нельзя будет ни заполнить, ни перенести
                 if (!origin) return true;
                 if (!after(lesson, origin)) return false;
+                // Занятие WowSpace адресатом не становится: трекера там нет,
+                // и кнопке было бы негде появиться. Запрос ждёт обычного урока.
                 const target = candidates.find(c => after(c, origin)
+                    && !isWowspaceLesson(c.class_name)
                     && (c.students || []).some(s => s.student_id === r.student_id));
                 return !!target && target.id === lesson.id;
             });
@@ -30301,7 +30304,11 @@
                 return escapeHtml(who);
             };
 
-            const feedbackSection = `
+            // Трекера прогресса на занятиях WowSpace нет: клубы, вебинары и
+            // мастер-классы не ведут ученика по учебнику, и отчитываться по
+            // ним нечем. Решение владельца 25.09.2026.
+            const trackerHere = !isWowspaceLesson(lesson.class_name);
+            const feedbackSection = !trackerHere ? '' : `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📊 Трекер прогресса</div>
                     ${fbPending.length ? `
