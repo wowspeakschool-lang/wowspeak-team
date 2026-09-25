@@ -29772,13 +29772,19 @@
         // занятии с этим же учеником. Фильтра по уроку раньше не было вовсе:
         // запрос показывался в КАЖДОМ уроке этого ученика с этим преподавателем,
         // включая уроки до запроса, и блокировал там домашнее задание.
-        // Теперь у запроса ровно один адресат — ближайший ещё не прошедший урок
-        // после урока-источника. Если он проходит без трекера, адресат сам
-        // сдвигается на следующий урок с этим учеником.
+        //
+        // У запроса ровно один адресат — первый урок с этим учеником после
+        // урока-источника. Адресат закреплён и со временем никуда не уходит:
+        // урок прошёл, а трекера нет — кнопка остаётся там же. Сдвинуть её
+        // может только преподаватель кнопкой «Перенести на следующий урок».
+        //
+        // Раньше адресат искался «от сегодня», и прошедший урок переставал
+        // им быть: преподаватель, заполнявший урок на следующий день, кнопки
+        // уже не находил и ждал следующего занятия. Основанием было то, что
+        // висящий запрос блокировал домашнее задание, — но блокировку сняли
+        // в тот же день, 21.09, а это условие осталось.
         async function _feedbackRowsForLesson(rows, lesson) {
             if (!rows.length) return [];
-            // База хранит московское время, поэтому «сегодня» тоже московское
-            const today = new Date(Date.now() + 180 * 60000).toISOString().slice(0, 10);
 
             const after = (a, b) => a.lesson_date !== b.lesson_date
                 ? a.lesson_date > b.lesson_date
@@ -29799,24 +29805,50 @@
             const here = rows.filter(r => r.lesson_id === lesson.id);
             const rest = rows.filter(r => r.lesson_id !== lesson.id);
             if (!rest.length) return here;
+            if (!lesson.lesson_date) return here;
 
-            // Прошедший урок трекер не адресует: заполнять там уже нечего,
-            // а домашка должна задаваться как обычно
-            if (!lesson.lesson_date || lesson.lesson_date < today) return here;
+            // Кандидаты в адресаты: уроки этого преподавателя от самого раннего
+            // урока-источника до текущего урока включительно. Если между
+            // источником и текущим уроком есть занятие с этим учеником —
+            // адресат оно, а не текущий.
+            //
+            // Окно начинается от источника, а не от сегодня: только так
+            // прошедший урок остаётся адресатом своего трекера.
+            //
+            // Вглубь оно ограничено 90 днями. Иначе один старый запрос тянул бы
+            // в модалку всё расписание преподавателя за полгода — это сотни
+            // уроков, каждый со списком учеников. Запрос старше 90 дней здесь
+            // не показывается вовсе: обрезать ему окно нельзя, адресат
+            // определился бы неверно.
+            const FLOOR_DAYS = 90;
+            const floor = new Date(new Date(lesson.lesson_date + 'T00:00:00')
+                .getTime() - FLOOR_DAYS * 86400000).toISOString().slice(0, 10);
+            const fresh = rest.filter(r => {
+                const o = originById.get(r.lesson_id);
+                return !o || !o.lesson_date || o.lesson_date >= floor;
+            });
+            if (!fresh.length) return here;
 
-            // Кандидаты в адресаты: уроки этого преподавателя от сегодня до
-            // текущего урока включительно. Если между источником и текущим
-            // уроком есть занятие с этим учеником — адресат оно, а не текущий.
-            const { data: cand } = await sb.from('mk_lessons_with_details')
-                .select('id, lesson_date, begin_time, students')
-                .eq('primary_teacher_id', lesson.primary_teacher_id)
-                .gte('lesson_date', today)
-                .lte('lesson_date', lesson.lesson_date)
-                .order('lesson_date', { ascending: true })
-                .order('begin_time', { ascending: true });
-            const candidates = cand || [];
+            const originDates = fresh
+                .map(r => originById.get(r.lesson_id))
+                .filter(o => o && o.lesson_date)
+                .map(o => o.lesson_date)
+                .sort();
+            const from = originDates[0] || null;
 
-            const targeted = rest.filter(r => {
+            let candidates = [];
+            if (from && from <= lesson.lesson_date) {
+                const { data: cand } = await sb.from('mk_lessons_with_details')
+                    .select('id, lesson_date, begin_time, students')
+                    .eq('primary_teacher_id', lesson.primary_teacher_id)
+                    .gte('lesson_date', from)
+                    .lte('lesson_date', lesson.lesson_date)
+                    .order('lesson_date', { ascending: true })
+                    .order('begin_time', { ascending: true });
+                candidates = cand || [];
+            }
+
+            const targeted = fresh.filter(r => {
                 const origin = originById.get(r.lesson_id);
                 // Урок-источник удалён из МК — оставляем запрос видимым здесь,
                 // иначе его нельзя будет ни заполнить, ни перенести
@@ -29899,7 +29931,13 @@
                 await loadWowspaceKeywords();
 
                 // Обратная связь по трекеру: запрошена ли она для кого-то
-                // из учеников этого урока и что ответил родитель
+                // из учеников этого урока и что ответил родитель.
+                //
+                // Берём и закрытые запросы — те, по которым трекер уже сделан.
+                // Раньше фильтр был `report_id is null`, и урок забывал, что
+                // трекер на нём вообще был: блок «уже сформирован» с кнопкой
+                // «Посмотреть / изменить» показывался ровно один раз, в тот
+                // заход, когда запрос закрывался.
                 let feedbackRows = [];
                 try {
                     const sids = students.map(s => s.student_id).filter(Boolean);
@@ -29908,8 +29946,8 @@
                             .select('*')
                             .in('student_id', sids)
                             .eq('teacher_id', lesson.primary_teacher_id)
-                            .is('report_id', null)
-                            .order('created_at', { ascending: false });
+                            .order('created_at', { ascending: false })
+                            .limit(100);
                         feedbackRows = await _feedbackRowsForLesson(fr || [], lesson);
                     }
                 } catch (e) { console.warn('[feedback] не загрузилось', e); }
@@ -29931,13 +29969,32 @@
                             .limit(50);
                         trackerRows = tr || [];
                     }
+                    // Трекеры закрытых запросов могли не попасть в полусотню
+                    // последних, а у старых трекеров ученик и вовсе не
+                    // проставлен. Добираем их по идентификатору.
+                    const missing = [...new Set(feedbackRows
+                        .filter(r => r.report_id && !trackerRows.some(t => t.id === r.report_id))
+                        .map(r => r.report_id))];
+                    if (missing.length) {
+                        const { data: extra } = await sb.from('teacher_reports')
+                            .select('id, student_id, parent_view_token, created_at, program')
+                            .in('id', missing)
+                            .is('deleted_at', null);
+                        trackerRows = trackerRows.concat(extra || []);
+                    }
                 } catch (e) { console.warn('[tracker] не загрузилось', e); }
 
-                // Запрос считаем выполненным, если после него появился трекер
+                // Закрытый запрос знает свой трекер по report_id. Открытый —
+                // по тому, что после него у этого ученика появился трекер.
+                //
+                // Если трекер закрытого запроса удалён, запрос снова считается
+                // невыполненным, и кнопка «Сформировать» возвращается: трекера
+                // действительно нет, и сделать его надо заново.
                 for (const r of feedbackRows) {
-                    const done = trackerRows.find(t => t.student_id === r.student_id
-                        && t.created_at >= r.created_at);
-                    if (done) r.tracker_done = done;
+                    r.tracker_done = r.report_id
+                        ? (trackerRows.find(t => t.id === r.report_id) || null)
+                        : (trackerRows.find(t => t.student_id === r.student_id
+                            && t.created_at >= r.created_at) || null);
                 }
                 // ...и закрываем такой запрос, чтобы он не тянулся дальше.
                 // Раньше он закрывался только если трекер открыли из урока,
@@ -30196,7 +30253,9 @@
             // занятии с этим же учеником — вычислить «следующий урок» заранее
             // нельзя, поэтому ищем по ученику и преподавателю.
             const fbRows = _lessonModalState?.feedback || [];
-            const fbHere = fbRows.filter(r => r.lesson_id === lesson.id);
+            // В уроке-источнике обещание «трекер будет на следующем уроке»
+            // держим только пока трекера нет: иначе оно висело бы и после.
+            const fbHere = fbRows.filter(r => r.lesson_id === lesson.id && !r.tracker_done);
             // Трекер на этот урок: ещё не сделанный — и уже готовый
             const fbPending = fbRows.filter(r => r.lesson_id !== lesson.id && !r.tracker_done);
             const fbDone = fbRows.filter(r => r.lesson_id !== lesson.id && r.tracker_done);
@@ -30244,7 +30303,7 @@
                                 return `<div style="font-size:13px; color:#14532d; margin-bottom:6px;">
                                         ✅ ${escapeHtml(s?.student_name || '')} — ${escapeHtml(when)}
                                         <button class="btn btn-small btn-secondary" style="margin-left:8px;"
-                                            onclick="openTrackerForEdit('${r.tracker_done.id}')">Открыть трекер</button>
+                                            onclick="openTrackerForEdit('${r.tracker_done.id}')">Посмотреть / изменить</button>
                                     </div>`;
                             }).join('')}
                         </div>` : ''}
