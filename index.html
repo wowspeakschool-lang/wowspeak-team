@@ -34422,11 +34422,15 @@
             }
             const data = allData;
 
+            // Отбор только по названию группы. По теме урока не смотрим:
+            // среди ключевых слов есть «speakin», и в теме оно ловит обычные
+            // индивидуальные уроки — «Speaking test Unit 8», «Speaking - 89%».
+            // За 180 дней таких 169, и ни один из них не клуб. То же правило
+            // в get_wowspace_schedule, откуда расписание берут родители.
             const keywords = (settings.keywords || []).map(k => k.toLowerCase());
             let items = (data || []).filter(it => {
                 const cn = (it.class_name || '').toLowerCase();
-                const tp = (it.topic || '').toLowerCase();
-                return keywords.some(k => cn.includes(k) || tp.includes(k));
+                return keywords.some(k => cn.includes(k));
             });
             if (state.ageFilter) {
                 items = items.filter(it => _ageMatches(it, state.ageFilter));
