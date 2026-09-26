@@ -8776,7 +8776,6 @@
                 <div class="tracker-modal-title" id="trialModalTitle">📄 Отчёт после пробного</div>
                 <div class="tracker-modal-actions">
                     <button class="btn btn-secondary btn-small" id="trialCopyLinkBtn" onclick="trialCopyLink()" style="display:none;">🔗 Скопировать ссылку</button>
-                    <button class="btn btn-secondary btn-small" id="trialPrintBtn" onclick="printTrialReport()" title="Скачать как PDF" style="display:none;">🖨 Скачать PDF</button>
                     <button class="btn btn-secondary btn-small" id="trialBackBtn" onclick="trialBackToForm()" style="display:none;">✏️ Вернуться к форме</button>
                     <button class="btn btn-primary btn-small" id="trialSaveBtn" onclick="saveTrialReport()">✅ Сформировать отчёт</button>
                     <button class="btn btn-secondary btn-small" id="trialDeleteBtn" onclick="deleteTrialReport()" style="display:none; color:#dc2626; border-color:#fca5a5;" title="Удалить отчёт">🗑 Удалить</button>
@@ -37777,7 +37776,6 @@
                 if (el) el.style.display = on ? '' : 'none';
             };
             show('trialCopyLinkBtn', !!_trialState?.token);
-            show('trialPrintBtn', true);
             show('trialBackBtn', true);
 
             const save = document.getElementById('trialSaveBtn');
@@ -37806,7 +37804,6 @@
                 if (el) el.style.display = on ? '' : 'none';
             };
             show('trialCopyLinkBtn', false);
-            show('trialPrintBtn', false);
             show('trialBackBtn', false);
 
             const save = document.getElementById('trialSaveBtn');
@@ -38364,8 +38361,10 @@
             // Новый отчёт открываем формой, сохранённый — готовым видом.
             // Печать и ссылка появляются только на готовом отчёте.
             const isSaved = _trialState.mode === 'edit';
+            // Печати у отчёта после пробного нет: родителю отдают ссылку,
+            // и она всегда показывает актуальный отчёт, а распечатка — нет.
+            // Решение владельца 26.09.2026.
             [['trialCopyLinkBtn', isSaved && !!_trialState.token],
-             ['trialPrintBtn',    isSaved],
              ['trialBackBtn',     isSaved]].forEach(([id, on]) => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = on ? '' : 'none';
@@ -38566,6 +38565,9 @@
         }
 
         // ----- PDF полотном (как в трекере) -----
+        // Кнопка, которая её вызывала, убрана 26.09.2026: отчёт после
+        // пробного отдают родителю ссылкой, а не распечаткой — ссылка всегда
+        // показывает актуальный отчёт. Саму функцию оставляем.
         function printTrialReport() {
             if (!_trialState) return;
             // Перед печатью переводим форму в режим preview, чтобы PDF выглядел как отчёт для родителя
