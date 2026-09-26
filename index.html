@@ -19904,6 +19904,37 @@
             }
         }
 
+        // Отчёт после пробного, открытый из урока.
+        //
+        // Ученик, преподаватель и дата уже известны, поэтому отчёт сразу
+        // привязывается к ученику. На отдельной вкладке имя вводят руками, и
+        // ученик не проставлен ни у одного из 60 существующих отчётов —
+        // из-за этого их не видно в кабинете родителя.
+        function openTrialReportFromLesson(studentId) {
+            const st = _lessonModalState;
+            if (!st) return;
+            const lesson = st.lesson;
+            const stu = (st.students || []).find(s => s.student_id === studentId);
+            const teacher = teachersFromDb.find(t => t.id === lesson.primary_teacher_id);
+            closeLessonModal();
+            if (typeof openTrialReportModal !== 'function') {
+                alert('Не удалось открыть отчёт после пробного');
+                return;
+            }
+            _trialState = {
+                mode: 'create',
+                reportId: null,
+                teacherId: lesson.primary_teacher_id,
+                teacherName: teacher?.name || lesson.teacher_name || '',
+                language: teacher?.category === 'Англоговорящий' ? 'en' : 'ru',
+                existingData: null,
+                studentId: studentId,
+                studentNameMk: stu?.student_name || '',
+                lessonDate: lesson.lesson_date || null,
+            };
+            openTrialReportModal();
+        }
+
         // ---------- Подписка на календарь ----------
         // Расписание в Google Calendar или Apple Calendar по ссылке.
         // Календарь перечитывает её сам, обычно раз в несколько часов.
@@ -29807,6 +29838,99 @@
         // уже не находил и ждал следующего занятия. Основанием было то, что
         // висящий запрос блокировал домашнее задание, — но блокировку сняли
         // в тот же день, 21.09, а это условие осталось.
+        // ===== ОТЧЁТ ПОСЛЕ ПРОБНОГО УРОКА =====
+        //
+        // Правило владельца от 26.09.2026: отчёт предлагается, если этот урок —
+        // первый урок ученика с этим преподавателем, а предыдущим уроком
+        // ученика был вводный. То есть ребёнок пришёл после ВУ и начал
+        // заниматься, и родителю важно услышать первое мнение преподавателя.
+        //
+        // Передача ученика другому преподавателю под правило не подпадает
+        // намеренно: в момент урока она неотличима от обычной замены —
+        // разница видна только потом, вернётся прежний преподаватель или нет.
+        // Для таких случаев осталась вкладка «Отчёты после пробного».
+        //
+        // Цифры на 26.09.2026: за 180 дней правило сработало бы 214 раз
+        // (~36 в месяц). Из 48 написанных руками отчётов, которые удалось
+        // привязать к уроку, правило покрывает 40; остальные 8 — передачи.
+        //
+        // Главное, ради чего это делается: отчёт, открытый из урока, знает
+        // ученика и пишет `student_id`. На отдельной вкладке имя вводят
+        // руками, и ученик не проставлен НИ У ОДНОГО из 60 отчётов — поэтому
+        // в кабинете родителя их не видно.
+        let _introClassIds = null;
+        async function introClassIds() {
+            if (_introClassIds) return _introClassIds;
+            const { data } = await sb.from('mk_classes')
+                .select('external_id').ilike('name', 'Вводн%');
+            _introClassIds = new Set((data || []).map(c => c.external_id));
+            return _introClassIds;
+        }
+
+        // Вглубь смотрим 60 дней: правилу нужен вводный урок непосредственно
+        // перед этим, а он бывает за 1–20 дней. Если истории за окно нет,
+        // кнопку не показываем — гадать не на чем.
+        const PU_LOOKBACK_DAYS = 60;
+
+        // Расписание читается по ученику: сначала его уроки (как это уже
+        // делает поиск прошлой темы), потом их детали за окно. Так на
+        // обычном уроке уходит два небольших запроса и ни одного лишнего.
+        async function _puStudentsForLesson(lesson, students) {
+            if (!lesson || !lesson.lesson_date || !lesson.primary_teacher_id) return [];
+            const intro = await introClassIds();
+            if (!intro.size) return [];
+            if (intro.has(lesson.external_class_id)) return [];
+            const sids = (students || []).map(s => s.student_id).filter(Boolean);
+            // На больших группах правило не про них, а запросов вышло бы много
+            if (!sids.length || sids.length > 4) return [];
+
+            const from = new Date(new Date(lesson.lesson_date + 'T00:00:00')
+                .getTime() - PU_LOOKBACK_DAYS * 86400000).toISOString().slice(0, 10);
+
+            const earlier = (a) => a.lesson_date !== lesson.lesson_date
+                ? a.lesson_date < lesson.lesson_date
+                : timeToMin(a.begin_time) < timeToMin(lesson.begin_time);
+
+            const out = [];
+            for (const sid of sids) {
+                const { data: lsr } = await sb.from('mk_lesson_students')
+                    .select('lesson_id').eq('student_id', sid);
+                const ids = (lsr || []).map(x => x.lesson_id);
+                if (!ids.length) continue;
+                const { data: hist } = await sb.from('mk_lessons_with_details')
+                    .select('id, lesson_date, begin_time, external_class_id, primary_teacher_id')
+                    .in('id', ids)
+                    .gte('lesson_date', from)
+                    .lte('lesson_date', lesson.lesson_date)
+                    .order('lesson_date', { ascending: true })
+                    .order('begin_time', { ascending: true });
+                const past = (hist || []).filter(l => l.id !== lesson.id).filter(earlier);
+                if (!past.length) continue;
+                const prev = past[past.length - 1];
+                if (!intro.has(prev.external_class_id)) continue;
+                // Вводные в счёт не идут: их ведёт МВУ, а не этот преподаватель
+                const already = past.some(l => !intro.has(l.external_class_id)
+                    && l.primary_teacher_id === lesson.primary_teacher_id);
+                if (already) continue;
+                out.push({ student_id: sid, intro_date: prev.lesson_date });
+            }
+            return out;
+        }
+
+        // Уже написанные отчёты этих учеников. Находятся только те, у которых
+        // проставлен ученик, то есть заведённые из урока: у старых его нет.
+        async function _puReportsFor(sids) {
+            const m = new Map();
+            if (!sids.length) return m;
+            const { data } = await sb.from('teacher_reports')
+                .select('id, student_id, created_at')
+                .eq('report_type', 'trial_report')
+                .is('deleted_at', null)
+                .in('student_id', sids);
+            for (const r of data || []) if (!m.has(r.student_id)) m.set(r.student_id, r);
+            return m;
+        }
+
         async function _feedbackRowsForLesson(rows, lesson) {
             if (!rows.length) return [];
 
@@ -30016,6 +30140,16 @@
                     }
                 } catch (e) { console.warn('[feedback] не загрузилось', e); }
 
+                // Отчёт после пробного: кому из учеников его предлагать
+                let puStudents = [];
+                let puReports = new Map();
+                try {
+                    puStudents = await _puStudentsForLesson(lesson, students);
+                    if (puStudents.length) {
+                        puReports = await _puReportsFor(puStudents.map(x => x.student_id));
+                    }
+                } catch (e) { console.warn('[пробный] не загрузилось', e); }
+
                 // Трекеры этих учеников: нужны, чтобы показать уже
                 // сформированный трекер вместо кнопки «Сформировать» —
                 // раньше кнопка висела, даже если трекер давно готов, и
@@ -30087,6 +30221,8 @@
                     prevChecked: false,
                     feedback: feedbackRows,
                     trackers: trackerRows,
+                    pu: puStudents,
+                    puReports,
                     answers: [],
                     answersLoading: false,
                     expandedAnswers: {},
@@ -30341,6 +30477,28 @@
                 return escapeHtml(who);
             };
 
+            // ----- Секция: Отчёт после пробного урока -----
+            const puList = _lessonModalState?.pu || [];
+            const puDone = _lessonModalState?.puReports || new Map();
+            const puSection = (!canEdit || !puList.length) ? '' : `
+                <div style="${sectionStyle}">
+                    <div style="${labelStyle}">📄 Отчёт после пробного урока</div>
+                    <div style="font-size:13px; color:#475569; line-height:1.45; margin-bottom:8px;">
+                        ${puList.length > 1 ? 'Для этих учеников это первый урок с вами' : 'Для этого ученика это первый урок с вами'}, а до него был вводный. Родителям важно услышать ваше мнение.
+                    </div>
+                    ${puList.map(p => {
+                        const s = (students || []).find(x => x.student_id === p.student_id);
+                        const who = escapeHtml(s?.student_name || '');
+                        const done = puDone.get(p.student_id);
+                        return done
+                            ? `<div style="font-size:13px; color:#166534; margin-bottom:6px;">✅ ${who} — отчёт готов
+                                   <button class="btn btn-small btn-secondary" style="margin-left:8px;"
+                                       onclick="openTrialReportForEdit('${done.id}')">Посмотреть / изменить</button></div>`
+                            : `<div style="margin-bottom:6px;"><button class="btn btn-small" style="background:#7c3aed; color:white;"
+                                   onclick="openTrialReportFromLesson('${p.student_id}')">📄 Заполнить${puList.length > 1 ? ' — ' + who : ''}</button></div>`;
+                    }).join('')}
+                </div>`;
+
             // Трекера прогресса на занятиях WowSpace нет: клубы, вебинары и
             // мастер-классы не ведут ученика по учебнику, и отчитываться по
             // ним нечем. Решение владельца 25.09.2026.
@@ -30590,6 +30748,7 @@
                     ${topicSection}
                     ${publicDescSection}
                     ${feedbackSection}
+                    ${puSection}
                     ${wasTestToggle}
                     ${homeworkSection}
                     <div style="${sectionStyle}">
@@ -30660,6 +30819,7 @@
                         ${topicSection}
                         ${publicDescSection}
                         ${feedbackSection}
+                        ${puSection}
                     ${wasTestToggle}
                     ${homeworkSection}
                         <div style="padding:18px; text-align:center; background:#fafbfc; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b; font-size:13px;">
@@ -30674,6 +30834,7 @@
                         ${topicSection}
                         ${publicDescSection}
                         ${feedbackSection}
+                        ${puSection}
                     ${wasTestToggle}
                     ${homeworkSection}
                         ${homeMarkSection}
@@ -38237,17 +38398,14 @@
                     if (window.tr_ru_F) Object.assign(window.tr_ru_F, _trialState.existingData);
                 }
             } else {
-                // Создание: автозаполняем имя препода и сегодняшнюю дату
-                if (isEn) {
-                    if (window.tr_en_F) {
-                        window.tr_en_F.tn = _trialState.teacherName || '';
-                        if (!window.tr_en_F.ld) window.tr_en_F.ld = new Date().toISOString().slice(0, 10);
-                    }
-                } else {
-                    if (window.tr_ru_F) {
-                        window.tr_ru_F.tn = _trialState.teacherName || '';
-                        if (!window.tr_ru_F.ld) window.tr_ru_F.ld = new Date().toISOString().slice(0, 10);
-                    }
+                // Создание: автозаполняем имя препода и дату урока. Открытый
+                // из урока отчёт знает ещё и ученика — подставляем и его.
+                const F0 = isEn ? window.tr_en_F : window.tr_ru_F;
+                if (F0) {
+                    F0.tn = _trialState.teacherName || '';
+                    if (_trialState.studentNameMk) F0.sn = _trialState.studentNameMk;
+                    if (_trialState.lessonDate) F0.ld = _trialState.lessonDate;
+                    else if (!F0.ld) F0.ld = new Date().toISOString().slice(0, 10);
                 }
             }
 
@@ -38331,6 +38489,7 @@
                     const { data, error } = await sb.from('teacher_reports').insert({
                         teacher_id:   _trialState.teacherId,
                         report_type:  'trial_report',
+                        student_id:   _trialState.studentId || null,
                         student_name: studentName,
                         program:      program || null,
                         language:     _trialState.language || 'ru',
