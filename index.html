@@ -6685,7 +6685,10 @@
                         </div>
                     </div>
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
-                        <button class="btn btn-primary" onclick="openNewTrialReportModal()">+ Сгенерировать отчёт</button>
+                        <div style="display:flex; align-items:center; gap:8px; padding:9px 13px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:13px; color:#1e40af;">
+                            <span>📄</span>
+                            <span>Отчёт заполняется из урока: на первом уроке ученика после вводного в карточке урока появится кнопка «Заполнить».</span>
+                        </div>
                         <input type="search" id="trialReportsSearch" placeholder="🔍 Поиск по ученику или программе"
                                oninput="renderTrialReportsList()"
                                style="flex: 1; min-width: 220px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
@@ -38292,6 +38295,10 @@
         }
 
         // ----- Открытие новой формы -----
+        // Кнопка, которая её вызывала, убрана из «Отчётов» 26.09.2026:
+        // отчёт после пробного заводится из урока, иначе он не привязывается
+        // к ученику и родителю в кабинете не виден. Саму функцию оставляем:
+        // на неё может быть ссылка из закладок и из старых инструкций.
         function openNewTrialReportModal() {
             const tName = currentTeacher;
             let teacherObj = tName ? findTeacher(tName) : null;
