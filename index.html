@@ -29835,8 +29835,8 @@
             //
             //   1. Следующий урок ТОЙ ЖЕ ГРУППЫ с этим учеником.
             //   2. Если такого нет вовсе — группу закрыли или
-            //      переименовали — ближайший ИНДИВИДУАЛЬНЫЙ урок с тем же
-            //      преподавателем.
+            //      переименовали — ближайший ИНДИВИДУАЛЬНЫЙ урок этого
+            //      ученика, в том числе у нового преподавателя.
             //
             // По группе, а не просто по ученику: у ребёнка бывают занятия и
             // по другому предмету. Трекер по английскому уезжал на ближайший
@@ -29866,36 +29866,37 @@
                 .sort();
             const from = originDates[0] || null;
 
-            // Уроки групп-источников — и БУДУЩИЕ тоже. Иначе «своей группы
-            // больше нет» не отличить от «её урок ещё впереди», и перенос
-            // на индивидуальный сработал бы раньше времени.
-            let groupLessons = [];
-            // Уроки преподавателя в окне — из них берётся индивидуальный
-            let candidates = [];
+            // Пул кандидатов — уроки нужных групп от источника и ДАЛЬШЕ В
+            // БУДУЩЕЕ. Будущие обязательны: иначе «своей группы больше нет»
+            // не отличить от «её урок ещё впереди», и перенос на
+            // индивидуальный сработал бы раньше времени — кнопка встала бы
+            // сразу в двух уроках.
+            //
+            // Группы берём двух видов: группы уроков-источников (шаг 1) и
+            // все группы, закреплённые за учениками (шаг 2). Второе даёт
+            // уроки у нового преподавателя, если ребёнка передали: сам
+            // ученик в запросе к уроку не привязан, а группа — привязана.
+            let pool = [];
             if (from && from <= lesson.lesson_date) {
-                const classIds = [...new Set(fresh
-                    .map(r => originById.get(r.lesson_id)?.external_class_id)
-                    .filter(Boolean))];
-                const [candR, grpR] = await Promise.all([
-                    sb.from('mk_lessons_with_details')
-                        .select('id, lesson_date, begin_time, students, class_name')
-                        .eq('primary_teacher_id', lesson.primary_teacher_id)
+                const sids = [...new Set(fresh.map(r => r.student_id).filter(Boolean))];
+                const { data: asg } = sids.length
+                    ? await sb.from('student_teacher_assignment')
+                        .select('external_class_id').in('student_id', sids)
+                    : { data: [] };
+                const classIds = [...new Set([
+                    ...fresh.map(r => originById.get(r.lesson_id)?.external_class_id),
+                    ...(asg || []).map(a => a.external_class_id),
+                ].filter(Boolean))];
+                if (classIds.length) {
+                    const { data: cand } = await sb.from('mk_lessons_with_details')
+                        .select('id, lesson_date, begin_time, students, class_name, external_class_id')
+                        .in('external_class_id', classIds)
                         .gte('lesson_date', from)
-                        .lte('lesson_date', lesson.lesson_date)
                         .order('lesson_date', { ascending: true })
-                        .order('begin_time', { ascending: true }),
-                    classIds.length
-                        ? sb.from('mk_lessons_with_details')
-                            .select('id, lesson_date, begin_time, students, class_name, external_class_id')
-                            .in('external_class_id', classIds)
-                            .gte('lesson_date', from)
-                            .order('lesson_date', { ascending: true })
-                            .order('begin_time', { ascending: true })
-                            .limit(300)
-                        : Promise.resolve({ data: [] }),
-                ]);
-                candidates = candR.data || [];
-                groupLessons = grpR.data || [];
+                        .order('begin_time', { ascending: true })
+                        .limit(500);
+                    pool = cand || [];
+                }
             }
 
             const targeted = fresh.filter(r => {
@@ -29909,12 +29910,12 @@
                 const fits = c => after(c, origin)
                     && !isWowspaceLesson(c.class_name)
                     && (c.students || []).some(s => s.student_id === r.student_id);
-                const inGroup = groupLessons.find(c =>
+                const inGroup = pool.find(c =>
                     c.external_class_id === origin.external_class_id && fits(c));
                 if (inGroup) return inGroup.id === lesson.id;
                 // Своей группы больше нет — переносим на ближайший
-                // индивидуальный урок с тем же преподавателем.
-                const solo = candidates.find(c => fits(c) && (c.students || []).length === 1);
+                // индивидуальный урок ученика, у любого преподавателя.
+                const solo = pool.find(c => fits(c) && (c.students || []).length === 1);
                 return !!solo && solo.id === lesson.id;
             });
 
@@ -29997,14 +29998,18 @@
                 // трекер на нём вообще был: блок «уже сформирован» с кнопкой
                 // «Посмотреть / изменить» показывался ровно один раз, в тот
                 // заход, когда запрос закрывался.
+                //
+                // По преподавателю не фильтруем: если ребёнка передали другому,
+                // трекер переносится на его урок (решение владельца 26.09.2026),
+                // а `teacher_id` в запросе остался от прежнего. Чей это урок,
+                // решает уже `_feedbackRowsForLesson`.
                 let feedbackRows = [];
                 try {
                     const sids = students.map(s => s.student_id).filter(Boolean);
-                    if (sids.length && lesson.primary_teacher_id) {
+                    if (sids.length) {
                         const { data: fr } = await sb.from('feedback_requests')
                             .select('*')
                             .in('student_id', sids)
-                            .eq('teacher_id', lesson.primary_teacher_id)
                             .order('created_at', { ascending: false })
                             .limit(100);
                         feedbackRows = await _feedbackRowsForLesson(fr || [], lesson);
