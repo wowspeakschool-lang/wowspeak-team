@@ -7104,25 +7104,9 @@
                             <option value="">Все статусы</option>
                             <option value="Работает">Работает</option>
                             <option value="Онбординг">Онбординг</option>
-                            <option value="Набор приостановлен">Набор приостановлен</option>
                             <option value="Временно не работает">Временно не работает</option>
-                        </select>
-                        <select id="screeningFilterGrade" onchange="renderScreeningsMonthList()" style="padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-family:inherit;">
-                            <option value="">Все грейды</option>
-                            <option value="Basic">Basic</option>
-                            <option value="Expert">Expert</option>
-                            <option value="Pro">Pro</option>
-                            <option value="МВУ">МВУ</option>
-                            <option value="Мастер лаоши">Мастер лаоши</option>
-                            <option value="Молодой лаоши">Молодой лаоши</option>
-                        </select>
-                        <select id="screeningFilterAge" onchange="renderScreeningsMonthList()" style="padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-family:inherit;">
-                            <option value="">Все возрасты</option>
-                            <option value="4-6">4-6</option>
-                            <option value="7-9">7-9</option>
-                            <option value="10-12">10-12</option>
-                            <option value="13-17">13-17</option>
-                            <option value="Взрослые">Взрослые</option>
+                            <option value="Увольнение">Увольнение</option>
+                            <option value="Не работает">Не работает</option>
                         </select>
                         <select id="screeningFilterPresence" onchange="renderScreeningsMonthList()" style="padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-family:inherit;">
                             <option value="">Все</option>
@@ -18363,10 +18347,13 @@
             }).sort((a, b) => (b.rawScore ?? -1) - (a.rawScore ?? -1));
             return { rows, ym };
         }
-        const SCR_COLS = ['teacher', 'grade', 'targetMonth', 'lessonDate', 'score', 'methodist', 'mistakes', 'comment'];
+        // Колонки «Комментарий» здесь нет: в форме скрининга такого поля
+        // никогда и не было, и в базе оно пусто у всех 496 записей —
+        // выгрузка везла пустой столбец. Убрано 27.09.2026.
+        const SCR_COLS = ['teacher', 'grade', 'targetMonth', 'lessonDate', 'score', 'methodist', 'mistakes'];
         const SCR_LABELS = {
             teacher: 'Преподаватель', grade: 'Грейд', targetMonth: 'За месяц', lessonDate: 'Дата урока',
-            score: 'Балл', methodist: 'Методист', mistakes: 'Ошибки', comment: 'Комментарий'
+            score: 'Балл', methodist: 'Методист', mistakes: 'Ошибки'
         };
         async function exportScreeningsToXLSX() {
             try {
@@ -23600,8 +23587,22 @@
             if (current) sel.value = current;
         }
 
-        function activeTeachersForMonthList() {
+        // `month` (YYYY-MM) — необязательный: если передан, в список попадают
+        // и те, кто ушёл в этом месяце. Скрининг им всё равно нужен, по нему
+        // считают последнюю зарплату. Решение владельца 27.09.2026.
+        //
+        // Дата ухода живёт в двух полях, и брать надо оба. `last_working_day`
+        // точнее, но `_autoCompleteDismissals` обнуляет его на следующий день
+        // после ухода — то есть как раз тогда, когда скрининг ещё не сделан.
+        // Остаётся `end_date`: он заполнен у 30 «не работает» из 38, тогда как
+        // `last_working_day` — всего у семи человек.
+        function activeTeachersForMonthList(month) {
             const allowed = new Set(['Работает', 'Набор приостановлен', 'Онбординг', 'Временно не работает']);
+            const leftIn = (t) => {
+                if (!month) return false;
+                const d = t.last_working_day || t.endDate || '';
+                return d.slice(0, 7) === month;
+            };
             const limBuddy    = isLimitedBuddy();
             const limAssessor = isLimitedAssessor();
             const mine = window._myAssessorTeachers;
@@ -23610,9 +23611,9 @@
                     const st = t.status || 'Работает';
                     if (limBuddy || limAssessor) {
                         return (limBuddy && st === 'Онбординг')
-                            || (limAssessor && allowed.has(st) && !!mine && mine.has(t.id));
+                            || (limAssessor && (allowed.has(st) || leftIn(t)) && !!mine && mine.has(t.id));
                     }
-                    return allowed.has(st);
+                    return allowed.has(st) || leftIn(t);
                 })
                 .slice()
                 .sort(bySurname);
@@ -23651,13 +23652,13 @@
                 }
                 _monthCacheScreenings = byTeacher;
 
-                let teachers = activeTeachersForMonthList();
+                let teachers = activeTeachersForMonthList(month);
                 // Поиск
                 const sQ = (document.getElementById('screeningSearch')?.value || '').trim().toLowerCase();
                 if (sQ) teachers = teachers.filter(t => (t.name || '').toLowerCase().includes(sQ));
 
                 // Статистика — по полному списку (без поиска)
-                const fullList = activeTeachersForMonthList();
+                const fullList = activeTeachersForMonthList(month);
                 const done = fullList.filter(t => byTeacher.has(t.id)).length;
                 const total = fullList.length;
                 statsEl.innerHTML = `Сделано: <span class="num ok">${done}</span> из <span class="num">${total}</span>`;
