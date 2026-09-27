@@ -6431,6 +6431,9 @@
         <button class="side-nav-item" data-snav="certificates" onclick="sideNavGo('certificates')" style="display:none;">
             <span class="snav-icon">🎓</span><span>Сертификаты</span>
         </button>
+        <button class="side-nav-item" data-snav="parent_emails" onclick="sideNavGo('parent_emails')" style="display:none;">
+            <span class="snav-icon">📨</span><span>Письма родителям</span>
+        </button>
         <button class="side-nav-item" data-snav="analytics" onclick="sideNavGo('analytics')" style="display:none;">
             <span class="snav-icon">📈</span><span>Аналитика</span>
         </button>
@@ -7603,6 +7606,16 @@
                     <p style="color:#64748b; font-size:0.9rem; margin:0.25rem 0 0;">Учебники, которые ученики завершили. Сертификат оформляется сам, когда методист подтверждает переход, — здесь история и видно, ушло ли письмо родителю</p>
                 </div>
                 <div id="certificatesContent" style="background:white; border-radius:14px; padding:1.25rem;">
+                    <div style="color:#94a3b8; text-align:center; padding:2rem;">Загрузка…</div>
+                </div>
+            </div>
+
+            <div id="parent_emailsSection" class="content-section">
+                <div class="section-header" style="margin-bottom:1rem;">
+                    <h2 style="margin:0;">📨 Письма родителям</h2>
+                    <p style="color:#64748b; font-size:0.9rem; margin:0.25rem 0 0;">Письма ставятся в очередь сами, когда что-то происходит: преподаватель запросил трекер, сохранил обратную связь, методист подтвердил переход, у ребёнка третья невыполненная домашка подряд. Здесь видно, кому ушло, кому нет и почему</p>
+                </div>
+                <div id="parentEmailsContent" style="background:white; border-radius:14px; padding:1.25rem;">
                     <div style="color:#94a3b8; text-align:center; padding:2rem;">Загрузка…</div>
                 </div>
             </div>
@@ -11237,6 +11250,7 @@
                 setSideNavVisible('reports',     isOnlyTeacher);
                 setSideNavVisible('summaries',   canViewSummary());
                 setSideNavVisible('certificates', hasAnyRole(['super_admin', 'methodist', 'assistant']));
+                setSideNavVisible('parent_emails', hasAnyRole(['super_admin', 'methodist', 'assistant']));
                 setSideNavVisible('analytics',   canViewAnalytics());
                 setSideNavVisible('assessments', canViewAssessments());
                 setSideNavVisible('learning', hasAnyRole(['super_admin','admin','methodist','buddy']));
@@ -13692,6 +13706,7 @@
             if (tab === 'schedule') renderScheduleSection();
             if (tab === 'wiki') renderWikiSection();
             if (tab === 'certificates') renderCertificatesSection();
+            if (tab === 'parent_emails') renderParentEmailsSection();
         }
 
         /* ============ 💬 ЧАТ ============ */
@@ -32180,6 +32195,227 @@
                 _renderCertList();
             } catch (e) {
                 alert('Не удалось удалить: ' + (e.message || e));
+            }
+        }
+
+        // ============================================================
+        //                 ПИСЬМА РОДИТЕЛЯМ
+        // ============================================================
+        //
+        // Очередь и журнал в одном экране. Главное здесь не «сколько
+        // отправлено», а «почему не отправлено»: адрес указан только у
+        // 2010 действующих учеников из 2915, и вопрос «а родителю Егора
+        // письмо ушло?» задают про конкретного ребёнка.
+        //
+        // Выключатели по видам писем видит и трогает только владелец: на
+        // `parent_email_kinds` стоит политика на запись для super_admin, и
+        // кнопка «отправить сейчас» тоже проверяет роль на стороне базы.
+        let _peRows = [];
+        let _peKinds = [];
+        let _peReady = {};
+        let _peF = { kind: '', state: '', q: '' };
+
+        const PE_STATES = {
+            queued:  { label: 'в очереди',  color: '#ca8a04', icon: '⏳' },
+            sent:    { label: 'ушло',       color: '#16a34a', icon: '✉️' },
+            skipped: { label: 'не ушло',    color: '#94a3b8', icon: '—'  },
+            expired: { label: 'просрочено', color: '#94a3b8', icon: '—'  }
+        };
+
+        // Состояние строки одной фразой. «Ушло» и «ошибка» различаются не
+        // состоянием, а кодом ответа Resend: письмо уходит асинхронно, и
+        // код появляется через несколько минут после отправки.
+        function _peStateHtml(r) {
+            const st = PE_STATES[r.state] || { label: r.state, color: '#94a3b8', icon: '' };
+            let text = st.icon + ' ' + st.label;
+            let color = st.color;
+            let title = r.skip_reason || '';
+            if (r.state === 'sent') {
+                const c = r.status_code;
+                if (c === null || c === undefined) { text = '✉️ отправляется'; color = '#2563eb'; }
+                else if (c >= 200 && c < 300) { text = '✉️ ушло ' + formatDate(r.sent_at); }
+                else { text = '⚠️ ошибка'; color = '#dc2626'; title = r.error || ('код ' + c); }
+            }
+            return `<span style="color:${color}; font-size:0.85rem; white-space:nowrap;"${title ? ` title="${escapeHtml(title)}"` : ''}>${text}</span>`;
+        }
+
+        async function renderParentEmailsSection() {
+            const wrap = document.getElementById('parentEmailsContent');
+            if (!wrap) return;
+            wrap.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:2rem;">Загрузка…</div>';
+            try {
+                const [kinds, rows, ready] = await Promise.all([
+                    sb.from('parent_email_kinds').select('*').order('kind'),
+                    sb.from('parent_emails')
+                        .select('id, kind, to_email, vars, state, skip_reason, created_at, sent_at, subject, status_code, error')
+                        .order('created_at', { ascending: false })
+                        .limit(500),
+                    sb.rpc('parent_emails_ready')
+                ]);
+                if (kinds.error) throw kinds.error;
+                if (rows.error) throw rows.error;
+                _peKinds = kinds.data || [];
+                _peRows  = rows.data || [];
+                _peReady = ready.data || {};
+                wrap.innerHTML = `
+                    <div id="peKinds"></div>
+                    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin:1.25rem 0 0.75rem;">
+                        <select onchange="_peSetF('kind', this.value)" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                            <option value="">Все виды писем</option>
+                            ${_peKinds.map(k => `<option value="${k.kind}">${escapeHtml(k.label)}</option>`).join('')}
+                        </select>
+                        <select onchange="_peSetF('state', this.value)" style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                            <option value="">Любое состояние</option>
+                            <option value="queued">В очереди</option>
+                            <option value="sent">Ушло</option>
+                            <option value="skipped">Не ушло</option>
+                            <option value="expired">Просрочено</option>
+                        </select>
+                        <input type="text" placeholder="🔎 Поиск по ученику или адресу…" oninput="_peSetF('q', this.value)"
+                            style="flex:1; min-width:220px; max-width:340px; margin-left:auto; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                    </div>
+                    <div id="peList"></div>`;
+                _peRenderKinds();
+                _peRenderList();
+            } catch (e) {
+                wrap.innerHTML = '<div style="color:#dc2626; padding:1rem;">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
+            }
+        }
+
+        function _peRenderKinds() {
+            const box = document.getElementById('peKinds');
+            if (!box) return;
+            const isOwner = realRoles().includes('super_admin');
+            const week = Date.now() - 7 * 86400000;
+            const readyTotal = Object.values(_peReady).reduce((a, b) => a + (b || 0), 0);
+
+            box.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${_peKinds.map(k => {
+                        const mine = _peRows.filter(r => r.kind === k.kind);
+                        const queued = mine.filter(r => r.state === 'queued').length;
+                        // Отправленное с кодом ошибки родитель не получил, и
+                        // считать его вместе с дошедшими нельзя: 422 от Resend
+                        // выглядел бы в сводке как успех.
+                        const failed = r => r.state === 'sent' && r.status_code !== null
+                            && r.status_code !== undefined
+                            && (r.status_code >= 300 || r.status_code <= 0);
+                        const sent7  = mine.filter(r => r.state === 'sent' && !failed(r)
+                            && new Date(r.created_at).getTime() > week).length;
+                        const noGo   = mine.filter(r => r.state === 'skipped'
+                            || r.state === 'expired' || failed(r)).length;
+                        return `
+                        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 14px; border:1px solid ${k.enabled ? '#bbf7d0' : '#e2e8f0'}; background:${k.enabled ? '#f0fdf4' : '#f8fafc'}; border-radius:10px;">
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; font-size:14px;">${escapeHtml(k.label)}</div>
+                                <div style="color:#64748b; font-size:12px;">${escapeHtml(k.purpose)}</div>
+                            </div>
+                            <div style="font-size:12px; color:#475569; white-space:nowrap;">
+                                в очереди: <b>${queued}</b> · за неделю: <b>${sent7}</b>${noGo ? ` · не ушло: <b style="color:#dc2626;">${noGo}</b>` : ''}
+                            </div>
+                            ${isOwner
+                                ? `<label style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                                       <input type="checkbox" ${k.enabled ? 'checked' : ''}
+                                           onchange="_peToggleKind('${k.kind}', this.checked)"
+                                           style="width:18px; height:18px; cursor:pointer;">
+                                       ${k.enabled ? 'включено' : 'выключено'}
+                                   </label>`
+                                : `<span style="font-size:12px; font-weight:700; color:${k.enabled ? '#16a34a' : '#94a3b8'}; white-space:nowrap;">${k.enabled ? 'включено' : 'выключено'}</span>`}
+                        </div>`;
+                    }).join('')}
+                </div>
+                ${isOwner ? `
+                    <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <button onclick="_peSendNow()" ${readyTotal ? '' : 'disabled'}
+                            style="padding:9px 16px; border:none; border-radius:9px; font-family:inherit; font-size:13px; font-weight:700; cursor:${readyTotal ? 'pointer' : 'default'}; background:${readyTotal ? '#E91E8C' : '#e2e8f0'}; color:${readyTotal ? 'white' : '#94a3b8'};">
+                            📤 Отправить сейчас${readyTotal ? ` — ${readyTotal}` : ''}
+                        </button>
+                        <span style="font-size:12px; color:#64748b;">
+                            ${readyTotal
+                                ? 'Уйдут письма только включённых видов, за один раз не больше 20.'
+                                : 'Отправлять нечего: либо очередь пуста, либо все виды писем выключены.'}
+                        </span>
+                    </div>` : ''}`;
+        }
+
+        function _peSetF(key, val) {
+            _peF[key] = (val || '').trim().toLowerCase();
+            _peRenderList();
+        }
+
+        function _peRenderList() {
+            const box = document.getElementById('peList');
+            if (!box) return;
+            const kindLabel = {};
+            _peKinds.forEach(k => kindLabel[k.kind] = k.label);
+
+            let list = _peRows;
+            if (_peF.kind)  list = list.filter(r => r.kind === _peF.kind);
+            if (_peF.state) list = list.filter(r => r.state === _peF.state);
+            if (_peF.q) {
+                list = list.filter(r =>
+                    ((r.vars && r.vars.student) || '').toLowerCase().includes(_peF.q)
+                    || (r.to_email || '').toLowerCase().includes(_peF.q));
+            }
+            if (!list.length) {
+                box.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:2rem;">Писем пока нет</div>';
+                return;
+            }
+            box.innerHTML = `
+                <table class="cert-table" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f8fafc; text-align:left; font-size:0.85rem; color:#475569;">
+                            <th style="padding:10px 12px;">Когда</th>
+                            <th style="padding:10px 12px;">Вид письма</th>
+                            <th style="padding:10px 12px;">Ученик</th>
+                            <th style="padding:10px 12px;">Адрес</th>
+                            <th style="padding:10px 12px;">Что с ним</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map(r => `
+                            <tr style="border-top:1px solid #f1f5f9;">
+                                <td data-label="Когда" style="padding:10px 12px; color:#94a3b8; font-size:0.85rem; white-space:nowrap;">${formatDate(r.created_at)}</td>
+                                <td data-label="Вид письма" style="padding:10px 12px;">${escapeHtml(kindLabel[r.kind] || r.kind)}</td>
+                                <td data-label="Ученик" style="padding:10px 12px; font-weight:600;">${escapeHtml((r.vars && r.vars.student) || '—')}</td>
+                                <td data-label="Адрес" style="padding:10px 12px; color:#64748b; font-size:0.85rem;">${escapeHtml(r.to_email || '—')}</td>
+                                <td data-label="Что с ним" style="padding:10px 12px;">${_peStateHtml(r)}</td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+                ${_peRows.length >= 500 ? '<div style="margin-top:10px; font-size:12px; color:#94a3b8;">Показаны последние 500 писем.</div>' : ''}`;
+        }
+
+        async function _peToggleKind(kind, on) {
+            const k = _peKinds.find(x => x.kind === kind);
+            if (on && !confirm(`Включить рассылку «${k ? k.label : kind}»?\n\nПисьма этого вида начнут уходить родителям.`)) {
+                renderParentEmailsSection();
+                return;
+            }
+            try {
+                const { error } = await sb.from('parent_email_kinds')
+                    .update({ enabled: on }).eq('kind', kind);
+                if (error) throw error;
+                _showToast(on ? '✅ Рассылка включена' : '⏸️ Рассылка выключена');
+                renderParentEmailsSection();
+            } catch (e) {
+                alert('Не удалось переключить: ' + (e.message || e));
+                renderParentEmailsSection();
+            }
+        }
+
+        async function _peSendNow() {
+            const total = Object.values(_peReady).reduce((a, b) => a + (b || 0), 0);
+            if (!total) return;
+            if (!confirm(`Отправить письма из очереди?\n\nГотово к отправке: ${total}. За один раз уйдёт не больше 20.`)) return;
+            try {
+                const { data, error } = await sb.rpc('parent_emails_send', { p_limit: 20 });
+                if (error) throw error;
+                const sent = (data && data.sent) || 0;
+                _showToast(sent ? `📤 Отправлено: ${sent}` : 'Отправлять было нечего');
+                renderParentEmailsSection();
+            } catch (e) {
+                alert('Не удалось отправить: ' + (e.message || e));
             }
         }
 
