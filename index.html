@@ -29880,14 +29880,22 @@
         // ученика и пишет `student_id`. На отдельной вкладке имя вводят
         // руками, и ученик не проставлен НИ У ОДНОГО из 60 отчётов — поэтому
         // в кабинете родителя их не видно.
-        let _introClassIds = null;
-        async function introClassIds() {
-            if (_introClassIds) return _introClassIds;
-            const { data } = await sb.from('mk_classes')
-                .select('external_id').ilike('name', 'Вводн%');
-            _introClassIds = new Set((data || []).map(c => c.external_id));
-            return _introClassIds;
-        }
+        //
+        // Вводный урок узнаём по названию, а НЕ по списку классов из
+        // `mk_classes`. Так пришлось сделать из-за прав доступа: политика
+        // `mk_classes_select_admin_or_own` отдаёт преподавателю только те
+        // классы, где он сам стоит в `widgets_teacher_ids`. Вводные ведёт
+        // МВУ, поэтому обычный преподаватель не видит НИ ОДНОГО вводного
+        // класса (у Амановой Одины — 0 из 5), запрос возвращал пустой список
+        // и кнопка не появлялась ни у кого, кроме администраторов. Снаружи
+        // это выглядело так: владелец кнопку видит, преподаватель — нет.
+        //
+        // `mk_lessons_with_details` — вьюха без `security_invoker`, она
+        // читается правами владельца и `class_name` в ней видно всем. На
+        // сегодняшних данных выборка та же: названий на «Вводн» всего два
+        // («Вводный урок» — 1729 уроков, «Вводный урок Китайский» — 19), и
+        // это ровно те же уроки, что давали пять вводных классов.
+        const isIntroLesson = (className) => /^\s*вводн/i.test(className || '');
 
         // Вглубь смотрим 60 дней: правилу нужен вводный урок непосредственно
         // перед этим, а он бывает за 1–20 дней. Если истории за окно нет,
@@ -29899,9 +29907,7 @@
         // обычном уроке уходит два небольших запроса и ни одного лишнего.
         async function _puStudentsForLesson(lesson, students) {
             if (!lesson || !lesson.lesson_date || !lesson.primary_teacher_id) return [];
-            const intro = await introClassIds();
-            if (!intro.size) return [];
-            if (intro.has(lesson.external_class_id)) return [];
+            if (isIntroLesson(lesson.class_name)) return [];
             const sids = (students || []).map(s => s.student_id).filter(Boolean);
             // На больших группах правило не про них, а запросов вышло бы много
             if (!sids.length || sids.length > 4) return [];
@@ -29920,7 +29926,7 @@
                 const ids = (lsr || []).map(x => x.lesson_id);
                 if (!ids.length) continue;
                 const { data: hist } = await sb.from('mk_lessons_with_details')
-                    .select('id, lesson_date, begin_time, external_class_id, primary_teacher_id')
+                    .select('id, lesson_date, begin_time, class_name, primary_teacher_id')
                     .in('id', ids)
                     .gte('lesson_date', from)
                     .lte('lesson_date', lesson.lesson_date)
@@ -29929,9 +29935,9 @@
                 const past = (hist || []).filter(l => l.id !== lesson.id).filter(earlier);
                 if (!past.length) continue;
                 const prev = past[past.length - 1];
-                if (!intro.has(prev.external_class_id)) continue;
+                if (!isIntroLesson(prev.class_name)) continue;
                 // Вводные в счёт не идут: их ведёт МВУ, а не этот преподаватель
-                const already = past.some(l => !intro.has(l.external_class_id)
+                const already = past.some(l => !isIntroLesson(l.class_name)
                     && l.primary_teacher_id === lesson.primary_teacher_id);
                 if (already) continue;
                 out.push({ student_id: sid, intro_date: prev.lesson_date });
