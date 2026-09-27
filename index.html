@@ -30531,7 +30531,24 @@
             // мастер-классы не ведут ученика по учебнику, и отчитываться по
             // ним нечем. Решение владельца 25.09.2026.
             const trackerHere = !isWowspaceLesson(lesson.class_name);
-            const feedbackSection = !trackerHere ? '' : `
+
+            // На уроке, где предлагается отчёт после пробного, трекер не
+            // предлагаем. Это первый урок ребёнка с преподавателем: следить
+            // за прогрессом пока не за чем, а родителю в этот момент важен
+            // отзыв о пробном, а не письмо про тест на следующем уроке.
+            // Решение владельца 27.09.2026.
+            //
+            // Убираем только предложение. Если трекер на этот урок уже
+            // запрошен или сформирован, блок остаётся: запрос сделал
+            // родитель, и потерять его нельзя. Сегодня так не бывает — из
+            // 134 запросов ни один не сделан с вводного урока, — но запрос
+            // может прийти и с урока, который был ДО вводного, и тогда он
+            // перейдёт сюда.
+            const trackerOffer = canEdit
+                && !fbPending.length && !fbHere.length && !puList.length;
+            const trackerAny = fbPending.length || fbDone.length
+                || fbHere.length || trackerOffer;
+            const feedbackSection = (!trackerHere || !trackerAny) ? '' : `
                 <div style="${sectionStyle}">
                     <div style="${labelStyle}">📊 Трекер прогресса</div>
                     ${fbPending.length ? `
@@ -30567,7 +30584,7 @@
                             <div style="margin-bottom:4px;">Трекер будет на следующем уроке с этим учеником.</div>
                             ${fbHere.map(r => `<div style="margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
                         </div>`
-                    : (canEdit && !fbPending.length ? `
+                    : (trackerOffer ? `
                         <div style="font-size:13px; color:#475569; line-height:1.45; margin-bottom:6px;">
                             На следующем уроке тест и обратная связь? Нажмите кнопку — и родители узнают об этом заранее.
                         </div>
