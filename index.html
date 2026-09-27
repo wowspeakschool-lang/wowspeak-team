@@ -26640,17 +26640,29 @@
             if (!wrap) return;
             wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
             try {
-                const dismissing = (teachersFromDb || []).filter(t => t.status === 'Увольнение');
+                // Увольнение не заканчивается сменой статуса: пока ученики не
+                // переданы, преподаватель остаётся в списке. Иначе он пропадал
+                // отсюда в тот момент, когда его переводили в «Не работает» —
+                // и передача повисала незамеченной. Статус меняет и сама
+                // платформа: `_autoCompleteDismissals` делает это на следующий
+                // день после последнего рабочего. На 27.09.2026 так потерялись
+                // двенадцать человек с незавершённой передачей.
+                const transferRes = await sb.from('dismissal_transfers')
+                    .select('teacher_id, status');
+                const pendingTransfer = new Set();
+                for (const r of (transferRes.data || [])) {
+                    if (r.status !== 'transferred') pendingTransfer.add(r.teacher_id);
+                }
+                const dismissing = (teachersFromDb || []).filter(t =>
+                    t.status === 'Увольнение'
+                    || (t.status === 'Не работает' && pendingTransfer.has(t.id)));
                 if (dismissing.length === 0) {
-                    wrap.innerHTML = '<div style="padding:1rem; text-align:center; color:#94a3b8;">Нет преподавателей в статусе «Увольнение»</div>';
+                    wrap.innerHTML = '<div style="padding:1rem; text-align:center; color:#94a3b8;">Никто не увольняется, и незавершённых передач нет</div>';
                     return;
                 }
-                // Подгружаем по каждому: число студентов и число уже переданных
                 const teacherIds = dismissing.map(t => t.id);
-                const [stRes, transferRes] = await Promise.all([
-                    sb.from('student_teachers').select('teacher_id').in('teacher_id', teacherIds),
-                    sb.from('dismissal_transfers').select('teacher_id, status').in('teacher_id', teacherIds),
-                ]);
+                const stRes = await sb.from('student_teachers')
+                    .select('teacher_id').in('teacher_id', teacherIds);
                 const stCount = new Map();
                 for (const r of (stRes.data || [])) stCount.set(r.teacher_id, (stCount.get(r.teacher_id) || 0) + 1);
                 const transferred = new Map();
@@ -26665,10 +26677,13 @@
                         const done = transferred.get(t.id) || 0;
                         const students = stCount.get(t.id) || 0;
                         const lastDay = t.last_working_day ? formatDate(t.last_working_day) : '—';
+                        // Этот уже не работает, но передача не закрыта
+                        const gone = t.status === 'Не работает';
                         return `<div onclick="openDismissalDetails('${t.id}')" style="background:white; border:1px solid #fecaca; border-radius:10px; padding:14px 18px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:14px;">
                             <div style="flex:1;">
                                 <div style="font-weight:700; font-size:15px;">${escapeHtml(t.name)}</div>
-                                <div style="font-size:12px; color:#64748b; margin-top:3px;">👤 ${students} учеников · 📅 Работает до ${lastDay}</div>
+                                <div style="font-size:12px; color:#64748b; margin-top:3px;">👤 ${students} учеников · 📅 ${gone ? 'Уже не работает' : 'Работает до ' + lastDay}</div>
+                                ${gone ? '<div style="font-size:11px; color:#b45309; margin-top:4px;">Остаётся здесь, пока не переданы все ученики</div>' : ''}
                             </div>
                             <div style="text-align:right;">
                                 <div style="font-size:13px; font-weight:600; color:${done === total && total > 0 ? '#16a34a' : '#92400e'};">${done} / ${total} передано</div>
