@@ -18384,7 +18384,11 @@
             const endDate = new Date(yy, mm, 0).toISOString().slice(0, 10);
 
             const { data, error } = await sb.from('assessments')
-                .select('id, teacher_id, student_name, lesson_date, letter_grade, total_score, max_score, methodist_id, comment')
+                // Колонки student_name в таблице `assessments` нет — из-за неё
+                // запрос падал, и обе кнопки выгрузки на вкладке «Ассесменты
+                // месяца» не работали никогда. Убрана 27.09.2026 вместе с
+                // колонкой «Ученик», которая из неё и бралась.
+                .select('id, teacher_id, lesson_date, letter_grade, total_score, max_score, methodist_id, comment')
                 .gte('lesson_date', startDate)
                 .lte('lesson_date', endDate)
                 .is('deleted_at', null);
@@ -18396,7 +18400,6 @@
                 return {
                     teacher: t ? t.name : '?',
                     grade: t ? (t.grade || '') : '',
-                    student: a.student_name || '',
                     lessonDate: a.lesson_date || '',
                     letter: a.letter_grade || '',
                     score: a.total_score !== null ? `${a.total_score}/${a.max_score || '?'}` : '—',
@@ -18406,9 +18409,9 @@
             }).sort((a, b) => (a.letter || 'Z').localeCompare(b.letter || 'Z'));
             return { rows, ym };
         }
-        const ASSM_COLS = ['teacher', 'grade', 'student', 'lessonDate', 'letter', 'score', 'methodist', 'comment'];
+        const ASSM_COLS = ['teacher', 'grade', 'lessonDate', 'letter', 'score', 'methodist', 'comment'];
         const ASSM_LABELS = {
-            teacher: 'Преподаватель', grade: 'Грейд', student: 'Ученик', lessonDate: 'Дата урока',
+            teacher: 'Преподаватель', grade: 'Грейд', lessonDate: 'Дата урока',
             letter: 'Оценка', score: 'Балл', methodist: 'Методист', comment: 'Комментарий'
         };
         async function exportAssessmentsMonthToXLSX() {
@@ -18417,7 +18420,7 @@
                 if (!rows.length) { alert('Нет ассесментов за этот месяц'); return; }
                 exportToXLSX([{
                     name: 'Ассесменты', rows, headers: ASSM_COLS, headerLabels: ASSM_LABELS,
-                    columnWidths: [25, 12, 22, 12, 8, 10, 22, 40]
+                    columnWidths: [25, 12, 12, 8, 10, 22, 40]
                 }], `wowspeak_ассесменты_${ymToHumanLabel(ym)}.xlsx`);
             } catch (e) { console.error(e); alert('Ошибка: ' + (e.message || e)); }
         }
