@@ -33606,8 +33606,8 @@
         // Монеток нет, но отметка нужна — иначе урок не сохранить,
         // а требовать «сделал/не сделал» там, где задания не было, нельзя.
         const WOW_HW_NONE = { reason:'homework_none', amount:0 };
-        const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason)
-            .concat([WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason, WOW_HW_NONE.reason]);
+        const WOW_HW_REASONS = [WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason, WOW_HW_NONE.reason];
+        const WOW_ALL_REASONS = WOW_PRESETS.map(p => p.reason).concat(WOW_HW_REASONS);
         const WOW_MANUAL_REASONS = WOW_PRESETS.map(p => p.reason);
         const WOW_DAILY_LIMIT = 10;
 
@@ -33709,18 +33709,43 @@
         // ---------- Монетки внутри урока ----------
         // Отрисовываются после сборки модалки: данные грузятся одним запросом
         // на всех учеников урока, чтобы не дёргать базу по одному.
+        // Отметка о домашке принадлежит УРОКУ, а монетки — ДНЮ.
+        //
+        // Раньше и то и другое читалось по `award_date = сегодня`, и
+        // поэтому в уроке за прошлый день кнопки выглядели ненажатыми,
+        // хотя отметка в базе есть. Преподаватель отмечал заново — и в
+        // журнале появлялась вторая запись про тот же урок. Таких пар
+        // «один урок, две записи» накопилось 105.
+        //
+        // Дневной лимит монеток остаётся дневным, но считается по дате
+        // УРОКА: открывая вчерашний урок, преподаватель должен видеть
+        // вчерашний лимит, а не сегодняшний.
         async function renderWowLesson(lessonId, studentIds) {
             if (!studentIds || !studentIds.length) return;
             _wowHwState = {};   // состояние от прошлого урока не должно тянуться
-            const today = _wowToday();
-            let rows = [];
+            const lesson = (_lessonModalState?.lesson?.id === lessonId)
+                ? _lessonModalState.lesson : null;
+            const extId = lesson?.external_id || null;
+            const day   = lesson?.lesson_date || _wowToday();
+            let rows = [];     // монетки за день урока — для лимита
+            let hwRows = [];   // отметки о домашке — по самому уроку
             try {
-                const { data } = await sb.from('wow_coins_ledger')
-                    .select('student_id, amount, reason')
-                    .in('student_id', studentIds)
-                    .eq('award_date', today)
-                    .in('reason', WOW_ALL_REASONS);
-                rows = data || [];
+                const [dayR, hwR] = await Promise.all([
+                    sb.from('wow_coins_ledger')
+                        .select('student_id, amount, reason')
+                        .in('student_id', studentIds)
+                        .eq('award_date', day)
+                        .in('reason', WOW_MANUAL_REASONS),
+                    extId
+                        ? sb.from('wow_coins_ledger')
+                            .select('student_id, reason')
+                            .in('student_id', studentIds)
+                            .eq('lesson_id', extId)
+                            .in('reason', WOW_HW_REASONS)
+                        : Promise.resolve({ data: [] })
+                ]);
+                rows = dayR.data || [];
+                hwRows = hwR.data || [];
             } catch (e) {
                 console.error('[wow] не удалось загрузить монетки урока', e);
                 return;
@@ -33730,14 +33755,14 @@
                 const box = document.getElementById('wowLesson_' + sid);
                 if (!box) continue;
                 const mine = rows.filter(r => r.student_id === sid);
-                // В лимит идут только пресеты, ДЗ считается вне его
-                const today_ = mine.filter(r => WOW_MANUAL_REASONS.includes(r.reason))
-                                   .reduce((s, r) => s + (r.amount || 0), 0);
+                const today_ = mine.reduce((s, r) => s + (r.amount || 0), 0);
                 const done = new Set(mine.map(r => r.reason));
                 const left = WOW_DAILY_LIMIT - today_;
-                const hwState = done.has(WOW_HOMEWORK.reason) ? 'done'
-                              : done.has(WOW_HW_NOT_DONE.reason) ? 'not_done'
-                              : done.has(WOW_HW_NONE.reason) ? 'none' : null;
+                const hwDone = new Set(hwRows.filter(r => r.student_id === sid)
+                                             .map(r => r.reason));
+                const hwState = hwDone.has(WOW_HOMEWORK.reason) ? 'done'
+                              : hwDone.has(WOW_HW_NOT_DONE.reason) ? 'not_done'
+                              : hwDone.has(WOW_HW_NONE.reason) ? 'none' : null;
 
                 box.innerHTML = `
                     <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -33803,17 +33828,27 @@
             const awardedBy = teacherId || currentAppUser?.id;
             if (!awardedBy) { alert('Не удалось определить, кто отмечает'); return; }
 
-            const today = _wowToday();
             const target = value === 'done' ? WOW_HOMEWORK
                          : value === 'none' ? WOW_HW_NONE
                          : WOW_HW_NOT_DONE;
 
-            // Что уже стоит по этому ученику за сегодня
-            const { data: existing } = await sb.from('wow_coins_ledger')
+            // Отметка привязана к уроку. Из карточки ученика урок
+            // неизвестен — там остаётся прежний ключ, по дню.
+            const lesson = (lessonId && _lessonModalState?.lesson?.id === lessonId)
+                ? _lessonModalState.lesson : null;
+            const lessonExtId = lesson?.external_id || null;
+            // Дата отметки — дата УРОКА, а не сегодняшняя: иначе отметка о
+            // вчерашнем уроке ложится на сегодня и ломает порядок, по
+            // которому считается серия невыполненных домашек.
+            const day = lesson?.lesson_date || _wowToday();
+
+            // Что уже стоит по этому ученику на этом уроке
+            let q = sb.from('wow_coins_ledger')
                 .select('id, reason')
                 .eq('student_id', studentId)
-                .eq('award_date', today)
-                .in('reason', [WOW_HOMEWORK.reason, WOW_HW_NOT_DONE.reason, WOW_HW_NONE.reason]);
+                .in('reason', WOW_HW_REASONS);
+            q = lessonExtId ? q.eq('lesson_id', lessonExtId) : q.eq('award_date', day);
+            const { data: existing } = await q;
 
             const already = (existing || []).find(r => r.reason === target.reason);
             const other   = (existing || []).filter(r => r.reason !== target.reason);
@@ -33828,18 +33863,25 @@
                     const { error } = await sb.from('wow_coins_ledger').delete().eq('id', r.id);
                     if (error) { alert('Не удалось сменить отметку: ' + error.message); return; }
                 }
-                let lessonExtId = null;
-                if (lessonId && _lessonModalState?.lesson?.id === lessonId) {
-                    lessonExtId = _lessonModalState.lesson.external_id || null;
-                }
                 const { error } = await sb.from('wow_coins_ledger').insert({
                     student_id: studentId,
                     amount: target.amount,
                     reason: target.reason,
                     lesson_id: lessonExtId,
+                    award_date: day,
                     awarded_by: String(awardedBy),
                 });
-                if (error && error.code !== '23505') { alert('Ошибка: ' + error.message); return; }
+                // В базе стоит запрет «одна отметка о домашке на ученика в
+                // день». Он мешает, когда уроков у ребёнка в этот день два:
+                // отметка со второго урока не встаёт. Раньше эта ошибка
+                // глушилась молча, и преподаватель думал, что отметил.
+                if (error && error.code === '23505') {
+                    alert('У этого ученика уже стоит отметка о домашке на ' + day
+                        + ' по другому уроку. Пока в базе разрешена одна отметка в день —'
+                        + ' напишите нам, поправим.');
+                    return;
+                }
+                if (error) { alert('Ошибка: ' + error.message); return; }
             }
 
             if (lessonId) {
