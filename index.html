@@ -34721,7 +34721,7 @@
                         ${unitOpts.map(u => `<option value="${escapeHtml(u.value)}" ${String(g.unit_number) === u.value ? 'selected' : ''}>Unit ${escapeHtml(u.label)}</option>`).join('')}
                     </select>` : (g.unit_number != null ? 'Unit ' + g.unit_number : '—');
 
-                const scheduleHtml = renderScheduleCell(g, canEdit);
+                const scheduleHtml = renderScheduleCell(g);
 
                 return `
                 <tr data-cid="${g.class_id}">
@@ -34804,14 +34804,26 @@
                 </table>`;
         }
 
-        function renderScheduleCell(g, canEdit) {
+        // Расписание группы больше не правят руками: с 28.09.2026 его
+        // выводит база из фактических уроков (`group_schedule_auto`), и
+        // запись в `schedule_json` всё равно не была бы видна. Оставить
+        // здесь поля ввода значило бы дать кнопку, которая молча ничего
+        // не делает.
+        //
+        // Руками оно устаревало у трети групп: у «8V Expert» стояло
+        // ЧТ 19:05 и ПТ 18:00 при фактических ВТ и ЧТ в 19:00.
+        function renderScheduleCell(g) {
+            const sched = Array.isArray(g.schedule_json) ? g.schedule_json : [];
+            if (sched.length === 0) return '<span style="color:#cbd5e1;">—</span>';
+            return sched.map(s => `<span class="grp-schedule-row">${WEEKDAY_LABEL[s.day] || ''} ${s.time || ''}</span>`).join('');
+        }
+
+        // Прежний редактор. Не вызывается; оставлен, потому что legacy-код
+        // мы не удаляем — если решение о выводе расписания отменят,
+        // вернуть его будет одной строкой.
+        function _renderScheduleCellEditable(g, canEdit) {
             const sched = Array.isArray(g.schedule_json) ? g.schedule_json : [];
             const slots = sched.length > 0 ? sched : [{ day: '', time: '' }];
-
-            if (!canEdit) {
-                if (sched.length === 0) return '<span style="color:#cbd5e1;">—</span>';
-                return sched.map(s => `<span class="grp-schedule-row">${WEEKDAY_LABEL[s.day] || ''} ${s.time || ''}</span>`).join('');
-            }
 
             const slotHtml = slots.map((s, i) => `
                 <div class="grp-schedule-row">
@@ -34920,7 +34932,7 @@
                     ${unitOpts.map(u => `<option value="${escapeHtml(u.value)}" ${String(g.unit_number) === u.value ? 'selected' : ''}>Unit ${escapeHtml(u.label)}</option>`).join('')}
                 </select>` : (g.unit_number != null ? 'Unit ' + g.unit_number : '—');
 
-            const scheduleHtml = renderScheduleCell(g, canEdit);
+            const scheduleHtml = renderScheduleCell(g);
 
             tr.innerHTML = `
                 <td style="padding:10px 12px; font-weight:600; color:#1f2937; max-width:140px; word-break:break-word;" title="${escapeHtml(g.name)}">${escapeHtml(g.name)}</td>
