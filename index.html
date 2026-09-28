@@ -30439,7 +30439,14 @@
                     ? ` <span style="color:#94a3b8; font-weight:400;">(${lesson.begin_time?.slice(0,5)} МСК)</span>`
                     : '');
             const isDone = lesson.status === 1;
-            const isGroup = students.length > 1;
+            // Групповой урок остаётся групповым, даже когда на него записан
+            // один ребёнок: раньше решало только число учеников, и такой
+            // урок рисовался компактной формой без имени — преподаватель
+            // видел три кнопки посещения и не понимал, кому их ставит.
+            // Теперь вид определяет сам класс, как и заголовок.
+            const headerClassName = (lesson.class_name || '').trim();
+            const isGroupClass = !!headerClassName && !isTariffClassName(headerClassName);
+            const isGroup = isGroupClass || students.length > 1;
             // Заголовок выбирается по тому, групповой это класс или нет, а
             // не по тому, сколько человек пришло. Раньше смотрели только на
             // число учеников, и групповой урок, на который записан один
@@ -30447,9 +30454,8 @@
             // превращалась в «Федосик Артем». Так было у 621 урока в 48
             // группах. Правило берём общее — то же, что в расписании
             // (lessonDisplayTitle), чтобы подпись везде совпадала.
-            const headerClassName = (lesson.class_name || '').trim();
             let headerTitle;
-            if (headerClassName && !isTariffClassName(headerClassName)) headerTitle = headerClassName;
+            if (isGroupClass) headerTitle = headerClassName;
             else if (students.length === 1) headerTitle = students[0].student_name;
             else if (students.length > 1) headerTitle = lesson.topic || headerClassName || 'Групповой урок';
             else headerTitle = lesson.topic || headerClassName || 'Урок';
