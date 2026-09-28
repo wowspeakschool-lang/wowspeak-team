@@ -29836,12 +29836,21 @@
             if (pop) pop.style.display = 'none';
         }
 
+        // Технические названия тарифов ("40 мин Basic", "60 минт Pro 1рн",
+        // "30 мин Wow Dragon", "Вводный урок") распознаём по слову "мин".
+        // Такое название в заголовок не годится: оно одинаковое у сотен
+        // уроков. Настоящее название группы ("12Q Expert") — годится.
+        //
+        // Функция общая нарочно: правило нужно и расписанию, и модалке
+        // урока, а две копии одного регулярного выражения однажды разойдутся.
+        function isTariffClassName(cn) {
+            return /(?:^|\s)мин[а-я]*(?:$|\s)|вводный\s+урок/i.test(cn || '');
+        }
+
         function lessonDisplayTitle(l) {
             const studs = Array.isArray(l.students) ? l.students : [];
-            // Технические названия тарифов ("40 мин Basic", "60 минт Pro 1рн", "30 мин Wow Dragon")
-            // распознаём по началу с цифрой и словом "мин"
             const cn = (l.class_name || '').trim();
-            const isTariffName = /(?:^|\s)мин[а-я]*(?:$|\s)|вводный\s+урок/i.test(cn);
+            const isTariffName = isTariffClassName(cn);
             // Если class_name — реальное название группы (не тариф) → показываем его
             if (cn && !isTariffName) return cn;
             // Иначе для 1 ученика — его имя
@@ -30431,10 +30440,19 @@
                     : '');
             const isDone = lesson.status === 1;
             const isGroup = students.length > 1;
+            // Заголовок выбирается по тому, групповой это класс или нет, а
+            // не по тому, сколько человек пришло. Раньше смотрели только на
+            // число учеников, и групповой урок, на который записан один
+            // ребёнок, подписывался его именем: группа 12Q Expert
+            // превращалась в «Федосик Артем». Так было у 621 урока в 48
+            // группах. Правило берём общее — то же, что в расписании
+            // (lessonDisplayTitle), чтобы подпись везде совпадала.
+            const headerClassName = (lesson.class_name || '').trim();
             let headerTitle;
-            if (students.length === 1) headerTitle = students[0].student_name;
-            else if (students.length > 1) headerTitle = lesson.class_name || lesson.topic || 'Групповой урок';
-            else headerTitle = lesson.class_name || lesson.topic || 'Урок';
+            if (headerClassName && !isTariffClassName(headerClassName)) headerTitle = headerClassName;
+            else if (students.length === 1) headerTitle = students[0].student_name;
+            else if (students.length > 1) headerTitle = lesson.topic || headerClassName || 'Групповой урок';
+            else headerTitle = lesson.topic || headerClassName || 'Урок';
             const teacherName = lesson.primary_teacher_name || '—';
 
             // ----- Стили хелперы -----
