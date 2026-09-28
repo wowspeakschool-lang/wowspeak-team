@@ -33706,6 +33706,54 @@
             renderWowCoins(studentId);
         }
 
+        // Начисление монетки из модалки урока.
+        //
+        // Этой функции в коде не было вовсе: кнопки «Поведение», «Английский»
+        // и «Сложное» внутри урока вызывали несуществующую функцию и молча
+        // не работали. Видно и по данным: из 191 начисления по этим поводам
+        // к уроку привязано было одно.
+        //
+        // От начисления из карточки ученика отличается двумя вещами: монетка
+        // привязывается к уроку, а день для лимита берётся по дате УРОКА.
+        // Иначе, отмечая вчерашний урок, преподаватель тратил бы сегодняшний
+        // лимит ребёнка.
+        async function awardWowLesson(lessonId, studentId, reason) {
+            const preset = WOW_PRESETS.find(p => p.reason === reason);
+            if (!preset) return;
+            const teacherId = await resolveMyTeacherId();
+            const awardedBy = teacherId || currentAppUser?.id;
+            if (!awardedBy) { alert('Не удалось определить, кто начисляет'); return; }
+
+            const lesson = (lessonId && _lessonModalState?.lesson?.id === lessonId)
+                ? _lessonModalState.lesson : null;
+            const lessonExtId = lesson?.external_id || null;
+            const day = lesson?.lesson_date || _wowToday();
+
+            // Лимит проверяем до вставки: уникального индекса на поощрениях
+            // нет, сумму за день он бы и не проверил.
+            const { data: dayRows } = await sb.from('wow_coins_ledger')
+                .select('amount').eq('student_id', studentId)
+                .eq('award_date', day).in('reason', WOW_MANUAL_REASONS);
+            const given = (dayRows || []).reduce((s, r) => s + (r.amount || 0), 0);
+            if (given + preset.amount > WOW_DAILY_LIMIT) {
+                alert(`Лимит на ${day} исчерпан: начислено ${given} из ${WOW_DAILY_LIMIT}`);
+                return;
+            }
+
+            const { error } = await sb.from('wow_coins_ledger').insert({
+                student_id: studentId,
+                amount: preset.amount,
+                reason: reason,
+                lesson_id: lessonExtId,
+                award_date: day,
+                awarded_by: String(awardedBy),
+            });
+            if (error) { alert('Ошибка: ' + error.message); return; }
+
+            const ids = (_lessonModalState?.students || []).map(s => s.student_id).filter(Boolean);
+            renderWowLesson(lessonId, ids);
+        }
+
         // ---------- Монетки внутри урока ----------
         // Отрисовываются после сборки модалки: данные грузятся одним запросом
         // на всех учеников урока, чтобы не дёргать базу по одному.
