@@ -11249,7 +11249,11 @@
                 setSideNavVisible('my_dashboard', isOnlyTeacher);
                 setSideNavVisible('reports',     isOnlyTeacher);
                 setSideNavVisible('summaries',   canViewSummary());
-                setSideNavVisible('certificates', hasAnyRole(['super_admin', 'methodist', 'assistant']));
+                // Вкладку «Сертификаты» в боевой версии скрыли — решение владельца
+                // 29.09.2026. В новой платформе раздел остаётся. Сертификаты
+                // по-прежнему создаются при одобрении запроса на смену учебника
+                // и видны родителю в личном кабинете. Код раздела оставлен.
+                setSideNavVisible('certificates', false);
                 setSideNavVisible('parent_emails', hasAnyRole(['super_admin', 'methodist', 'assistant']));
                 setSideNavVisible('analytics',   canViewAnalytics());
                 setSideNavVisible('assessments', canViewAssessments());
