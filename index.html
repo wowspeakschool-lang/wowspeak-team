@@ -11249,7 +11249,11 @@
                 setSideNavVisible('my_dashboard', isOnlyTeacher);
                 setSideNavVisible('reports',     isOnlyTeacher);
                 setSideNavVisible('summaries',   canViewSummary());
-                setSideNavVisible('certificates', hasAnyRole(['super_admin', 'methodist', 'assistant']));
+                // Вкладку «Сертификаты» убрали — решение владельца 29.09.2026.
+                // Сертификаты по-прежнему создаются при одобрении запроса на
+                // смену учебника и видны родителю в личном кабинете; пропал
+                // только список для сотрудников. Код раздела оставлен.
+                setSideNavVisible('certificates', false);
                 setSideNavVisible('parent_emails', hasAnyRole(['super_admin', 'methodist', 'assistant']));
                 setSideNavVisible('analytics',   canViewAnalytics());
                 setSideNavVisible('assessments', canViewAssessments());
@@ -34336,13 +34340,16 @@
                 return `<span style="display:inline-flex; align-items:center; gap:4px; background:#ede9fe; color:#5b21b6; padding:3px 8px 3px 10px; border-radius:6px; font-size:12px; font-weight:500;">🎓 ${escapeHtml(name)}${removeBtn}</span>`;
             }).join(' ');
 
-            // Тег Wowspeak Space (включается флагом attends_space)
+            // Тег Wowspeak Space. Руками его не ставят и не снимают: флаг
+            // attends_space выставляет edge-функция sync-mk-space-subscriptions
+            // по абонементам МойКласса (активный или замороженный абонемент
+            // «Wowspeak Space»), раз в три часа. Решение владельца 29.09.2026.
+            // toggleStudentSpace оставлена, но из интерфейса не вызывается —
+            // поставленное ею всё равно перезаписалось бы при сверке.
             const spaceTag = s.attends_space
-                ? `<span style="display:inline-flex; align-items:center; gap:4px; background:#fef3c7; color:#92400e; padding:3px 8px 3px 10px; border-radius:6px; font-size:12px; font-weight:500;">🌟 Wowspeak Space${canEdit ? `<button onclick="toggleStudentSpace('${s.id}', false, this)" title="Убрать" style="background:transparent; border:none; color:#dc2626; cursor:pointer; padding:0 0 0 2px; font-size:14px; line-height:1;">✕</button>` : ''}</span>`
+                ? `<span title="Есть живой абонемент Wowspeak Space в МойКлассе" style="display:inline-flex; align-items:center; gap:4px; background:#fef3c7; color:#92400e; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:500;">🌟 Wowspeak Space</span>`
                 : '';
-            const addSpaceBtn = canEdit && !s.attends_space
-                ? `<button onclick="toggleStudentSpace('${s.id}', true, this)" style="background:white; border:1px dashed #cbd5e1; color:#64748b; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-family:inherit;">+ Space</button>`
-                : '';
+            const addSpaceBtn = '';
             const addBtn = canEdit
                 ? `<button onclick="openAddStudentTeacher('${s.id}', this)" style="background:white; border:1px dashed #cbd5e1; color:#64748b; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:12px; font-family:inherit;">+ препод</button>`
                 : '';
