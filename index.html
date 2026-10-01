@@ -16062,15 +16062,22 @@
                     // Форму закрыли или успели сменить месяц — ответ устарел
                     if (_screening !== s || req !== _aiScreeningReq) return;
                     for (const row of (data || [])) {
-                        const tag = s.tags.find(t => !t.isMaxTag && t.code === row.mistake_code);
+                        const tag = s.tags.find(t => t.code === row.mistake_code);
                         if (!tag) { console.warn('AI-скрининг: нет пункта в чек-листе', row.mistake_code); continue; }
                         if (!tag.ai) tag.ai = { ids: [], evidence: '' };
                         tag.ai.ids.push(row.id);
                         if (row.evidence) tag.ai.evidence = tag.ai.evidence ? tag.ai.evidence + '\n' + row.evidence : row.evidence;
-                        if (!tag.isChecked) { tag.isChecked = true; tag.aiPrechecked = true; }
+                        if (!tag.isMaxTag && !tag.isChecked) { tag.isChecked = true; tag.aiPrechecked = true; }
                     }
-                    // Есть нарушение — «без ошибок» снимается, как при ручной отметке
-                    if (s.tags.some(t => t.ai)) s.tags.forEach(t => { if (t.isMaxTag) t.isChecked = false; });
+                    // «Нарушений нет» AI пишет отдельной строкой «no mistakes (maximum)»
+                    // (доп. задача владельца 01.10.2026). Нарушения важнее: есть хоть
+                    // одно — «без ошибок» снимается, как при ручной отметке. Нет —
+                    // «без ошибок» отмечается, если методист сам не отметил ошибок.
+                    const aiMax = s.tags.find(t => t.isMaxTag && t.ai);
+                    if (s.tags.some(t => t.ai && !t.isMaxTag)) s.tags.forEach(t => { if (t.isMaxTag) t.isChecked = false; });
+                    else if (aiMax && !aiMax.isChecked && !s.tags.some(t => !t.isMaxTag && t.isChecked)) {
+                        aiMax.isChecked = true; aiMax.aiPrechecked = true;
+                    }
                     // Обоснование AI — в комментарий штрафа, чтобы в штрафе было видно,
                     // за какой урок и какого ученика; количество «× N» — по числу
                     // находок (решение владельца 01.10.2026). Методист может поправить.
@@ -16115,8 +16122,13 @@
             }
             if (!aiTags.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
             bar.className = 'screening-ai-bar';
+            // AI прислал только «нарушений нет» — так и пишем (01.10.2026)
+            const onlyMax = aiTags.every(t => t.isMaxTag);
+            const text = onlyMax
+                ? '🤖 AI нарушений не нашёл и отметил «no mistakes». Нажмите «🤖 AI», чтобы увидеть, что проверено. Не согласны — отметьте нарушения сами.'
+                : `🤖 AI отметил пунктов: <b>${aiTags.filter(t => !t.isMaxTag).length}</b>. Проверьте их — нажмите «🤖 AI», чтобы увидеть обоснование. Не согласны — снимите галочку.`;
             bar.innerHTML = `
-                <span>🤖 AI отметил пунктов: <b>${aiTags.length}</b>. Проверьте их — нажмите «🤖 AI», чтобы увидеть обоснование. Не согласны — снимите галочку.</span>
+                <span>${text}</span>
                 <button type="button" class="btn btn-primary btn-small" id="aiScreeningApproveBtn" onclick="approveAiScreening()">✅ Утвердить результаты AI-скрининга</button>`;
             bar.style.display = '';
         }
@@ -16163,8 +16175,11 @@
                                        ${t.isChecked ? 'checked' : ''}
                                        onchange="onScreeningMaxToggle(${idx}, this.checked)">
                                 <span class="screening-tag-label" style="color:#166534;">✨ ${escapeHtml(t.label)}</span>
+                                ${t.ai ? `<span class="screening-ai-badge" title="${escapeHtml(t.ai.evidence || 'Отмечено AI-скринингом')}"
+                                       onclick="event.preventDefault(); event.stopPropagation(); toggleAiEvidence(${idx})">🤖 AI</span>` : ''}
                                 <span class="screening-tag-points" style="color:#16a34a;">отлично — 30/30</span>
                             </label>
+                            ${(t.ai && t.aiOpen) ? `<div class="screening-ai-evidence">${escapeHtml(t.ai.evidence || 'AI не оставил обоснования')}</div>` : ''}
                         </div>`;
                 }
                 return `
@@ -16211,6 +16226,7 @@
 
         function onScreeningMaxToggle(idx, checked) {
             _screening.tags[idx].isChecked = checked;
+            _screening.tags[idx].aiPrechecked = false;  // теперь это решение методиста
             // Если отметили "no mistakes" — снимаем все остальные
             if (checked) {
                 _screening.tags.forEach((t, i) => {
