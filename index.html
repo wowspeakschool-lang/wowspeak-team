@@ -2133,6 +2133,49 @@
             color: #94a3b8;
             font-weight: 500;
         }
+        /* AI-скрининг (01.10.2026, по задаче владельца): бейдж у пункта,
+           который отметил AI, его обоснование и плашка «Утвердить». */
+        .screening-ai-badge {
+            flex-shrink: 0;
+            padding: 2px 8px;
+            border: 1px solid #c4b5fd;
+            border-radius: 999px;
+            background: #ede9fe;
+            color: #5b21b6;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .screening-ai-evidence {
+            margin: 0.45rem 0 0 1.9rem;
+            padding: 0.5rem 0.7rem;
+            border-left: 3px solid #a78bfa;
+            border-radius: 6px;
+            background: #f5f3ff;
+            color: #4c1d95;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+        .screening-ai-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.8rem;
+            padding: 0.7rem 0.9rem;
+            border: 1px solid #c4b5fd;
+            border-radius: 10px;
+            background: #f5f3ff;
+            color: #4c1d95;
+            font-size: 0.88rem;
+        }
+        .screening-ai-bar span { flex: 1 1 260px; }
+        .screening-ai-bar.done {
+            border-color: #86efac;
+            background: #f0fdf4;
+            color: #166534;
+        }
         .screening-penalty-block {
             margin-top: 0.6rem;
             padding: 0.7rem 0.9rem;
@@ -8970,6 +9013,9 @@
                 <label>🔗 Ссылка на урок</label>
                 <input type="url" id="screeningLessonLink" placeholder="https://...">
             </div>
+
+            <!-- Находки AI-скрининга: «Утвердить результаты» (01.10.2026) -->
+            <div id="screeningAiBar" class="screening-ai-bar" style="display:none;"></div>
 
             <!-- Список тегов -->
             <div id="screeningTagsList" class="screening-tags-list"></div>
@@ -15931,10 +15977,11 @@
             tmSel.innerHTML = months.map(m => `<option value="${m.ym}">${m.lbl}</option>`).join('');
             tmSel.value = _screening.targetMonth || months[0].ym;
             _screening.targetMonth = tmSel.value;
-            tmSel.onchange = (e) => { _screening.targetMonth = e.target.value; };
+            tmSel.onchange = (e) => { _screening.targetMonth = e.target.value; loadAiScreeningFlags(); };
 
             renderScreeningTags();
             updateScreeningScore();
+            loadAiScreeningFlags();
 
             document.getElementById('screeningModal').classList.add('open');
             document.body.style.overflow = 'hidden';
@@ -15947,7 +15994,10 @@
         function onScreeningTeacherChange() {
             const name = (document.getElementById('screeningTeacherInput').value || '').trim();
             const t = teachersFromDb.find(x => x.name === name);
-            if (_screening) _screening.teacher = t || null;
+            if (_screening) {
+                _screening.teacher = t || null;
+                loadAiScreeningFlags();
+            }
         }
 
         function closeScreeningForm() {
@@ -15957,6 +16007,128 @@
             _screening = null;
             if (m.dataset) m.dataset.dirty = '0';
             clearDraft('screeningModal');
+        }
+
+        // ============================================================
+        //   AI-скрининг: находки AI в форме скрининга (01.10.2026)
+        // ============================================================
+        // Задача владельца 01.10.2026. AI (пока — демо-строки в таблице
+        // ai_screenings, потом настоящий детектор) отмечает нарушения
+        // преподавателя за месяц. Форма скрининга их предотмечает и
+        // ставит бейдж «🤖 AI» с обоснованием. Методист снимает галочку,
+        // если не согласен, и жмёт «Утвердить результаты AI-скрининга»:
+        // оставленные отмеченными → confirmed, снятые → dismissed.
+        // Подсчёт балла и штрафов не меняется: AI только предзаполняет,
+        // сохраняет скрининг, как и раньше, человек.
+        let _aiScreeningReq = 0;
+
+        // Снять прежние AI-отметки (сменился месяц или преподаватель).
+        // uncheck=true — снять и галочки, которые поставил AI, а не человек.
+        function _resetAiScreeningFlags(uncheck) {
+            if (!_screening) return;
+            _aiScreeningReq++;  // отменяет загрузку, которая ещё в пути
+            _screening.tags.forEach(t => {
+                if (uncheck && t.aiPrechecked) t.isChecked = false;
+                t.ai = null;
+                t.aiOpen = false;
+                t.aiPrechecked = false;
+            });
+            _screening.aiApproved = null;
+        }
+
+        async function loadAiScreeningFlags() {
+            if (!_screening) return;
+            const s = _screening;
+            _resetAiScreeningFlags(true);
+            const req = _aiScreeningReq;
+            const teacherId = s.teacher && s.teacher.id;
+            const month = s.targetMonth;
+            if (teacherId && month) {
+                try {
+                    const { data, error } = await sb.from('ai_screenings')
+                        .select('id, mistake_code, evidence')
+                        .eq('teacher_id', teacherId)
+                        .eq('period_month', month)
+                        .eq('checklist_code', 'screening')
+                        .eq('status', 'pending_review')
+                        .order('created_at', { ascending: true });
+                    if (error) throw error;
+                    // Форму закрыли или успели сменить месяц — ответ устарел
+                    if (_screening !== s || req !== _aiScreeningReq) return;
+                    for (const row of (data || [])) {
+                        const tag = s.tags.find(t => !t.isMaxTag && t.code === row.mistake_code);
+                        if (!tag) { console.warn('AI-скрининг: нет пункта в чек-листе', row.mistake_code); continue; }
+                        if (!tag.ai) tag.ai = { ids: [], evidence: '' };
+                        tag.ai.ids.push(row.id);
+                        if (row.evidence) tag.ai.evidence = tag.ai.evidence ? tag.ai.evidence + '\n' + row.evidence : row.evidence;
+                        if (!tag.isChecked) { tag.isChecked = true; tag.aiPrechecked = true; }
+                    }
+                    // Есть нарушение — «без ошибок» снимается, как при ручной отметке
+                    if (s.tags.some(t => t.ai)) s.tags.forEach(t => { if (t.isMaxTag) t.isChecked = false; });
+                } catch (e) {
+                    console.warn('AI-скрининг не загрузился:', e);
+                }
+            }
+            if (_screening !== s) return;
+            renderScreeningTags();
+            updateScreeningScore();
+            renderAiScreeningBar();
+        }
+
+        function toggleAiEvidence(idx) {
+            if (!_screening) return;
+            const t = _screening.tags[idx];
+            if (t && t.ai) { t.aiOpen = !t.aiOpen; renderScreeningTags(); }
+        }
+
+        function renderAiScreeningBar() {
+            const bar = document.getElementById('screeningAiBar');
+            if (!bar || !_screening) return;
+            const aiTags = _screening.tags.filter(t => t.ai);
+            const done = _screening.aiApproved;
+            if (done) {
+                bar.className = 'screening-ai-bar done';
+                bar.innerHTML = `<span>✅ Результаты AI утверждены: подтверждено ${done.confirmed}, отклонено ${done.dismissed}. Дозаполните остальные пункты и сохраните скрининг.</span>`;
+                bar.style.display = '';
+                return;
+            }
+            if (!aiTags.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+            bar.className = 'screening-ai-bar';
+            bar.innerHTML = `
+                <span>🤖 AI отметил пунктов: <b>${aiTags.length}</b>. Проверьте их — нажмите «🤖 AI», чтобы увидеть обоснование. Не согласны — снимите галочку.</span>
+                <button type="button" class="btn btn-primary btn-small" id="aiScreeningApproveBtn" onclick="approveAiScreening()">✅ Утвердить результаты AI-скрининга</button>`;
+            bar.style.display = '';
+        }
+
+        async function approveAiScreening() {
+            if (!_screening) return;
+            const s = _screening;
+            const btn = document.getElementById('aiScreeningApproveBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Утверждаю…'; }
+            const confirmedIds = s.tags.filter(t => t.ai && t.isChecked).flatMap(t => t.ai.ids);
+            const dismissedIds = s.tags.filter(t => t.ai && !t.isChecked).flatMap(t => t.ai.ids);
+            const review = { reviewed_by: currentAppUser?.id || null, reviewed_at: new Date().toISOString() };
+            try {
+                if (confirmedIds.length) {
+                    const { error } = await sb.from('ai_screenings')
+                        .update({ status: 'confirmed', ...review })
+                        .in('id', confirmedIds).eq('status', 'pending_review');
+                    if (error) throw error;
+                }
+                if (dismissedIds.length) {
+                    const { error } = await sb.from('ai_screenings')
+                        .update({ status: 'dismissed', ...review })
+                        .in('id', dismissedIds).eq('status', 'pending_review');
+                    if (error) throw error;
+                }
+                if (_screening !== s) return;
+                s.aiApproved = { confirmed: confirmedIds.length, dismissed: dismissedIds.length };
+                renderAiScreeningBar();
+            } catch (e) {
+                console.error(e);
+                alert('Не удалось утвердить результаты AI: ' + (e.message || e));
+                if (btn) { btn.disabled = false; btn.textContent = '✅ Утвердить результаты AI-скрининга'; }
+            }
         }
 
         function renderScreeningTags() {
@@ -15981,8 +16153,11 @@
                                    ${t.isChecked ? 'checked' : ''}
                                    onchange="onScreeningTagToggle(${idx}, this.checked)">
                             <span class="screening-tag-label">${escapeHtml(t.label)}</span>
+                            ${t.ai ? `<span class="screening-ai-badge" title="${escapeHtml(t.ai.evidence || 'Отмечено AI-скринингом')}"
+                                   onclick="event.preventDefault(); event.stopPropagation(); toggleAiEvidence(${idx})">🤖 AI</span>` : ''}
                             <span class="screening-tag-points">−${t.points} б</span>
                         </label>
+                        ${(t.ai && t.aiOpen) ? `<div class="screening-ai-evidence">${escapeHtml(t.ai.evidence || 'AI не оставил обоснования')}</div>` : ''}
                         ${(t.isChecked && t.hasPenalty) ? `
                             <div class="screening-penalty-block">
                                 <div class="screening-penalty-row">
@@ -16027,6 +16202,7 @@
 
         function onScreeningTagToggle(idx, checked) {
             _screening.tags[idx].isChecked = checked;
+            _screening.tags[idx].aiPrechecked = false;  // теперь это решение методиста
             // Если отметили какую-то ошибку — снимаем "no mistakes"
             if (checked) {
                 _screening.tags.forEach((t, i) => {
@@ -16191,6 +16367,18 @@
                     if (insErr) throw insErr;
                     savedId = inserted.id;
                 }
+
+                // Связываем находки AI-скрининга с сохранённым скринингом
+                // (01.10.2026): по ним потом сверяют, где AI прав, а где нет.
+                // Сбой связи не мешает сохранению — это служебная пометка.
+                try {
+                    const { error: aiLinkErr } = await sb.from('ai_screenings')
+                        .update({ screening_id: savedId })
+                        .eq('teacher_id', _screening.teacher.id)
+                        .eq('period_month', targetMonth)
+                        .eq('checklist_code', 'screening');
+                    if (aiLinkErr) console.warn('ai_screenings link failed:', aiLinkErr);
+                } catch (aiErr) { console.warn('ai_screenings link failed:', aiErr); }
 
                 // Создаём новые штрафы для отмеченных
                 // Одна запись на тэг с amount = unit × count
@@ -23762,6 +23950,7 @@
                     }
                     tmSel.value = targetMonth;
                 }
+                loadAiScreeningFlags();
             }
         }
 
@@ -23806,11 +23995,13 @@
                 }
                 // Отметить теги
                 const set = new Set(row.mistake_codes || []);
+                _resetAiScreeningFlags(false);
                 _screening.tags.forEach(tag => {
                     tag.isChecked = set.has(tag.code);
                 });
                 renderScreeningTags();
                 updateScreeningScore();
+                loadAiScreeningFlags();
             }
         }
 
