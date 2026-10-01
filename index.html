@@ -16029,6 +16029,12 @@
             _aiScreeningReq++;  // отменяет загрузку, которая ещё в пути
             _screening.tags.forEach(t => {
                 if (uncheck && t.aiPrechecked) t.isChecked = false;
+                // Комментарий к штрафу, который подставил AI и методист не менял, —
+                // про другой месяц, убираем (01.10.2026)
+                if (t.aiComment != null && t.penaltyComment === t.aiComment) t.penaltyComment = '';
+                if (t.aiCount != null && t.penaltyCount === t.aiCount) t.penaltyCount = 1;
+                t.aiComment = null;
+                t.aiCount = null;
                 t.ai = null;
                 t.aiOpen = false;
                 t.aiPrechecked = false;
@@ -16065,6 +16071,21 @@
                     }
                     // Есть нарушение — «без ошибок» снимается, как при ручной отметке
                     if (s.tags.some(t => t.ai)) s.tags.forEach(t => { if (t.isMaxTag) t.isChecked = false; });
+                    // Обоснование AI — в комментарий штрафа, чтобы в штрафе было видно,
+                    // за какой урок и какого ученика; количество «× N» — по числу
+                    // находок (решение владельца 01.10.2026). Методист может поправить.
+                    // Что методист уже ввёл сам, не перетираем.
+                    s.tags.forEach(t => {
+                        if (!t.ai || !t.hasPenalty) return;
+                        if (t.ai.evidence && !t.penaltyComment) {
+                            t.penaltyComment = t.ai.evidence.split('\n').map(e => e.replace(/[.;\s]+$/, '')).join('; ');
+                            t.aiComment = t.penaltyComment;
+                        }
+                        if ((t.penaltyCount || 1) === 1 && t.ai.ids.length > 1) {
+                            t.penaltyCount = t.ai.ids.length;
+                            t.aiCount = t.penaltyCount;
+                        }
+                    });
                 } catch (e) {
                     console.warn('AI-скрининг не загрузился:', e);
                 }
