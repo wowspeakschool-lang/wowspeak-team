@@ -24338,9 +24338,13 @@
         let _salaryMonth = null;   // 'YYYY-MM', null = текущий
 
         function _salaryShiftMonth(delta) {
-            const base = _salaryMonth ? new Date(_salaryMonth + '-01') : new Date();
-            base.setMonth(base.getMonth() + delta);
-            _salaryMonth = base.toISOString().slice(0, 7);
+            // Месяц — по местному календарю, без toISOString (07.10.2026, по решению
+            // операционного директора). Раньше месяц брался по UTC: 1-го числа до 03:00
+            // по Москве (во Владивостоке до 10:00) открывался прошлый месяц. А листание
+            // от 31-го числа через setMonth перескакивало короткий месяц (31.10 → декабрь).
+            const [y, m] = (_salaryMonth || currentYearMonth()).split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            _salaryMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             loadDashboardSalary();
         }
 
@@ -24356,7 +24360,7 @@
                 return;
             }
 
-            const ym = _salaryMonth || new Date().toISOString().slice(0, 7);
+            const ym = _salaryMonth || currentYearMonth();   // по местному времени, не UTC (07.10.2026)
             const [yy, mm] = ym.split('-');
             const monthLabel = new Date(+yy, +mm - 1, 1)
                 .toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
@@ -25356,6 +25360,13 @@
                 if (error) throw error;
 
                 const viewed = window._currentTeacherObj;
+                // Карточка без учётной записи: обучения у неё нет. Раньше сюда
+                // подставлялся тот, кто смотрит, и показывалось его обучение под
+                // заголовком «Моё обучение» (07.10.2026, по решению операционного директора).
+                if (viewed && !viewed.userId) {
+                    wrap.innerHTML = '<div class="analytics-empty">У преподавателя ещё нет учётной записи на платформе — обучения пока нет.</div>';
+                    return;
+                }
                 const isForeign = viewed && viewed.userId && viewed.userId !== currentAppUser?.id;
                 const targetUserId = isForeign ? viewed.userId : currentAppUser?.id;
 
