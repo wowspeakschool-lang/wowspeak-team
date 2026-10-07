@@ -12606,6 +12606,14 @@
 
                 const levelSel = document.createElement('select');
                 const levels = levelsFor(row.lang);
+                // Уровень может быть не указан (языки из HR-анкеты пишутся без уровня,
+                // 07.10.2026). Без пустого варианта выбор показывал первый уровень,
+                // хотя в карточке его нет.
+                const noLevel = document.createElement('option');
+                noLevel.value = '';
+                noLevel.textContent = '—';
+                if (!row.level) noLevel.selected = true;
+                levelSel.appendChild(noLevel);
                 levels.forEach(lv => {
                     const o = document.createElement('option');
                     o.value = lv;
@@ -15765,9 +15773,12 @@
         // "Китайский" — особая категория: все преподы, у которых хотя бы один язык = Китайский
         function teacherCategoryFor(teacher) {
             if (!teacher) return null;
-            // Если это китаист — относим к "Китайский"
-            const langs = Array.isArray(teacher.languages) ? teacher.languages : [];
-            const hasChinese = langs.some(l => l && l.lang === 'Китайский');
+            // Китаист — тот, кто китайский ПРЕПОДАЁТ («Преподаёт языки»), а не тот,
+            // кто им владеет (07.10.2026, по решению операционного директора).
+            // Раньше смотрели «Языки с уровнями», и преподаватель английского со
+            // знанием китайского попадал в категорию «Китайский» со своей шкалой.
+            const taught = Array.isArray(teacher.languagesTaught) ? teacher.languagesTaught : [];
+            const hasChinese = taught.includes('Китайский');
             if (hasChinese) return 'Китайский';
             if (teacher.grade === 'МВУ') return 'МВУ';
             if (['Basic', 'Expert', 'Pro'].includes(teacher.grade)) return teacher.grade;
