@@ -12479,7 +12479,12 @@
             'Милый, мягкий',
             'Строгий, серьёзный'
         ];
-        const PROGRAMS_LIST = ['Super Minds', 'Go getter', 'Prepare 1-4', 'Prepare 5+', 'Wow Dragon'];
+        // Программы — только из этого списка, своё название не вводится (07.10.2026,
+        // по решению операционного директора): от ручного ввода копились разночтения
+        // «Wowdragon», «Speaking Clubs» и т. п. В тот же день карточки приведены к
+        // этим написаниям. Новая программа добавляется сюда.
+        const PROGRAMS_LIST = ['Super Minds', 'Go getter', 'Prepare 1-4', 'Prepare 5+', 'Wow Dragon',
+                               'Reading Club', 'Speaking Club', 'Reading Course', 'Мастер-класс', 'ОГЭ', 'ЕГЭ'];
         const LANG_OPTIONS = ['Английский', 'Китайский', 'Испанский', 'Немецкий', 'Французский'];
         const LEVELS_EURO = ['B2', 'C1', 'C2'];        // для не-китайских языков
         const LEVELS_HSK  = ['HSK3', 'HSK4', 'HSK5', 'HSK6', 'Native'];
@@ -12515,7 +12520,7 @@
         }
 
         // --- Chip picker с возможностью добавить свое значение ---
-        function renderChipPickerWithCustom(containerId, presets, selectedArr, onChange) {
+        function renderChipPickerWithCustom(containerId, presets, selectedArr, onChange, { allowCustom = true } = {}) {
             const el = document.getElementById(containerId);
             if (!el) return;
             el.innerHTML = '';
@@ -12534,10 +12539,13 @@
                     if (idx >= 0) selectedArr.splice(idx, 1);
                     else selectedArr.push(opt);
                     onChange(selectedArr);
-                    renderChipPickerWithCustom(containerId, presets, selectedArr, onChange);
+                    renderChipPickerWithCustom(containerId, presets, selectedArr, onChange, { allowCustom });
                 });
                 el.appendChild(chip);
             });
+
+            // Без «+ свой вариант» — только готовые значения (программы, 07.10.2026)
+            if (!allowCustom) return;
 
             // Кнопка «+ добавить свое»
             const add = document.createElement('button');
@@ -12551,7 +12559,7 @@
                 if (!clean) return;
                 if (!selectedArr.includes(clean)) selectedArr.push(clean);
                 onChange(selectedArr);
-                renderChipPickerWithCustom(containerId, presets, selectedArr, onChange);
+                renderChipPickerWithCustom(containerId, presets, selectedArr, onChange, { allowCustom });
             });
             el.appendChild(add);
         }
@@ -12764,7 +12772,7 @@
             renderChipPicker('nt_agegroups', AGE_GROUPS_LIST, d.agegroups, () => rerender());
             renderChipPicker('nt_character', CHARACTER_LIST, d.character, () => rerender());
             renderChipPickerWithCustom('nt_langtaught', LANG_OPTIONS, d.langtaught, () => rerender());
-            renderChipPickerWithCustom('nt_programs', PROGRAMS_LIST, d.programs, () => rerender());
+            renderChipPickerWithCustom('nt_programs', PROGRAMS_LIST, d.programs, () => rerender(), { allowCustom: false });
             renderMultilang('nt_languages', d.languages, () => rerender());
         }
 
