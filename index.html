@@ -32089,6 +32089,10 @@
             const className = lessonDisplayTitle(l);
             const teacher = l.teacher_name || (l.all_teacher_names && l.all_teacher_names.length ? l.all_teacher_names.join(', ') : '—');
             const topic = l.topic ? `<div style="color:#475569; font-size:13px; margin-top:2px;">📖 ${escapeHtml(l.topic)}</div>` : '';
+            // Описание для родителей — его видят родители в кабинете, менеджеру тоже нужно
+            const publicDesc = (l.description_local || '').trim()
+                ? `<div style="color:#475569; font-size:12px; margin-top:3px; white-space:pre-wrap; background:#f8fafc; border-left:2px solid #cbd5e1; padding:4px 8px; border-radius:4px;">👪 ${escapeHtml(l.description_local.trim())}</div>`
+                : '';
             const students = l.students || [];
             let studentsBlock = '';
             if (students.length > 0) {
@@ -32114,6 +32118,7 @@
                             </div>
                             <div style="color:#64748b; font-size:13px; margin-top:2px;">👤 ${escapeHtml(teacher)}</div>
                             ${topic}
+                            ${publicDesc}
                             ${studentsBlock}
                         </div>
                     </div>
@@ -35358,7 +35363,7 @@
             const pageSize = 1000;
             while (true) {
                 const { data: page, error } = await sb.from('mk_lessons_with_details')
-                    .select('id, lesson_date, begin_time, end_time, status, topic, class_name, class_color, teacher_name, all_teacher_names, students, primary_teacher_id, external_class_id')
+                    .select('id, lesson_date, begin_time, end_time, status, topic, description_local, class_name, class_color, teacher_name, all_teacher_names, students, primary_teacher_id, external_class_id')
                     .gte('lesson_date', from)
                     .lte('lesson_date', to)
                     .order('lesson_date')
