@@ -6686,6 +6686,8 @@
                     <button class="ass-main-tab active" data-reptab="trackers" onclick="setReportsSubTab('trackers')">📋 Трекеры прогресса</button>
                     <button class="ass-main-tab" data-reptab="trial" onclick="setReportsSubTab('trial')">📄 Отчёты после пробного</button>
                     <button class="ass-main-tab" id="vuTabBtn" data-reptab="vu" onclick="setReportsSubTab('vu')" style="display:none;">🚀 Отчёты после ВУ</button>
+                    <!-- Простой трекер: без учебника и юнитов (испанский, школьные предметы). Решение владельца 10.10.2026 -->
+                    <button class="ass-main-tab" data-reptab="simple" onclick="setReportsSubTab('simple')">📝 Простые трекеры</button>
                 </div>
 
                 <!-- Трекеры прогресса -->
@@ -6740,6 +6742,23 @@
                                style="flex: 1; min-width: 220px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
                     </div>
                     <div id="trialReportsListWrap">
+                        <div class="analytics-loading">Загрузка…</div>
+                    </div>
+                </div>
+
+                <!-- Простые трекеры (report_type = 'simple_tracker') -->
+                <div id="repSubSimple" class="ass-subtab">
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+                        <button class="btn btn-primary btn-small" onclick="openNewSimpleTracker()">+ Простой трекер</button>
+                        <div style="display:flex; align-items:center; gap:8px; padding:9px 13px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:13px; color:#1e40af;">
+                            <span>📝</span>
+                            <span>Для программ без учебника и юнитов. После сохранения родителю уйдёт письмо со ссылкой на трекер.</span>
+                        </div>
+                        <input type="search" id="simpleTrackersSearch" placeholder="🔍 Поиск по ученику"
+                               oninput="renderSimpleTrackersList()"
+                               style="flex: 1; min-width: 220px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
+                    </div>
+                    <div id="simpleTrackersListWrap">
                         <div class="analytics-loading">Загрузка…</div>
                     </div>
                 </div>
@@ -6892,6 +6911,7 @@
                         <button class="ass-filter-tab active" data-repsumtab="trackers" onclick="setReportsAdminSubTab('trackers')">📋 Трекеры прогресса</button>
                         <button class="ass-filter-tab" data-repsumtab="trial" onclick="setReportsAdminSubTab('trial')">📄 Отчёты после пробного</button>
                         <button class="ass-filter-tab" data-repsumtab="vu" onclick="setReportsAdminSubTab('vu')">🚀 Отчёты после ВУ</button>
+                        <button class="ass-filter-tab" data-repsumtab="simple" onclick="setReportsAdminSubTab('simple')">📝 Простые трекеры</button>
                     </div>
                     <div id="adminTrackersTab">
                         <div class="summaries-toolbar">
@@ -6912,6 +6932,16 @@
                                    style="flex: 1; min-width: 280px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
                         </div>
                         <div id="adminTrackersListWrap">
+                            <div class="analytics-loading">Загрузка…</div>
+                        </div>
+                    </div>
+                    <div id="adminSimpleTab" style="display:none;">
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+                            <input type="search" id="adminSimpleTrackersSearch" placeholder="🔍 Поиск по преподавателю / ученику"
+                                   oninput="renderAdminSimpleTrackersList()"
+                                   style="flex: 1; min-width: 280px; padding:0.45rem 0.7rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:0.9rem;">
+                        </div>
+                        <div id="adminSimpleTrackersListWrap">
                             <div class="analytics-loading">Загрузка…</div>
                         </div>
                     </div>
@@ -8756,6 +8786,22 @@
         </div>
     </div>
 
+    <!-- Простой трекер (report_type = 'simple_tracker'). Решение владельца 10.10.2026 -->
+    <div id="simpleTrackerModal" class="tracker-modal-backdrop" style="display:none;" role="dialog" aria-modal="true">
+        <div class="tracker-modal-shell">
+            <div class="tracker-modal-toolbar">
+                <div class="tracker-modal-title" id="simpleTrackerTitle">📝 Простой трекер</div>
+                <div class="tracker-modal-actions">
+                    <button class="btn btn-secondary btn-small" id="simpleTrackerLinkBtn" onclick="copySimpleTrackerLink()" title="Скопировать ссылку для родителя" style="display:none;">🔗 Ссылка для родителя</button>
+                    <button class="btn btn-primary btn-small" id="simpleTrackerSaveBtn" onclick="saveSimpleTracker()">💾 Сохранить</button>
+                    <button class="btn btn-secondary btn-small" id="simpleTrackerDeleteBtn" onclick="deleteSimpleTracker()" title="Удалить трекер" style="display:none; color:#dc2626;">🗑 Удалить</button>
+                    <button class="btn btn-secondary btn-small" onclick="tryCloseProtectedModal('simpleTrackerModal')" title="Закрыть">✕</button>
+                </div>
+            </div>
+            <div id="simpleTrackerContent" class="tracker-content"></div>
+        </div>
+    </div>
+
     <!-- Модалка деталей запроса -->
     <!-- Модалка деталей урока (тема, посещаемость, ДЗ, оценки) — глобальная -->
     <div id="lessonDetailsModal" class="card-modal" onclick="if(event.target===this&&canCloseModal(this))closeLessonModal()" style="display:none;">
@@ -9985,6 +10031,9 @@
 
         // Initialize app on page load
         document.addEventListener('DOMContentLoaded', async function() {
+            // 0. Простой трекер для родителя (?report=TOKEN) — свой вход, ?parent_view= не трогаем
+            if (await bootSimpleReportIfNeeded()) return;
+
             // 0. Если это страница для родителя (?parent_view=TOKEN) — показать read-only трекер
             if (await bootParentViewIfNeeded()) return;
 
@@ -12804,6 +12853,7 @@
             'assessmentModal':    { close: 'closeAssessmentForm',    autosaveKey: 'draft_assessment' },
             'screeningModal':     { close: 'closeScreeningForm',     autosaveKey: 'draft_screening' },
             'trackerModal':       { close: 'closeTrackerModal',      autosaveKey: 'draft_tracker' },
+            'simpleTrackerModal': { close: 'closeSimpleTrackerModal', autosaveKey: 'draft_simple_tracker' },
             'trialModal':         { close: 'closeTrialReportModal',   autosaveKey: 'draft_trial' },
             'newTeacherModal':    { close: 'closeNewTeacherForm' },
             'bonusModal':         { close: 'closeBonusModal' },
@@ -29505,12 +29555,15 @@
             const trackers = document.getElementById('repSubTrackers');
             const trial    = document.getElementById('repSubTrial');
             const vu       = document.getElementById('repSubVu');
+            const simple   = document.getElementById('repSubSimple');
             if (trackers) trackers.classList.toggle('active', tab === 'trackers');
             if (trial)    trial.classList.toggle('active', tab === 'trial');
             if (vu)       vu.classList.toggle('active', tab === 'vu');
+            if (simple)   simple.classList.toggle('active', tab === 'simple');
             if (tab === 'trackers') renderTrackersList();
             if (tab === 'trial') renderTrialReportsList();
             if (tab === 'vu') renderVuReportsList();
+            if (tab === 'simple') renderSimpleTrackersList();
         }
 
         // Подтабы в Сводках → Отчёты (для админа)
@@ -29522,6 +29575,9 @@
             document.getElementById('adminTrialTab').style.display    = tab === 'trial' ? '' : 'none';
             const advu = document.getElementById('adminVuTab');
             if (advu) advu.style.display = tab === 'vu' ? '' : 'none';
+            const adsimple = document.getElementById('adminSimpleTab');
+            if (adsimple) adsimple.style.display = tab === 'simple' ? '' : 'none';
+            if (tab === 'simple') renderAdminSimpleTrackersList();
             if (tab === 'trackers') renderAdminTrackersList();
             if (tab === 'trial') renderAdminTrialReportsList();
             if (tab === 'vu') renderAdminVuReportsList();
@@ -41182,6 +41238,743 @@ ${lessonsText || '—'}
             }).join('') + '</div>';
         }
 
+
+        // ============================================================
+        //        ПРОСТОЙ ТРЕКЕР (report_type = 'simple_tracker')
+        // ============================================================
+        // Трекер для программ без учебника и юнитов: испанский, школьные
+        // предметы и т.п. Решение владельца 10.10.2026: отдельная форма,
+        // программа не выбирается и ни к чему не привязывается. Ученик —
+        // из базы, родителю письмо уходит автоматически.
+        //
+        // С обычным трекером (progress_tracker) не пересекается: свой тип
+        // отчёта, свои поля (id с префиксом st_), своя ссылка для родителя
+        // (?report=TOKEN). Переход по юнитам, запрос методистам, сертификат
+        // и уведомление о низком балле работают только с progress_tracker
+        // и этот тип не видят.
+        //
+        // Письмо родителю ставит в очередь триггер в базе
+        // parent_email_simple_tracker_saved при первом сохранении — со
+        // ссылкой прямо на отчёт, а не в личный кабинет.
+        //
+        // Ключи ниже лежат в form_data сохранённых отчётов. НЕ переименовывать
+        // и не переиспользовать под другой текст: по ним показываются уже
+        // отправленные родителям отчёты. Новый пункт — новый ключ. Ненужный
+        // пункт не удалять, а пометить hidden: true — тогда он пропадёт из
+        // формы, но в старых отчётах останется.
+        const ST_SCORES = [
+            { key: 'grammar',    emoji: '📝', label: 'Грамматика' },
+            { key: 'vocabulary', emoji: '📚', label: 'Лексика' },
+            { key: 'speaking',   emoji: '🎤', label: 'Говорение' },
+            { key: 'listening',  emoji: '👂', label: 'Аудирование' },
+            { key: 'reading',    emoji: '📖', label: 'Чтение' },
+            { key: 'writing',    emoji: '✏️', label: 'Письмо' }
+        ];
+        // Тексты пунктов — те же, что в обычном русском трекере.
+        const ST_CHECKS = {
+            behaviorGood: { title: '👍 Положительные качества', items: [
+                { key: 'focused',      text: 'Сосредоточенный и внимательный' },
+                { key: 'follows',      text: 'Усидчивый, следует инструкциям' },
+                { key: 'polite',       text: 'Вежливый и уважительный' },
+                { key: 'engaged',      text: 'С готовностью участвует в работе' },
+                { key: 'patient',      text: 'Терпеливый, ждёт своей очереди' },
+                { key: 'tries_hard',   text: 'Старается, даже когда задания сложные' },
+                { key: 'independent',  text: 'Хорошо работает самостоятельно' },
+                { key: 'positive',     text: 'Весёлый и позитивный настрой' }
+            ]},
+            behaviorWork: { title: '📝 Над чем поработать', items: [
+                { key: 'distracted',      text: 'Легко отвлекается' },
+                { key: 'restless',        text: 'Трудно усидеть на месте' },
+                { key: 'needs_reminders', text: 'Нужно часто напоминать о внимательности при выполнении заданий' },
+                { key: 'rushes',          text: 'Торопится при выполнении заданий' },
+                { key: 'shy',             text: 'Стеснительный, нужно время чтобы освоиться' },
+                { key: 'no_instructions', text: 'Иногда не следует инструкциям' },
+                { key: 'upset_mistakes',  text: 'Расстраивается при ошибках' },
+                { key: 'remind_homework', text: 'Пожалуйста, напоминайте о домашнем задании!' }
+            ]},
+            good: { title: '✅ Что хорошо получается', items: [
+                { key: 'new_words',     text: 'Быстро осваивает новые слова' },
+                { key: 'full_sentences', text: 'Не стесняется говорить полными предложениями' },
+                { key: 'games',         text: 'С удовольствием участвует в играх и активностях' },
+                { key: 'grammar',       text: 'Отлично справляется с грамматическими заданиями' },
+                { key: 'listening',     text: 'Хорошо понимает речь на слух' },
+                { key: 'active',        text: 'Активно работает на уроке' },
+                { key: 'creative',      text: 'Проявляет творчество в заданиях' },
+                { key: 'pronunciation', text: 'Хорошее произношение' },
+                { key: 'remembers',     text: 'Хорошо помнит материал прошлых уроков' },
+                { key: 'reading',       text: 'Навыки чтения хорошо развиваются' }
+            ]},
+            improve: { title: '⚠️ Над чем ещё нужно поработать', items: [
+                { key: 'spelling',      text: 'Нужно больше времени на запоминание правописания' },
+                { key: 'letter_combos', text: 'Сложные буквосочетания даются непросто' },
+                { key: 'shy_speaking',  text: 'Стесняется говорить, нужна поддержка' },
+                { key: 'listening',     text: 'Нужно больше практики аудирования' },
+                { key: 'grammar',       text: 'Грамматические правила нужно закрепить' },
+                { key: 'vocabulary',    text: 'Нужно лучше закреплять словарный запас' },
+                { key: 'pronunciation', text: 'Произношение нуждается в улучшении' },
+                { key: 'reading',       text: 'Нужно больше внимания уделить чтению' }
+            ]},
+            recommend: { title: '💡 Рекомендации на ближайшее время', items: [
+                { key: 'reading_club',  text: 'Посещать Читательский клуб 📚' },
+                { key: 'speaking_club', text: 'Посещать Разговорный клуб с иностранными преподавателями 🗣️' },
+                { key: 'master_classes', text: 'Посещать Мастер-классы 🎨' },
+                { key: 'second_lesson', text: 'Добавить 2-й урок в неделю для более быстрого прогресса 🚀' },
+                { key: 'third_lesson',  text: 'Добавить 3-й урок в неделю для ещё более быстрого прогресса ⚡' },
+                { key: 'homework_time', text: 'Уделять больше времени домашним заданиям 📖' },
+                { key: 'no_skipping',   text: 'Постараться не пропускать уроки часто, так как это влияет на прогресс 📅' },
+                { key: 'workspace',     text: 'Организовать хорошее рабочее место (дома за столом и при хорошем освещении) 💡' }
+            ]}
+        };
+
+        // Баннеры внизу отчёта — те же, что в обычном русском трекере.
+        const ST_BANNERS_HTML = `
+  <div class="card" style="background:linear-gradient(135deg,#FFF8E1,#FFFBEA);border:2px solid #FFE082;text-align:center;padding:24px 32px">
+    <div style="font-size:20px;font-weight:800;color:var(--dark);margin-bottom:8px">🚀 WowSpeak Space</div>
+    <div style="font-size:15px;color:var(--dark);margin-bottom:14px">Подписка с 20+ активностей в месяц за <span style="color:#E91E63;font-weight:800">3&nbsp;500&nbsp;₽</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px">
+      <span style="background:#fff;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,0.05)">🗣️ Разговорные клубы</span>
+      <span style="background:#fff;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,0.05)">🎮 Игровые стримы</span>
+      <span style="background:#fff;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,0.05)">🎨 Мастер-классы</span>
+      <span style="background:#fff;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,0.05)">📚 Читальный клуб</span>
+      <span style="background:#fff;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--dark);box-shadow:0 1px 3px rgba(0,0,0,0.05)">🎓 Вебинары по школьной программе</span>
+    </div>
+    <div style="font-size:13px;color:var(--gray-text);line-height:1.5;margin-bottom:10px">Отличная возможность для детей развивать навыки общения<br>и изучения материала в увлекательном формате!</div>
+    <div style="font-size:14px;color:var(--purple);font-weight:800">Узнавайте подробности у куратора! 💜</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#E8F0FE,#F0ECFF);border:2px solid #D0D0F0;text-align:center;padding:24px 32px">
+    <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:8px">🎁 Информация для родителей!</div>
+    <div style="font-size:22px;font-weight:900;color:#3366CC;margin-bottom:4px">Мы дарим 3 БЕСПЛАТНЫХ урока</div>
+    <div style="font-size:15px;color:var(--dark);font-weight:700;margin-bottom:8px">по реферальной программе и не только...</div>
+    <div style="font-size:14px;color:var(--purple);font-weight:800">Узнавайте подробности у куратора! 💜</div>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,#FFF0F8,#FFEEF5);border:2px solid #F5D0E8;text-align:center;padding:24px 32px">
+    <div style="font-size:20px;margin-bottom:8px">🤗</div>
+    <div style="font-size:16px;font-weight:800;color:var(--dark);margin-bottom:6px">Спасибо за совместную работу!</div>
+    <div style="font-size:14px;color:var(--gray-text);line-height:1.6">Если у вас есть вопросы — пишите нам, мы всегда на связи!<br>До встречи на занятиях! 💖</div>
+  </div>`;
+
+        const ST_HEADER_HTML = `
+  <div class="card" style="text-align:center;">
+    <h1 style="font-family:'Nunito',sans-serif; font-size:28px; font-weight:900; color:#E91E8C; margin:0 0 6px 0; line-height:1.2;">Результаты и достижения</h1>
+    <p style="color:#5A5A6E; font-size:14px; margin:0; font-weight:600;">Отчёт о результатах и достижениях студента</p>
+  </div>`;
+
+        let _stState = null;
+        // { mode: 'create'|'edit', reportId, teacherId, teacherName, studentId, studentName, token, allStudents }
+
+        function _stFormHtml() {
+            const scores = ST_SCORES.map(s => `
+      <div class="score-item"><div class="score-emoji">${s.emoji}</div><div class="score-label">${escapeHtml(s.label)}</div><input type="text" class="score-input" id="st_score_${s.key}" placeholder="—" maxlength="3" inputmode="numeric"><div style="font-size:13px;color:var(--gray-text);margin-top:4px">%</div></div>`).join('');
+            const checks = (group, cls) => ST_CHECKS[group].items.filter(it => !it.hidden).map(it => `
+        <label class="fb-option" style="margin:0;font-weight:inherit;"><input type="checkbox" id="st_chk_${group}_${it.key}"${cls ? ` class="${cls}"` : ''}><div class="fb-text"><div class="fb-ru">${escapeHtml(it.text)}</div></div></label>`).join('');
+            const today = new Date().toISOString().slice(0, 10);
+            return `
+<div class="tracker-content-rus" id="simpleTrackerRoot">
+<div class="container">
+  ${ST_HEADER_HTML}
+
+  <div class="card pink">
+    <div class="card-title"><span class="emoji">👤</span> Информация о студенте</div>
+    <div class="card-subtitle">Выберите ученика из базы — без этого трекер не сохранится и родитель его не получит</div>
+    <div style="position:relative; margin-bottom:14px;">
+      <label style="margin-top:0;">🔎 Найти ученика</label>
+      <div id="st_studentBadge" style="display:none; padding:8px 12px; background:#dcfce7; color:#166534; border-radius:8px; margin-bottom:6px; font-size:13px;"></div>
+      <input type="text" id="st_studentSearch" placeholder="Начните вводить имя ученика или родителя…" autocomplete="off">
+      <label style="display:flex; align-items:center; gap:6px; font-weight:600; font-size:13px; margin-top:6px; color:var(--gray-text);">
+        <input type="checkbox" id="st_allStudents" style="width:auto;"> Искать среди всех учеников школы
+      </label>
+      <div id="st_studentDropdown" style="display:none; position:absolute; top:76px; left:0; right:0; max-height:280px; overflow-y:auto; background:white; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.08); z-index:100;"></div>
+    </div>
+    <div class="row">
+      <div><label>Имя</label><input type="text" id="st_firstName" placeholder="напр. Петя"></div>
+      <div><label>Фамилия</label><input type="text" id="st_lastName" placeholder="напр. Петров"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div><label>Преподаватель</label><input type="text" id="st_teacherName"></div>
+      <div><label>Кол-во уроков</label><input type="text" id="st_lessonsCount" placeholder="напр. 8"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div><label>Начало периода</label><input type="date" id="st_periodFrom"></div>
+      <div><label>Конец периода</label><input type="date" id="st_periodTo" value="${today}"></div>
+    </div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title"><span class="emoji">📖</span> Что прошли</div>
+    <div class="card-subtitle">Темы и материал за период — своими словами</div>
+    <textarea id="st_covered" placeholder="Например: Present Simple, тема «Моя семья», числа до 100…"></textarea>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title"><span class="emoji">📊</span> Результаты тестов</div>
+    <div class="card-subtitle">В процентах. Что не проверяли — оставьте пустым, родитель этого не увидит</div>
+    <div class="scores-grid">${scores}
+    </div>
+  </div>
+
+  <div class="card pink">
+    <div class="card-title"><span class="emoji">🧒</span> Поведение на уроке</div>
+    <div class="card-subtitle">Как студент ведёт себя на уроках?</div>
+    <div class="fb-grid">
+      <div class="fb-col" style="background:#E8F0FE">
+        <h3 style="color:var(--purple)">${ST_CHECKS.behaviorGood.title}</h3>${checks('behaviorGood', 'beh-check-pos')}
+      </div>
+      <div class="fb-col" style="background:#FFF3E0">
+        <h3 style="color:var(--orange)">${ST_CHECKS.behaviorWork.title}</h3>${checks('behaviorWork', 'beh-check-neg')}
+      </div>
+    </div>
+  </div>
+
+  <div class="card green">
+    <div class="card-title"><span class="emoji">🌟</span> Какой прогресс у студента?</div>
+    <div class="card-subtitle">Отметьте подходящие пункты и добавьте комментарий</div>
+    <div class="fb-grid">
+      <div class="fb-col strengths-col">
+        <h3>${ST_CHECKS.good.title}</h3>${checks('good', '')}
+      </div>
+      <div class="fb-col improve-col">
+        <h3>${ST_CHECKS.improve.title}</h3>${checks('improve', '')}
+      </div>
+    </div>
+    <div class="comment-box">
+      <label>💬 Комментарий преподавателя</label>
+      <textarea id="st_comment" placeholder="Ваши наблюдения, что получилось, на что обратить внимание…"></textarea>
+    </div>
+  </div>
+
+  <div class="card pink">
+    <div class="card-title"><span class="emoji">💡</span> Рекомендации на ближайшее время</div>
+    <div class="card-subtitle">Выберите рекомендации для студента</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">${checks('recommend', 'beh-check-pos')}
+    </div>
+  </div>
+  ${ST_BANNERS_HTML}
+</div>
+</div>`;
+        }
+
+        // Страница для родителя: только заполненное, без полей ввода
+        function _stViewHtml(fd, studentNameFallback) {
+            fd = fd || {};
+            const esc = s => escapeHtml(String(s == null ? '' : s));
+            const nl2br = s => esc(s).replace(/\r?\n/g, '<br>');
+            const name = [fd.firstName, fd.lastName].filter(Boolean).join(' ') || studentNameFallback || '';
+            const fmt = d => {
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return '';
+                const [y, m, dd] = d.split('-');
+                return `${dd}.${m}.${y}`;
+            };
+            const period = (fd.periodFrom || fd.periodTo)
+                ? [fmt(fd.periodFrom), fmt(fd.periodTo)].filter(Boolean).join(' — ') : '';
+            const infoRow = (label, value) => value ? `
+      <div style="padding:6px 0;"><div style="font-size:13px;color:var(--gray-text);font-weight:600;">${label}</div><div style="font-size:16px;font-weight:800;">${esc(value)}</div></div>` : '';
+            const checks = fd.checks || {};
+            const picked = group => (checks[group] || [])
+                .map(k => ST_CHECKS[group].items.find(it => it.key === k))
+                .filter(Boolean);
+            const list = (group, cls) => picked(group).map(it => `
+        <div class="fb-option"><input type="checkbox" checked disabled${cls ? ` class="${cls}"` : ''}><div class="fb-text"><div class="fb-ru">${esc(it.text)}</div></div></div>`).join('');
+            const col = (group, cls, style, h3style) => picked(group).length ? `
+      <div class="fb-col ${style.cls || ''}" style="${style.css || ''}">
+        <h3${h3style ? ` style="${h3style}"` : ''}>${ST_CHECKS[group].title}</h3>${list(group, cls)}
+      </div>` : '';
+
+            const scores = ST_SCORES.filter(s => String((fd.scores || {})[s.key] || '').trim() !== '');
+            const behavior = col('behaviorGood', 'beh-check-pos', { css: 'background:#E8F0FE' }, 'color:var(--purple)')
+                + col('behaviorWork', 'beh-check-neg', { css: 'background:#FFF3E0' }, 'color:var(--orange)');
+            const progress = col('good', '', { cls: 'strengths-col' }) + col('improve', '', { cls: 'improve-col' });
+            const recommend = list('recommend', 'beh-check-pos');
+
+            return `
+<div class="tracker-content-rus">
+<div class="container">
+  ${ST_HEADER_HTML}
+
+  <div class="card pink">
+    <div class="card-title"><span class="emoji">👤</span> Информация о студенте</div>
+    <div class="row">${infoRow('Студент', name)}${infoRow('Преподаватель', fd.teacherName)}</div>
+    <div class="row">${infoRow('Период', period)}${infoRow('Кол-во уроков', fd.lessonsCount)}</div>
+  </div>
+  ${fd.covered ? `
+  <div class="card purple">
+    <div class="card-title"><span class="emoji">📖</span> Что прошли</div>
+    <div style="font-size:15px;line-height:1.6;">${nl2br(fd.covered)}</div>
+  </div>` : ''}
+  ${scores.length ? `
+  <div class="card purple">
+    <div class="card-title"><span class="emoji">📊</span> Результаты тестов</div>
+    <div class="scores-grid">${scores.map(s => `
+      <div class="score-item"><div class="score-emoji">${s.emoji}</div><div class="score-label">${esc(s.label)}</div><div style="font-size:24px;font-weight:800;">${esc(fd.scores[s.key])}%</div></div>`).join('')}
+    </div>
+  </div>` : ''}
+  ${behavior ? `
+  <div class="card pink">
+    <div class="card-title"><span class="emoji">🧒</span> Поведение на уроке</div>
+    <div class="fb-grid">${behavior}
+    </div>
+  </div>` : ''}
+  ${(progress || fd.comment) ? `
+  <div class="card green">
+    <div class="card-title"><span class="emoji">🌟</span> Какой прогресс у студента?</div>
+    ${progress ? `<div class="fb-grid">${progress}
+    </div>` : ''}
+    ${fd.comment ? `<div class="comment-box"><div style="font-weight:800;margin-bottom:6px;">💬 Комментарий преподавателя</div><div style="font-size:15px;line-height:1.6;">${nl2br(fd.comment)}</div></div>` : ''}
+  </div>` : ''}
+  ${recommend ? `
+  <div class="card pink">
+    <div class="card-title"><span class="emoji">💡</span> Рекомендации на ближайшее время</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">${recommend}
+    </div>
+  </div>` : ''}
+  ${ST_BANNERS_HTML}
+</div>
+</div>`;
+        }
+
+        function _stFill(fd) {
+            fd = fd || {};
+            const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+            ['firstName', 'lastName', 'teacherName', 'lessonsCount', 'periodFrom', 'periodTo', 'covered', 'comment']
+                .forEach(k => set('st_' + k, fd[k]));
+            ST_SCORES.forEach(s => set('st_score_' + s.key, (fd.scores || {})[s.key]));
+            Object.keys(ST_CHECKS).forEach(g => {
+                ((fd.checks || {})[g] || []).forEach(k => {
+                    const el = document.getElementById(`st_chk_${g}_${k}`);
+                    if (el) el.checked = true;
+                });
+            });
+        }
+
+        function _stCollect() {
+            const v = id => (document.getElementById(id)?.value || '').trim();
+            const fd = {
+                v: 1,
+                firstName: v('st_firstName'), lastName: v('st_lastName'),
+                teacherName: v('st_teacherName'), lessonsCount: v('st_lessonsCount'),
+                periodFrom: v('st_periodFrom'), periodTo: v('st_periodTo'),
+                covered: v('st_covered'), comment: v('st_comment'),
+                scores: {}, checks: {}
+            };
+            ST_SCORES.forEach(s => {
+                const x = v('st_score_' + s.key).replace(/\s*%$/, '');
+                if (x) fd.scores[s.key] = x;
+            });
+            // Ключи, которых нет в форме (скрытые пункты), сохраняем как были,
+            // чтобы пересохранение старого отчёта их не теряло
+            const prev = (_stState && _stState.existingData && _stState.existingData.checks) || {};
+            Object.keys(ST_CHECKS).forEach(g => {
+                const shown = ST_CHECKS[g].items.filter(it => !it.hidden);
+                const keep = (prev[g] || []).filter(k => !shown.some(it => it.key === k));
+                fd.checks[g] = keep.concat(shown
+                    .filter(it => document.getElementById(`st_chk_${g}_${it.key}`)?.checked)
+                    .map(it => it.key));
+            });
+            return fd;
+        }
+
+        function _stMyTeacher() {
+            let t = currentTeacher ? findTeacher(currentTeacher) : null;
+            if (!t && currentAppUser) t = teachersFromDb.find(x => x.userId === currentAppUser.id);
+            return t || null;
+        }
+
+        function openNewSimpleTracker() {
+            const t = _stMyTeacher();
+            if (!t) {
+                alert('Не удалось определить преподавателя. Зайдите в свой дашборд.');
+                return;
+            }
+            _stState = { mode: 'create', reportId: null, teacherId: t.id, teacherName: t.name,
+                         studentId: null, studentName: null, token: null, existingData: null };
+            _stOpenModal();
+            const tn = document.getElementById('st_teacherName');
+            if (tn) tn.value = t.name || '';
+            setTimeout(() => offerRestoreDraft('simpleTrackerModal'), 200);
+        }
+
+        async function openSimpleTrackerForEdit(reportId) {
+            try {
+                const { data, error } = await sb.from('teacher_reports')
+                    .select('*').eq('id', reportId).single();
+                if (error) throw error;
+                let studentName = data.student_name;
+                if (data.student_id) {
+                    const { data: stu } = await sb.from('students').select('name')
+                        .eq('id', data.student_id).maybeSingle();
+                    if (stu) studentName = stu.name;
+                }
+                _stState = {
+                    mode: 'edit', reportId: data.id, teacherId: data.teacher_id,
+                    teacherName: (teachersFromDb.find(t => t.id === data.teacher_id)?.name) || '',
+                    studentId: data.student_id || null, studentName,
+                    token: data.parent_view_token || null, existingData: data.form_data || {}
+                };
+                _stOpenModal();
+                _stFill(_stState.existingData);
+            } catch (e) {
+                console.error(e);
+                alert('Не удалось открыть: ' + (e.message || e));
+            }
+        }
+
+        function _stOpenModal() {
+            const modal = document.getElementById('simpleTrackerModal');
+            const content = document.getElementById('simpleTrackerContent');
+            if (!modal || !content) return;
+            document.getElementById('simpleTrackerTitle').textContent =
+                _stState.mode === 'create' ? '📝 Новый простой трекер' : '📝 Простой трекер';
+            content.innerHTML = _stFormHtml();
+            modal.dataset.dirty = '0';
+            modal.style.display = 'flex';
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            _stRefreshButtons();
+            _stUpdateBadge();
+
+            const inp = document.getElementById('st_studentSearch');
+            const dd = document.getElementById('st_studentDropdown');
+            inp.addEventListener('input', _stOnSearch);
+            inp.addEventListener('focus', _stOnSearch);
+            inp.addEventListener('blur', () => setTimeout(() => { dd.style.display = 'none'; }, 150));
+            document.getElementById('st_allStudents').addEventListener('change', () => _stOnSearch());
+            ['st_periodFrom', 'st_periodTo'].forEach(id =>
+                document.getElementById(id).addEventListener('change', _stRefreshLessonsCount));
+            loadMkStudents();
+
+            content.querySelectorAll('textarea').forEach(ta => {
+                ta.style.overflow = 'hidden';
+                ta.style.resize = 'none';
+                ta.addEventListener('input', () => _autosizeTextarea(ta));
+                setTimeout(() => _autosizeTextarea(ta), 0);
+            });
+            content.scrollTop = 0;
+        }
+
+        function _stRefreshButtons() {
+            const link = document.getElementById('simpleTrackerLinkBtn');
+            const del = document.getElementById('simpleTrackerDeleteBtn');
+            if (link) link.style.display = (_stState && _stState.token) ? '' : 'none';
+            if (del) del.style.display = (_stState && _stState.reportId) ? '' : 'none';
+        }
+
+        function _stUpdateBadge() {
+            const b = document.getElementById('st_studentBadge');
+            if (!b) return;
+            if (_stState && _stState.studentId) {
+                b.innerHTML = `📎 Привязан к ученику в базе: <strong>${escapeHtml(_stState.studentName || '')}</strong>`;
+                b.style.display = 'block';
+            } else {
+                b.style.display = 'none';
+            }
+        }
+
+        async function _stOnSearch() {
+            const inp = document.getElementById('st_studentSearch');
+            const dd = document.getElementById('st_studentDropdown');
+            if (!inp || !dd) return;
+            const q = (inp.value || '').trim().toLowerCase();
+            if (!q) { dd.style.display = 'none'; return; }
+            const list = await loadMkStudents();
+            const mineOnly = !document.getElementById('st_allStudents')?.checked && !!_stState?.teacherId;
+            const matches = list.filter(s => {
+                if (mineOnly && !(s.assigned_teacher_ids || []).includes(_stState.teacherId)) return false;
+                const n = (s.name || '').toLowerCase();
+                const p = (s.parent_text || '').toLowerCase();
+                if (n.includes(q) || p.includes(q)) return true;
+                if (/[a-z]/.test(q)) {
+                    if (_translit(n).includes(q) || _translit(p).includes(q)) return true;
+                    const ql = _translitLoose(q);
+                    if (ql.length >= 3 && (_translitLoose(n).includes(ql) || _translitLoose(p).includes(ql))) return true;
+                }
+                return false;
+            });
+            const starts = nm => { const l = (nm || '').toLowerCase(); return (l.startsWith(q) || _translit(l).startsWith(q)) ? 0 : 1; };
+            matches.sort((a, b) => (starts(a.name) - starts(b.name)) || (a.name || '').localeCompare(b.name || '', 'ru'));
+            const top = matches.slice(0, 20);
+            dd.innerHTML = top.length ? top.map(s => {
+                const age = computeAge(s.birth_date);
+                return `<div style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:14px;" onmouseenter="this.style.background='#fafafa'" onmouseleave="this.style.background='white'" onmousedown="_stSelectStudent('${s.id}', event)">
+                        <div style="font-weight:600;">${escapeHtml(s.name)}${age ? `<span style="color:#94a3b8; font-size:12px;"> · ${age}</span>` : ''}</div>
+                        ${s.parent_text ? `<div style="font-size:12px; color:#7c3aed;">👨‍👩‍👧 ${escapeHtml(s.parent_text)}</div>` : ''}
+                    </div>`;
+            }).join('') : `<div style="padding:12px 14px; color:#94a3b8; font-size:13px;">${mineOnly
+                ? 'Среди ваших учеников ничего не найдено — отметьте «Искать среди всех учеников школы».'
+                : 'Ничего не найдено'}</div>`;
+            dd.style.display = 'block';
+        }
+
+        function _stSelectStudent(id, evt) {
+            if (evt) evt.preventDefault();
+            const s = (_mkStudentsCache || []).find(x => x.id === id);
+            if (!s || !_stState) return;
+            _stState.studentId = s.id;
+            _stState.studentName = s.name;
+            const split = splitMkName(s.name);
+            document.getElementById('st_firstName').value = split.firstName;
+            document.getElementById('st_lastName').value = split.lastName;
+            document.getElementById('st_studentSearch').value = '';
+            document.getElementById('st_studentDropdown').style.display = 'none';
+            _stUpdateBadge();
+            _stAutoPeriodFrom();
+        }
+
+        // Начало периода — конец периода прошлого простого трекера этого ученика
+        async function _stAutoPeriodFrom() {
+            const from = document.getElementById('st_periodFrom');
+            if (!from || from.value || !_stState?.studentId || _stState.mode !== 'create') {
+                _stRefreshLessonsCount();
+                return;
+            }
+            try {
+                const { data } = await sb.from('teacher_reports')
+                    .select('form_data')
+                    .eq('student_id', _stState.studentId)
+                    .eq('teacher_id', _stState.teacherId)
+                    .eq('report_type', 'simple_tracker')
+                    .is('deleted_at', null)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                const prevTo = data && data[0] && data[0].form_data && data[0].form_data.periodTo;
+                if (prevTo && !from.value) from.value = prevTo;
+            } catch (e) { console.warn('[simple-tracker] прошлый трекер не найден', e); }
+            _stRefreshLessonsCount();
+        }
+
+        // Число проведённых уроков за период — так же, как в обычном трекере
+        async function _stRefreshLessonsCount() {
+            if (!_stState?.studentId || !_stState.teacherId) return;
+            const from = document.getElementById('st_periodFrom')?.value;
+            const to = document.getElementById('st_periodTo')?.value;
+            const cnt = document.getElementById('st_lessonsCount');
+            if (!from || !to || !cnt) return;
+            try {
+                const { data, error } = await sb.from('mk_lessons')
+                    .select('id, mk_lesson_students!inner(student_id)')
+                    .eq('primary_teacher_id', _stState.teacherId)
+                    .eq('status', 1)
+                    .gte('lesson_date', from)
+                    .lte('lesson_date', to)
+                    .eq('mk_lesson_students.student_id', _stState.studentId);
+                if (error) throw error;
+                cnt.value = (data || []).length;
+            } catch (e) { console.warn('[simple-tracker] не посчитать уроки', e); }
+        }
+
+        async function saveSimpleTracker() {
+            if (!_stState) return;
+            const fd = _stCollect();
+            const studentName = [fd.firstName, fd.lastName].filter(Boolean).join(' ');
+            if (!_stState.studentId) {
+                alert('Выберите ученика из базы через поиск — иначе трекер не привяжется к ученику и родитель его не получит.');
+                return;
+            }
+            if (!studentName) {
+                alert('Введите имя и фамилию ученика');
+                return;
+            }
+            const bad = ST_SCORES.find(s => fd.scores[s.key] && !/^\d{1,3}$/.test(fd.scores[s.key]));
+            if (bad) {
+                alert(`«${bad.label}»: результат теста — число процентов, например 85.`);
+                return;
+            }
+            if (_stState.mode === 'create' && !confirm(
+                'После сохранения родителю уйдёт письмо со ссылкой на этот трекер.\n\n'
+                + 'Исправить трекер можно будет и потом — по ссылке родитель увидит исправленный вариант.\n\nСохранить?')) {
+                return;
+            }
+
+            const btn = document.getElementById('simpleTrackerSaveBtn');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Сохраняю…';
+            try {
+                if (_stState.mode === 'create') {
+                    const { data, error } = await sb.from('teacher_reports').insert({
+                        teacher_id:   _stState.teacherId,
+                        report_type:  'simple_tracker',
+                        student_name: studentName,
+                        student_id:   _stState.studentId,
+                        program:      null,
+                        language:     'ru',
+                        form_data:    fd,
+                        created_by:   currentAppUser?.id,
+                        updated_by:   currentAppUser?.id
+                    }).select('id, parent_view_token').single();
+                    if (error) throw error;
+                    _stState.reportId = data.id;
+                    _stState.token = data.parent_view_token || null;
+                    alert('Трекер сохранён! Родителю уйдёт письмо со ссылкой.');
+                } else {
+                    const { error } = await sb.from('teacher_reports').update({
+                        student_name: studentName,
+                        student_id:   _stState.studentId,
+                        form_data:    fd,
+                        updated_by:   currentAppUser?.id
+                    }).eq('id', _stState.reportId);
+                    if (error) throw error;
+                    alert('Изменения сохранены!');
+                }
+                closeSimpleTrackerModal();
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка сохранения: ' + (e.message || e));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        }
+
+        // Удаление — пометкой deleted_at: ссылка у родителя перестаёт
+        // открываться, а сама запись остаётся в базе
+        async function deleteSimpleTracker() {
+            if (!_stState || !_stState.reportId) return;
+            if (!confirm(`Удалить трекер для «${_stState.studentName || 'ученика'}»?\n\nСсылка у родителя перестанет открываться.`)) return;
+            try {
+                const { error } = await sb.from('teacher_reports').update({
+                    deleted_at: new Date().toISOString(),
+                    deleted_by: currentAppUser?.id || null
+                }).eq('id', _stState.reportId);
+                if (error) throw error;
+                closeSimpleTrackerModal();
+            } catch (e) {
+                alert('Не удалось удалить: ' + (e.message || e));
+            }
+        }
+
+        function copySimpleTrackerLink() {
+            if (!_stState || !_stState.token) { alert('Сначала сохраните трекер'); return; }
+            const url = `${location.origin}${location.pathname}?report=${_stState.token}`;
+            const done = () => alert('✅ Ссылка скопирована:\n\n' + url);
+            const fallback = () => {
+                const ta = document.createElement('textarea');
+                ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); } catch (e) {}
+                document.body.removeChild(ta);
+                done();
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(done, fallback);
+            } else {
+                fallback();
+            }
+        }
+
+        function closeSimpleTrackerModal() {
+            const modal = document.getElementById('simpleTrackerModal');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('open');
+                modal.dataset.dirty = '0';
+            }
+            const content = document.getElementById('simpleTrackerContent');
+            if (content) content.innerHTML = '';
+            document.body.style.overflow = '';
+            _stState = null;
+            clearDraft('simpleTrackerModal');
+            if (document.getElementById('repSubSimple')?.classList.contains('active')) renderSimpleTrackersList();
+            if (document.getElementById('adminSimpleTab')?.style.display !== 'none') renderAdminSimpleTrackersList();
+        }
+
+        function _stRowsHtml(rows, withTeacher) {
+            return rows.map(r => {
+                const t = withTeacher ? (teachersFromDb.find(x => x.id === r.teacher_id)?.name || '?') : '';
+                return `
+                    <div class="tracker-row">
+                        <div class="tracker-row-info">
+                            <div class="tracker-row-title">
+                                ${withTeacher ? `<span>📚 ${escapeHtml(t)}</span><span style="color:#94a3b8;">→</span>` : ''}
+                                <span>👤 ${escapeHtml(r.student_name || '—')}</span>
+                            </div>
+                            <div class="tracker-row-meta">📅 ${formatDateRu(r.created_at)}${r.updated_at && r.updated_at !== r.created_at ? ' · обновлён ' + formatDateRu(r.updated_at) : ''}</div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="openSimpleTrackerForEdit('${r.id}')">Открыть</button>
+                    </div>`;
+            }).join('');
+        }
+
+        async function _stLoadRows(limit) {
+            const { data, error } = await sb.from('teacher_reports')
+                .select('id, teacher_id, student_name, created_at, updated_at')
+                .eq('report_type', 'simple_tracker')
+                .is('deleted_at', null)
+                .order('updated_at', { ascending: false })
+                .limit(limit);
+            if (error) throw error;
+            return data || [];
+        }
+
+        // Список у преподавателя — только свои (это делает политика доступа)
+        async function renderSimpleTrackersList() {
+            const wrap = document.getElementById('simpleTrackersListWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+            try {
+                let rows = await _stLoadRows(200);
+                const q = (document.getElementById('simpleTrackersSearch')?.value || '').trim().toLowerCase();
+                if (q) rows = rows.filter(r => (r.student_name || '').toLowerCase().includes(q));
+                wrap.innerHTML = rows.length ? _stRowsHtml(rows, false)
+                    : `<div class="analytics-empty" style="padding:2rem; text-align:center; color:#94a3b8;">${q ? 'Ничего не найдено' : 'Пока простых трекеров нет. Нажмите «+ Простой трекер».'}</div>`;
+            } catch (e) {
+                console.error(e);
+                wrap.innerHTML = '<div class="analytics-empty">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
+            }
+        }
+
+        async function renderAdminSimpleTrackersList() {
+            const wrap = document.getElementById('adminSimpleTrackersListWrap');
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="analytics-loading">Загрузка…</div>';
+            try {
+                let rows = await _stLoadRows(500);
+                const q = (document.getElementById('adminSimpleTrackersSearch')?.value || '').trim().toLowerCase();
+                if (q) rows = rows.filter(r =>
+                    (r.student_name || '').toLowerCase().includes(q) ||
+                    (teachersFromDb.find(x => x.id === r.teacher_id)?.name || '').toLowerCase().includes(q));
+                wrap.innerHTML = rows.length ? _stRowsHtml(rows, true)
+                    : '<div class="analytics-empty" style="padding:2rem; text-align:center; color:#94a3b8;">Простых трекеров пока нет</div>';
+            } catch (e) {
+                console.error(e);
+                wrap.innerHTML = '<div class="analytics-empty">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
+            }
+        }
+
+        // Страница для родителя: ?report=TOKEN. Отдельный вход, чтобы не
+        // трогать ?parent_view= обычного трекера. Отчёт берём той же
+        // функцией базы, что и parent_view, но показываем только simple_tracker.
+        async function bootSimpleReportIfNeeded() {
+            const token = new URLSearchParams(window.location.search).get('report');
+            if (!token) return false;
+
+            document.getElementById('loginScreen').style.display = 'none';
+            const mainApp = document.getElementById('mainApp');
+            if (mainApp) mainApp.style.display = 'none';
+            const dash = document.getElementById('teacherDashboard');
+            if (dash) dash.style.display = 'none';
+            const sideNav = document.getElementById('sideNav');
+            if (sideNav) sideNav.style.display = 'none';
+            document.body.classList.remove('has-sidebar');
+
+            const wrap = document.createElement('div');
+            wrap.id = 'simpleReportWrap';
+            wrap.style.cssText = 'min-height:100vh; background:#E8F0FE;';
+            wrap.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">Загрузка отчёта…</div>';
+            document.body.appendChild(wrap);
+
+            const notFound = '<div style="text-align:center; padding:3rem;"><h2>Отчёт не найден</h2><p style="color:#64748b;">Ссылка устарела или недействительна.</p></div>';
+            if (!/^[0-9a-f-]{36}$/i.test(token)) { wrap.innerHTML = notFound; return true; }
+            try {
+                const { data, error } = await sb.rpc('get_report_by_parent_token', { token });
+                if (error) throw error;
+                if (!data || data.report_type !== 'simple_tracker') { wrap.innerHTML = notFound; return true; }
+                wrap.innerHTML = _stViewHtml(data.form_data || {}, data.student_name);
+                document.title = 'Результаты и достижения — WOW Speak';
+            } catch (e) {
+                console.error('[simple-report]', e);
+                wrap.innerHTML = '<div style="text-align:center; padding:3rem;"><h2>Ошибка</h2><p style="color:#64748b;">' + escapeHtml(e.message || String(e)) + '</p></div>';
+            }
+            return true;
+        }
     </script>
 
 <!-- Шаблон формы трекера прогресса (RU). Используется через cloneNode при открытии. -->
