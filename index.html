@@ -6408,6 +6408,39 @@
     font-size: 12px;
   }
   body.has-update-banner { padding-top: 44px; }
+
+  /* ===== Баннер «вход истёк» (10.10.2026) ===== */
+  #sessionLostBanner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100000;
+    background: #fee2e2;
+    border-bottom: 1px solid #ef4444;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #7f1d1d;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-family: inherit;
+    flex-wrap: wrap;
+  }
+  #sessionLostBanner.show { display: flex; }
+  #sessionLostBanner button {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    background: #dc2626;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  #sessionLostBanner button:hover { background: #b91c1c; }
+  body.has-session-banner { padding-top: 44px; }
 </style>
 </head>
 <body>
@@ -6416,6 +6449,11 @@
         <span>🆕 Платформа обновилась — нажмите чтобы загрузить новую версию</span>
         <button class="upd-btn" onclick="applyUpdate()">Обновить</button>
         <button class="upd-close" onclick="dismissUpdate()" title="Скрыть до следующей загрузки">×</button>
+    </div>
+    <!-- Баннер «вход истёк»: см. showSessionLostBanner() -->
+    <div id="sessionLostBanner">
+        <span>⚠️ Вход в систему истёк — изменения не сохранятся. Скопируйте несохранённый текст и войдите заново.</span>
+        <button onclick="reloginAfterSessionLost()">Войти заново</button>
     </div>
 
     <!-- Модалка привязки к МойКласс -->
@@ -9580,6 +9618,55 @@
 
         // Текущий пользователь приложения (запись из нашей таблицы users)
         let currentAppUser = null;
+
+        // ============ ПОТЕРЯ СЕССИИ ============
+        // 10.10.2026, по решению владельца. Если вход слетел (токен не
+        // продлился, сессию стёрла другая вкладка или train.wowteach.ru),
+        // приложение оставалось открытым, а запросы уходили анонимно — база
+        // отвечала непонятным «new row violates row-level security policy».
+        // Теперь показываем баннер. Страницу сами не перезагружаем, чтобы не
+        // пропали заполненные формы.
+        let _sbManualLogout = false;   // выход по кнопке — баннер не нужен
+
+        // true — сессии точно нет. Сбой сети при продлении токена потерей
+        // не считаем: сессия в хранилище остаётся, следующий запрос её продлит.
+        async function sbSessionMissing() {
+            try {
+                const { data, error } = await sb.auth.getSession();
+                return !data?.session && !error;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function showSessionLostBanner() {
+            const b = document.getElementById('sessionLostBanner');
+            if (!b || b.classList.contains('show')) return;
+            b.classList.add('show');
+            document.body.classList.add('has-session-banner');
+        }
+
+        function reloginAfterSessionLost() {
+            if (!confirm('Страница перезагрузится, несохранённые данные в открытых формах пропадут. Всё нужное скопировали?')) return;
+            location.reload();
+        }
+
+        async function checkSessionAlive() {
+            if (!currentAppUser || _sbManualLogout) return;
+            if (await sbSessionMissing()) showSessionLostBanner();
+        }
+
+        // Внутри обработчика нельзя вызывать методы sb.auth — supabase-js
+        // держит в это время блокировку, вызов повиснет.
+        sb.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_OUT' && currentAppUser && !_sbManualLogout) showSessionLostBanner();
+        });
+        // Сессию могли стереть из другой вкладки или с поддомена — тогда
+        // событие сюда не придёт. Проверяем при возврате на вкладку и раз в минуту.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkSessionAlive();
+        });
+        setInterval(checkSessionAlive, 60000);
     </script>
 
     <script>
@@ -10564,8 +10651,11 @@
         }
 
         async function logout() {
+            // Флаг — чтобы при выходе по кнопке не всплыл баннер «вход истёк»
+            _sbManualLogout = true;
             try { await sb.auth.signOut(); } catch (e) {}
             currentAppUser = null;
+            _sbManualLogout = false;
             teachersFromDb = [];
             // Очищаем URL (чтобы не остаться в дашборде после повторного логина)
             history.replaceState(null, '', location.pathname + location.search);
@@ -17100,7 +17190,14 @@
                 if (_assMainTab === 'assessments') renderAssessmentsMonthList();
             } catch (e) {
                 console.error(e);
-                alert('Не удалось сохранить: ' + (e.message || e));
+                // 10.10.2026: при слетевшем входе база отвечает «row-level
+                // security» — пользователь не понимал, что делать.
+                if (await sbSessionMissing()) {
+                    showSessionLostBanner();
+                    alert('Не удалось сохранить: вход в систему истёк.\n\nФорма не закрыта. Скопируйте комментарий и другой текст, затем нажмите «Войти заново» вверху страницы и заполните форму снова.');
+                } else {
+                    alert('Не удалось сохранить: ' + (e.message || e));
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = origTxt;
