@@ -9453,6 +9453,11 @@
         const SUPABASE_URL    = SUPABASE_PROXY;
         const SUPABASE_KEY    = 'sb_publishable_nZIl9kzPNhkd9Gbsm7aAgA_cAeY1s4x';
         const SB_PROXY_TIMEOUT_MS = 3000;
+        // Загрузка файла в хранилище (чат, фото преподавателя) ждёт дольше:
+        // fetch получает ответ только после того, как весь файл ушёл, а 20 МБ
+        // на медленном интернете — это минуты. С общими 3 с большой файл
+        // не загружался вовсе. 12.10.2026, решение операционного директора.
+        const SB_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
         let _sbHostIdx = 0;   // какой адрес сейчас рабочий
 
@@ -9526,6 +9531,9 @@
             // его не отличить от записи. Без проверки имени функции публичные
             // страницы теряли переключение на запасной адрес: медленный прокси
             // давал AbortError на первом же хосте вместо отчёта.
+            const isUpload = (method === 'POST' || method === 'PUT')
+                && urlStr.includes('/storage/v1/object/');
+            const timeoutMs = isUpload ? SB_UPLOAD_TIMEOUT_MS : SB_PROXY_TIMEOUT_MS;
             const canRetry = method === 'GET' || method === 'HEAD'
                 || urlStr.includes('/auth/v1/')
                 || _sbIsReadOnlyRpc(urlStr);
@@ -9534,7 +9542,7 @@
                 const target = _sbSwapHost(urlStr);
                 const isLast = _sbHostIdx >= SUPABASE_HOSTS.length - 1;
                 const ctrl = new AbortController();
-                const timer = setTimeout(() => ctrl.abort(), SB_PROXY_TIMEOUT_MS);
+                const timer = setTimeout(() => ctrl.abort(), timeoutMs);
                 const onAbort = () => ctrl.abort();
                 if (init.signal) init.signal.addEventListener('abort', onAbort, { once: true });
                 try {
