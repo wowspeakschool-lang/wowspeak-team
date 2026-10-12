@@ -6749,10 +6749,13 @@
                 <!-- Простые трекеры (report_type = 'simple_tracker') -->
                 <div id="repSubSimple" class="ass-subtab">
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
-                        <button class="btn btn-primary btn-small" onclick="openNewSimpleTracker()">+ Простой трекер</button>
+                        <!-- Кнопка скрыта 12.10.2026 (решение операционного директора): простой
+                             трекер, как и обычный, формируется только из урока, на который
+                             назначен трекер, и только для учеников с программой «Иная». -->
+                        <button class="btn btn-primary btn-small" onclick="openNewSimpleTracker()" style="display:none;">+ Простой трекер</button>
                         <div style="display:flex; align-items:center; gap:8px; padding:9px 13px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:13px; color:#1e40af;">
                             <span>📝</span>
-                            <span>Для программ без учебника и юнитов. После сохранения родителю уйдёт письмо со ссылкой на трекер.</span>
+                            <span>Для учеников с программой «Иная». Формируется из урока, на который назначен трекер, — там же, где обычный. После сохранения родителю уйдёт письмо со ссылкой на трекер.</span>
                         </div>
                         <input type="search" id="simpleTrackersSearch" placeholder="🔍 Поиск по ученику"
                                oninput="renderSimpleTrackersList()"
@@ -20296,7 +20299,15 @@
 
             const first = pending[0];
             const stu = (st.students || []).find(s => s.student_id === first.student_id);
+            const lessonTeacherId = st.lesson?.primary_teacher_id || null;
+            const simple = st.simpleTrackerFor?.has(first.student_id);
             closeLessonModal();
+
+            // Программа «Иная» — простой трекер (12.10.2026)
+            if (simple) {
+                await openSimpleTrackerFromLesson(first, lessonTeacherId);
+                return;
+            }
 
             if (typeof openNewTrackerModal !== 'function') {
                 alert('Не удалось открыть трекер прогресса');
@@ -30636,10 +30647,12 @@
                 try {
                     const sids = students.map(s => s.student_id).filter(Boolean);
                     if (sids.length) {
+                        // Простой трекер (программа «Иная») закрывает запрос так же,
+                        // как обычный — 12.10.2026, решение операционного директора.
                         const { data: tr } = await sb.from('teacher_reports')
-                            .select('id, student_id, parent_view_token, created_at, program')
+                            .select('id, student_id, parent_view_token, created_at, program, report_type')
                             .in('student_id', sids)
-                            .eq('report_type', 'progress_tracker')
+                            .in('report_type', ['progress_tracker', 'simple_tracker'])
                             .is('deleted_at', null)
                             .order('created_at', { ascending: false })
                             .limit(50);
@@ -30653,12 +30666,24 @@
                         .map(r => r.report_id))];
                     if (missing.length) {
                         const { data: extra } = await sb.from('teacher_reports')
-                            .select('id, student_id, parent_view_token, created_at, program')
+                            .select('id, student_id, parent_view_token, created_at, program, report_type')
                             .in('id', missing)
                             .is('deleted_at', null);
                         trackerRows = trackerRows.concat(extra || []);
                     }
                 } catch (e) { console.warn('[tracker] не загрузилось', e); }
+
+                // Ученики с программой «Иная» получают простой трекер вместо
+                // обычного — 12.10.2026, решение операционного директора.
+                const simpleTrackerFor = new Set();
+                try {
+                    const sids = students.map(s => s.student_id).filter(Boolean);
+                    if (sids.length) {
+                        const { data: lv } = await sb.from('students')
+                            .select('id, level').in('id', sids);
+                        for (const x of (lv || [])) if (x.level === 'Иная') simpleTrackerFor.add(x.id);
+                    }
+                } catch (e) { console.warn('[tracker] программа учеников не загрузилась', e); }
 
                 // Закрытый запрос знает свой трекер по report_id. Открытый —
                 // по тому, что после него у этого ученика появился трекер.
@@ -30679,7 +30704,8 @@
                     sb.from('feedback_requests').update({
                         report_id: r.tracker_done.id,
                         report_url: r.tracker_done.parent_view_token
-                            ? location.origin + '/?parent_view=' + r.tracker_done.parent_view_token
+                            ? location.origin + (r.tracker_done.report_type === 'simple_tracker' ? '/?report=' : '/?parent_view=')
+                                + r.tracker_done.parent_view_token
                             : null,
                         status: 'done',
                         updated_at: new Date().toISOString(),
@@ -30698,6 +30724,7 @@
                     // преподавателя просто не спросят.
                     prevChecked: false,
                     feedback: feedbackRows,
+                    simpleTrackerFor,
                     trackers: trackerRows,
                     pu: puStudents,
                     puReports,
@@ -31022,7 +31049,7 @@
                             ${fbPending.map(r => `<div style="font-size:13px; color:#1e3a8a; margin-bottom:3px;">${fbLabel(r)}</div>`).join('')}
                             ${canEdit ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
                                     <button class="btn btn-small" style="background:#2563eb; color:white;"
-                                        onclick="openTrackerFromLesson()">Сформировать трекер прогресса</button>
+                                        onclick="openTrackerFromLesson()">${_lessonModalState?.simpleTrackerFor?.has(fbPending[0]?.student_id) ? 'Сформировать простой трекер' : 'Сформировать трекер прогресса'}</button>
                                     <button class="btn btn-small btn-secondary"
                                         title="Трекер уйдёт на следующий урок с этим учеником, домашку можно будет задать как обычно"
                                         onclick="postponeFeedback()">Перенести на следующий урок</button>
@@ -31039,7 +31066,7 @@
                                 return `<div style="font-size:13px; color:#14532d; margin-bottom:6px;">
                                         ✅ ${escapeHtml(s?.student_name || '')} — ${escapeHtml(when)}
                                         <button class="btn btn-small btn-secondary" style="margin-left:8px;"
-                                            onclick="openTrackerForEdit('${r.tracker_done.id}')">Посмотреть / изменить</button>
+                                            onclick="${r.tracker_done.report_type === 'simple_tracker' ? 'closeLessonModal(); openSimpleTrackerForEdit' : 'openTrackerForEdit'}('${r.tracker_done.id}')">Посмотреть / изменить</button>
                                     </div>`;
                             }).join('')}
                         </div>` : ''}
@@ -41727,6 +41754,30 @@ ${lessonsText || '—'}
             setTimeout(() => offerRestoreDraft('simpleTrackerModal'), 200);
         }
 
+        // Простой трекер из урока, на который назначен трекер (ученик с
+        // программой «Иная»). Ученик подставляется сам, а сохранение закрывает
+        // запрос трекера — как у обычного. 12.10.2026, решение операционного
+        // директора: вручную из «Отчётов» простой трекер больше не создаётся.
+        async function openSimpleTrackerFromLesson(fbRow, teacherId) {
+            const t = (teacherId && teachersFromDb.find(x => x.id === teacherId)) || _stMyTeacher();
+            if (!t) {
+                alert('Не удалось определить преподавателя урока.');
+                return;
+            }
+            _stState = { mode: 'create', reportId: null, teacherId: t.id, teacherName: t.name,
+                         studentId: null, studentName: null, token: null, existingData: null,
+                         feedbackRequestId: fbRow.id };
+            _stOpenModal();
+            const tn = document.getElementById('st_teacherName');
+            if (tn) tn.value = t.name || '';
+            try {
+                await loadMkStudents();
+                _stSelectStudent(fbRow.student_id);
+            } catch (e) {
+                console.warn('[simple-tracker] ученик не подставился', e);
+            }
+        }
+
         async function openSimpleTrackerForEdit(reportId) {
             try {
                 const { data, error } = await sb.from('teacher_reports')
@@ -41938,6 +41989,17 @@ ${lessonsText || '—'}
                     if (error) throw error;
                     _stState.reportId = data.id;
                     _stState.token = data.parent_view_token || null;
+                    // Открыт из урока — закрываем запрос трекера, как обычный трекер
+                    if (_stState.feedbackRequestId) {
+                        try {
+                            await sb.from('feedback_requests').update({
+                                report_id: data.id,
+                                report_url: location.origin + '/?report=' + (data.parent_view_token || ''),
+                                status: 'done',
+                                updated_at: new Date().toISOString(),
+                            }).eq('id', _stState.feedbackRequestId);
+                        } catch (e) { console.warn('[feedback] не закрылся', e); }
+                    }
                     alert('Трекер сохранён! Родителю уйдёт письмо со ссылкой.');
                 } else {
                     const { error } = await sb.from('teacher_reports').update({
