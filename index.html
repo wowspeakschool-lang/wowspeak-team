@@ -9521,6 +9521,15 @@
             }
         })();
 
+        // Загрузка файла: POST/PUT на /storage/v1/object/<корзина>/<путь>.
+        // Служебные запросы хранилища (список, ссылка, перенос, копия) идут
+        // на те же адреса методом POST, но отвечают быстро — им обычные 3 с.
+        const SB_STORAGE_SERVICE_PATHS = new Set(['list', 'sign', 'move', 'copy', 'info', 'public', 'authenticated']);
+        function _sbIsStorageUpload(urlStr) {
+            const m = urlStr.match(/\/storage\/v1\/object\/([^/?#]+)/);
+            return !!m && !SB_STORAGE_SERVICE_PATHS.has(m[1]);
+        }
+
         async function _sbFetch(input, init = {}) {
             const urlStr = typeof input === 'string' ? input : (input?.url || String(input));
             const method = (init.method || 'GET').toUpperCase();
@@ -9532,7 +9541,7 @@
             // страницы теряли переключение на запасной адрес: медленный прокси
             // давал AbortError на первом же хосте вместо отчёта.
             const isUpload = (method === 'POST' || method === 'PUT')
-                && urlStr.includes('/storage/v1/object/');
+                && _sbIsStorageUpload(urlStr);
             const timeoutMs = isUpload ? SB_UPLOAD_TIMEOUT_MS : SB_PROXY_TIMEOUT_MS;
             const canRetry = method === 'GET' || method === 'HEAD'
                 || urlStr.includes('/auth/v1/')
