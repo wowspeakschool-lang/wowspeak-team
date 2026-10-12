@@ -34647,6 +34647,8 @@
         //
         // Выбор из каталога, а не свободный текст: иначе в базе накапливаются
         // «Go getter 1» и «Go Getter 1» как два разных учебника.
+        const STUDENT_LEVEL_OTHER = 'Иная';
+
         function _renderStudentTextbookBlock(stu) {
             const TB = window.tr_TEXTBOOKS || {};
             const canEdit = canEditTextbook();
@@ -34673,11 +34675,17 @@
             const keyByName = {};
             for (const k of Object.keys(TB)) keyByName[(TB[k].name || k).trim()] = k;
             const curKey = keyByName[lvl] || '';
+            // «Иная» — программа без учебника и юнитов (испанский, школьные
+            // предметы): таким ученикам на уроке с трекером предлагается
+            // простой трекер. Пункт добавлен 12.10.2026 по решению
+            // операционного директора — раньше «Иная» приходила только из МК.
+            const isOther = lvl === STUDENT_LEVEL_OTHER;
             // Значение не из каталога не выбрасываем, а показываем отдельно —
             // иначе методист не увидит, что там стоит, и молча его затрёт
-            const offCatalog = lvl && !curKey;
+            const offCatalog = lvl && !curKey && !isOther;
 
             const tbOptions = ['<option value="">— не задан —</option>']
+                .concat([`<option value="__other__"${isOther ? ' selected' : ''}>Иная (без учебника и юнитов)</option>`])
                 .concat(offCatalog ? [`<option value="__keep__" selected>${escapeHtml(lvl)} — не из каталога</option>`] : [])
                 .concat(Object.keys(TB).map(k =>
                     `<option value="${escapeHtml(k)}"${k === curKey ? ' selected' : ''}>${escapeHtml(TB[k].name || k)}</option>`))
@@ -34739,7 +34747,9 @@
 
             const newLevel = sel.value === '__keep__'
                 ? oldLevel
-                : (sel.value ? (TB[sel.value]?.name || sel.value) : null);
+                : sel.value === '__other__'
+                    ? STUDENT_LEVEL_OTHER
+                    : (sel.value ? (TB[sel.value]?.name || sel.value) : null);
             const newUnit = unitSel.value.trim() || null;
 
             if (newLevel === oldLevel && newUnit === oldUnit) {
