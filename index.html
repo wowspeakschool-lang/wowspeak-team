@@ -8663,9 +8663,23 @@
                     </div>
 
                     <div id="assessmentCommentWrap" style="display:none;">
+                        <!-- 12.10.2026, решение операционного директора: комментарий
+                             разделён на «Положительные стороны» и «Зоны роста».
+                             В базе это по-прежнему один комментарий с подзаголовками
+                             (_assCommentSerialize); скрытое поле assessmentComment
+                             хранит итоговый текст, его читает сохранение. -->
+                        <textarea id="assessmentComment" style="display:none;"></textarea>
+                        <label class="form-field form-field-full" id="assessmentCommentOldWrap" style="margin:0 0 0.75rem; display:none;">
+                            <span style="font-size:13px; color:#475569;">Комментарий (как был записан раньше)</span>
+                            <textarea id="assessmentCommentOld" rows="4" oninput="_assCommentSync()" style="resize:vertical;"></textarea>
+                        </label>
+                        <label class="form-field form-field-full" style="margin:0 0 0.75rem;">
+                            <span style="font-size:13px; color:#166534; font-weight:600;">👍 Положительные стороны</span>
+                            <textarea id="assessmentCommentGood" rows="7" oninput="_assCommentSync()" placeholder="Что получилось на уроке" style="resize:vertical; min-height:120px;"></textarea>
+                        </label>
                         <label class="form-field form-field-full" style="margin:0;">
-                            <span style="font-size:13px; color:#475569;">Комментарий по уроку</span>
-                            <textarea id="assessmentComment" rows="14" placeholder="Свободный текст: что удалось, что улучшить" style="resize:vertical; min-height:200px;"></textarea>
+                            <span style="font-size:13px; color:#9a3412; font-weight:600;">🌱 Зоны роста</span>
+                            <textarea id="assessmentCommentGrow" rows="7" oninput="_assCommentSync()" placeholder="Над чем поработать" style="resize:vertical; min-height:120px;"></textarea>
                         </label>
                     </div>
                 </div>
@@ -12952,6 +12966,50 @@
             if (modal.dataset) modal.dataset.dirty = '0';
         }
 
+        // Комментарий ассесмента: два поля — «Положительные стороны» и
+        // «Зоны роста» (12.10.2026, решение операционного директора). В базе
+        // один текст с подзаголовками, поэтому преподаватель, выгрузки и
+        // уведомления видят его без доработок. Старый комментарий без
+        // подзаголовков не теряется: он идёт отдельным полем и первым в тексте.
+        const ASS_GOOD_HEAD = 'Положительные стороны:';
+        const ASS_GROW_HEAD = 'Зоны роста:';
+        function _assCommentParse(text) {
+            const t = String(text || '').replace(/\r/g, '');
+            const re = new RegExp('(^|\\n)(' + ASS_GOOD_HEAD + '|' + ASS_GROW_HEAD + ')\\n', 'g');
+            const marks = [];
+            let m;
+            while ((m = re.exec(t)) !== null) marks.push({ head: m[2], at: m.index + m[1].length, body: m.index + m[0].length });
+            if (!marks.length) return { old: t.trim(), good: '', grow: '' };
+            const out = { old: t.slice(0, marks[0].at).trim(), good: '', grow: '' };
+            marks.forEach((mk, i) => {
+                const val = t.slice(mk.body, i + 1 < marks.length ? marks[i + 1].at : t.length).trim();
+                if (mk.head === ASS_GOOD_HEAD) out.good = val; else out.grow = val;
+            });
+            return out;
+        }
+        function _assCommentSerialize(parts) {
+            const out = [];
+            if ((parts.old || '').trim()) out.push(parts.old.trim());
+            if ((parts.good || '').trim()) out.push(ASS_GOOD_HEAD + '\n' + parts.good.trim());
+            if ((parts.grow || '').trim()) out.push(ASS_GROW_HEAD + '\n' + parts.grow.trim());
+            return out.join('\n\n');
+        }
+        function _assCommentSet(text) {
+            const p = _assCommentParse(text);
+            document.getElementById('assessmentComment').value = text || '';
+            document.getElementById('assessmentCommentOld').value = p.old;
+            document.getElementById('assessmentCommentOldWrap').style.display = p.old ? '' : 'none';
+            document.getElementById('assessmentCommentGood').value = p.good;
+            document.getElementById('assessmentCommentGrow').value = p.grow;
+        }
+        function _assCommentSync() {
+            document.getElementById('assessmentComment').value = _assCommentSerialize({
+                old:  document.getElementById('assessmentCommentOld').value,
+                good: document.getElementById('assessmentCommentGood').value,
+                grow: document.getElementById('assessmentCommentGrow').value,
+            });
+        }
+
         // ============================================================
         //   ЗАЩИТА ОТ СЛУЧАЙНОГО ЗАКРЫТИЯ ФОРМ
         // ============================================================
@@ -16054,7 +16112,7 @@
                 '<div class="analytics-empty">Выберите преподавателя и тип чек-листа сверху, чтобы начать.</div>';
             document.getElementById('assessmentMistakesWrap').style.display = 'none';
             document.getElementById('assessmentCommentWrap').style.display = 'none';
-            document.getElementById('assessmentComment').value = '';
+            _assCommentSet('');
             document.getElementById('assessmentFooter').style.display = 'none';
 
             openModal('assessmentModal');
@@ -17091,6 +17149,7 @@
                 });
             }
 
+            _assCommentSync();
             const comment = document.getElementById('assessmentComment').value.trim();
             const lessonLink = document.getElementById('assessmentLessonLink').value.trim();
             const textbook = document.getElementById('assessmentTextbook').value;
@@ -17794,7 +17853,7 @@
                 document.getElementById('assessmentDate').value = row.lesson_date;
                 document.getElementById('assessmentLessonLink').value = row.lesson_link || '';
                 document.getElementById('assessmentChecklist').value = row.checklist_type;
-                document.getElementById('assessmentComment').value = row.comment || '';
+                _assCommentSet(row.comment || '');
 
                 // Триггерим выбор препода и чек-листа чтобы рендер обновился
                 if (typeof onAssessmentTeacherChange === 'function') await onAssessmentTeacherChange();
