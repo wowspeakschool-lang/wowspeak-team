@@ -11230,7 +11230,7 @@
             const m2 = document.getElementById('newTeacherModal');
             if (m2 && m2.classList.contains('open')) tryCloseProtectedModal('newTeacherModal');
             const m3 = document.getElementById('profileModal');
-            if (m3 && m3.classList.contains('open')) closeProfileEditor();
+            if (m3 && m3.classList.contains('open') && _escCanClose(m3)) closeProfileEditor();
             const m4 = document.getElementById('penaltyModal');
             if (m4 && m4.classList.contains('open')) tryCloseProtectedModal('penaltyModal');
             const m5 = document.getElementById('bonusModal');
@@ -11242,17 +11242,17 @@
             const m8 = document.getElementById('penaltyConfirmModal');
             if (m8 && m8.classList.contains('open')) closePenaltyConfirm();
             const m9 = document.getElementById('inviteModal');
-            if (m9 && m9.classList.contains('open')) closeInviteForm();
+            if (m9 && m9.classList.contains('open') && _escCanClose(m9)) closeInviteForm();
             const m10 = document.getElementById('eventModal');
             if (m10 && m10.classList.contains('open')) tryCloseProtectedModal('eventModal');
             const m11 = document.getElementById('eventViewModal');
             if (m11 && m11.classList.contains('open')) closeEventView();
             const m12 = document.getElementById('manageContactsModal');
-            if (m12 && m12.classList.contains('open')) closeManageContacts();
+            if (m12 && m12.classList.contains('open') && _escCanClose(m12)) closeManageContacts();
             const m13 = document.getElementById('categoryFormModal');
-            if (m13 && m13.classList.contains('open')) closeCategoryForm();
+            if (m13 && m13.classList.contains('open') && _escCanClose(m13)) closeCategoryForm();
             const m14 = document.getElementById('contactMemberModal');
-            if (m14 && m14.classList.contains('open')) closeContactMemberForm();
+            if (m14 && m14.classList.contains('open') && _escCanClose(m14)) closeContactMemberForm();
             const m15 = document.getElementById('screeningModal');
             if (m15 && m15.classList.contains('open')) tryCloseProtectedModal('screeningModal');
             const m16 = document.getElementById('vacationRequestModal');
@@ -25714,6 +25714,40 @@
                 && e.target.classList.contains('card-modal'));
         }, true);
 
+        // Что-то меняли в окне — любое поле, а не только текст. Раньше
+        // «набранным» считались только textarea и input[type=text]: почта,
+        // телефон, даты, выпадающие списки и галочки терялись без вопроса.
+        // Отметка ставится на окно при любом вводе и снимается, когда окно
+        // скрывают. 12.10.2026, решение операционного директора.
+        const _GUARD_SEL = '.card-modal, .tracker-modal-backdrop, [data-close-guard]';
+        ['input', 'change'].forEach(type => document.addEventListener(type, (e) => {
+            const m = e.target && e.target.closest ? e.target.closest(_GUARD_SEL) : null;
+            if (m && m.dataset) m.dataset.userEdited = '1';
+        }, true));
+        function _modalIsShown(m) {
+            return m.classList.contains('open') || (m.style.display && m.style.display !== 'none');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const mo = new MutationObserver(list => {
+                for (const r of list) {
+                    const m = r.target;
+                    if (m.dataset && m.dataset.userEdited === '1' && !_modalIsShown(m)) m.dataset.userEdited = '0';
+                }
+            });
+            document.querySelectorAll('.card-modal, .tracker-modal-backdrop').forEach(m =>
+                mo.observe(m, { attributes: true, attributeFilter: ['class', 'style'] }));
+        });
+        function _modalHasUnsaved(el) {
+            if (el.dataset && el.dataset.userEdited === '1') return true;
+            return Array.from(el.querySelectorAll('textarea, input[type=text]'))
+                .some(x => (x.value || '').trim().length > 0);
+        }
+        // Закрытие по Esc для окон без своей проверки несохранённого
+        function _escCanClose(el) {
+            if (!_modalHasUnsaved(el)) return true;
+            return confirm('Закрыть окно? Введённое не сохранится.');
+        }
+
         function canCloseModal(el) {
             if (!window._ovDownOnBg) return false;   // выделяли текст внутри
             window._ovDownOnBg = false;
@@ -25721,22 +25755,22 @@
             // второй вопрос подряд был бы назойливым
             const handler = el.getAttribute('onclick') || '';
             if (handler.includes('tryCloseProtectedModal')) return true;
+            // Окно урока спрашивает само (closeLessonModal → isLessonDraftDirty)
+            if (handler.includes('closeLessonModal')) return true;
 
-            const typed = Array.from(el.querySelectorAll('textarea, input[type=text]'))
-                .some(x => (x.value || '').trim().length > 0);
-            if (typed) return confirm('Закрыть окно? Набранный текст не сохранится.');
+            if (_modalHasUnsaved(el)) return confirm('Закрыть окно? Введённое не сохранится.');
             return true;
         }
 
         function bindOverlayClose(overlay, onClose) {
             let startedOnOverlay = false;
+            // Любое изменение в окне — см. _modalHasUnsaved (12.10.2026)
+            overlay.setAttribute('data-close-guard', '');
             overlay.onmousedown = (e) => { startedOnOverlay = (e.target === overlay); };
             overlay.onclick = (e) => {
                 if (e.target !== overlay || !startedOnOverlay) return;
                 startedOnOverlay = false;
-                const typed = Array.from(overlay.querySelectorAll('textarea, input[type=text]'))
-                    .some(el => (el.value || '').trim().length > 0);
-                if (typed && !confirm('Закрыть окно? Набранный текст не сохранится.')) return;
+                if (_modalHasUnsaved(overlay) && !confirm('Закрыть окно? Введённое не сохранится.')) return;
                 onClose();
             };
         }
