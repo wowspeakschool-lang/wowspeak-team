@@ -34491,7 +34491,7 @@
                             <div style="font-size:14px; color:#0f172a;">
                                 ${hasAnyRole(['super_admin','admin','methodist','manager','assistant','curator']) ? `
                                     ${stu.phone ? `📞 <a href="tel:${escapeHtml(stu.phone.replace(/\s/g,''))}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.phone)}</a><br>` : ''}
-                                    ${stu.email ? `✉️ <a href="mailto:${escapeHtml(stu.email)}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.email)}</a>` : ''}
+                                    ${stu.email ? `✉️ <a href="mailto:${escapeHtml(stu.email)}" style="color:#475569; text-decoration:none;">${escapeHtml(stu.email)}</a><div id="parentOptoutNote"></div>` : ''}
                                     ${!stu.phone && !stu.email ? '<span style="color:#94a3b8;">—</span>' : ''}
                                 ` : '<span style="color:#94a3b8; font-size:13px;">Недоступно</span>'}
                             </div>
@@ -34538,9 +34538,36 @@
                     </div>
                 `;
                 renderWowCoins(stu.id);
+                if (stu.email) renderParentOptoutNote(stu.email);
             } catch (e) {
                 body.innerHTML = '<div style="padding:1rem; color:#dc2626;">Ошибка: ' + escapeHtml(e.message || String(e)) + '</div>';
             }
+        }
+
+        // Пометка в карточке ученика: родитель отписался от писем по ссылке
+        // из письма (страница ?parent_unsub=). Отписка хранится по адресу
+        // почты — тому же, что в карточке. Решение операционного директора,
+        // 12.10.2026: отписку оставили, но сотрудники должны её видеть.
+        const PARENT_OPTOUT_LABELS = {
+            homework:       'про домашку',
+            certificate:    'о сертификатах',
+            feedback_ready: 'об обратной связи',
+            tracker_soon:   'о трекере',
+        };
+        async function renderParentOptoutNote(email) {
+            const box = document.getElementById('parentOptoutNote');
+            if (!box) return;
+            const addr = String(email || '').trim().toLowerCase();
+            if (!addr) return;
+            const { data, error } = await sb.from('parent_email_optout')
+                .select('kind, created_at').eq('email', addr).order('created_at');
+            if (error || !data || !data.length || !document.body.contains(box)) return;
+            const all = data.find(r => r.kind === null);
+            const what = all
+                ? 'от всех писем школы'
+                : 'от писем ' + data.map(r => PARENT_OPTOUT_LABELS[r.kind] || r.kind).join(', ');
+            const when = formatDateShortRu((all || data[data.length - 1]).created_at);
+            box.innerHTML = `<div style="margin-top:6px; display:inline-block; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; padding:3px 8px; border-radius:6px; font-size:12px;">📭 Родитель отписался ${escapeHtml(what)} · ${escapeHtml(when)}</div>`;
         }
 
         function closeStudentDetail() {
