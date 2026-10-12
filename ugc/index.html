@@ -353,6 +353,10 @@
             <input id="contact" name="contact" type="text" placeholder="+7 900 000-00-00 или @username" required>
           </div>
           <div class="field">
+            <label for="childName">Имя ребёнка</label>
+            <input id="childName" name="child_name" type="text" placeholder="Имя" required>
+          </div>
+          <div class="field">
             <label for="age">Возраст ребёнка</label>
             <input id="age" name="age" type="text" placeholder="Например, 7 лет" required>
           </div>
@@ -418,19 +422,21 @@
     var form = this;
     var name = document.getElementById('name').value.trim();
     var contact = document.getElementById('contact').value.trim();
+    var childName = document.getElementById('childName').value.trim();
     var age = document.getElementById('age').value.trim();
     var err = document.getElementById('formErr');
     var btn = document.getElementById('sendBtn');
     err.style.display = 'none';
-    if(!name || !contact || !age){
+    if(!name || !contact || !childName || !age){
       if(!name){ document.getElementById('name').focus(); }
       else if(!contact){ document.getElementById('contact').focus(); }
+      else if(!childName){ document.getElementById('childName').focus(); }
       else { document.getElementById('age').focus(); }
       return;
     }
     btn.disabled = true; btn.textContent = 'Отправляем…';
     send({
-      name: name, contact: contact, age: age,
+      name: name, contact: contact, child_name: childName, age: age,
       blog: document.getElementById('blog').value,
       website: document.getElementById('website').value,
       utm: utmFromUrl()
@@ -444,7 +450,7 @@
       }
       err.textContent = r.status === 429
         ? 'Слишком много заявок подряд. Попробуйте чуть позже.'
-        : 'Проверьте, что заполнены имя, контакт и возраст ребёнка.';
+        : 'Проверьте, что заполнены имя, контакт, имя и возраст ребёнка.';
       err.style.display = 'block';
       btn.disabled = false; btn.textContent = 'Оставить заявку';
     }).catch(function(){
