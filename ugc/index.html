@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Снимайте с ребёнком — учитесь бесплатно · WowSpeak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing:border-box;
+    --indigo:#5A85E5;
+    --blue:#1865E7;
+    --purple:#9771FC;
+    --pink:#FB70CB;
+    --yellow:#FFDC07;
+    --sky:#6DCDFF;
+    --ink:#17204a;
+    --ink-soft:#4a5578;
+    --line:#e7ebf6;
+    --sky-wash:#f0f8ff;
+    --grad:linear-gradient(100deg,var(--indigo),var(--purple) 55%,var(--pink));
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--ink);
+    background:#fff;
+    line-height:1.6;
+    font-size:17px;
+  }
+  h1,h2,h3{font-family:"Nunito",system-ui,sans-serif;line-height:1.15;margin:0;letter-spacing:-.01em}
+  p{margin:0}
+  a{color:var(--blue)}
+  img{max-width:100%}
+
+  .wrap{width:100%;max-width:960px;margin:0 auto;padding:0 22px}
+  section{padding:64px 0}
+
+  /* highlight marker behind key figures */
+  .mark{
+    background:linear-gradient(transparent 58%, #fff3a0 58%);
+    padding:0 .12em;
+    font-weight:800;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+
+  /* buttons */
+  .btn{
+    display:inline-block;font-family:"Nunito",sans-serif;font-weight:800;font-size:18px;
+    color:#fff;background:var(--blue);border:0;border-radius:14px;
+    padding:16px 30px;text-decoration:none;cursor:pointer;
+    box-shadow:0 10px 24px rgba(24,101,231,.28);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(24,101,231,.34)}
+  .btn:focus-visible{outline:3px solid var(--purple);outline-offset:3px}
+
+  /* HERO */
+  .hero{position:relative;overflow:hidden;padding:76px 0 60px;text-align:center}
+  .hero::before{
+    content:"";position:absolute;inset:-40% -20% auto -20%;height:120%;
+    background:radial-gradient(60% 55% at 50% 0%, rgba(151,113,252,.16), transparent 70%),
+               radial-gradient(50% 45% at 85% 15%, rgba(251,112,203,.14), transparent 70%),
+               radial-gradient(45% 45% at 10% 20%, rgba(109,205,255,.18), transparent 70%);
+    z-index:0;pointer-events:none;
+  }
+  .hero .wrap{position:relative;z-index:1}
+  .eyebrow{
+    display:inline-block;font-family:"Nunito",sans-serif;font-weight:800;font-size:15px;
+    color:var(--purple);background:#f3efff;border-radius:999px;padding:7px 16px;margin-bottom:22px;
+  }
+  .hero h1{font-size:clamp(30px,6.4vw,52px);font-weight:900;margin-bottom:20px}
+  .hero h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-soft);max-width:620px;margin:0 auto 32px}
+  .hero .note{margin-top:16px;font-size:15px;color:var(--ink-soft)}
+
+  /* plain intro */
+  .lead{font-size:clamp(19px,2.6vw,23px);color:var(--ink);max-width:680px;margin:0 auto;text-align:center;font-weight:500}
+  .lead b{color:var(--blue);font-weight:700}
+
+  /* earnings — the hero of information */
+  .earn{background:var(--sky-wash);border-radius:28px;padding:14px 0 8px}
+  .earn h2{text-align:center;font-size:clamp(24px,4vw,34px);font-weight:900;margin-bottom:6px}
+  .earn .h-sub{text-align:center;color:var(--ink-soft);max-width:560px;margin:0 auto 30px;padding:0 22px}
+  .earn-grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:720px;margin:0 auto;padding:0 22px 26px}
+  .ecard{
+    background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px;
+    display:flex;gap:18px;align-items:flex-start;
+  }
+  .ecard .fig{font-family:"Nunito",sans-serif;font-weight:900;font-size:30px;color:var(--blue);flex:none;min-width:96px}
+  .ecard .fig.small{font-size:26px}
+  .ecard .txt h3{font-size:19px;font-weight:800;margin-bottom:4px}
+  .ecard .txt p{color:var(--ink-soft);font-size:16px}
+  .free{
+    max-width:720px;margin:0 auto;padding:0 22px;
+  }
+  .free-inner{
+    background:var(--grad);color:#fff;border-radius:18px;padding:24px 26px;
+  }
+  .free-inner h3{font-size:21px;font-weight:900;margin-bottom:6px}
+  .free-inner p{opacity:.95;font-size:16px}
+
+  /* generic content blocks */
+  .block h2{font-size:clamp(23px,3.6vw,32px);font-weight:900;margin-bottom:8px}
+  .block .intro{color:var(--ink-soft);max-width:640px;margin-bottom:26px}
+  ul.clean{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+  ul.clean li{position:relative;padding-left:36px;color:var(--ink);font-size:17px}
+  ul.clean li::before{
+    content:"";position:absolute;left:0;top:2px;width:22px;height:22px;border-radius:7px;
+    background:var(--sky-wash);
+    box-shadow:inset 0 0 0 2px var(--sky);
+  }
+  ul.clean li::after{
+    content:"";position:absolute;left:7px;top:8px;width:8px;height:5px;
+    border-left:2.5px solid var(--blue);border-bottom:2.5px solid var(--blue);
+    transform:rotate(-45deg);
+  }
+
+  /* profile requirements — tinted panel */
+  .panel{background:#faf8ff;border:1px solid #efe9ff;border-radius:22px;padding:34px 30px}
+  .bio-example{
+    margin-top:20px;background:#fff;border:1px dashed var(--purple);border-radius:14px;
+    padding:16px 18px;font-family:"Manrope",sans-serif;
+  }
+  .bio-example .cap{font-size:13px;color:var(--purple);font-weight:700;margin-bottom:6px;font-family:"Nunito",sans-serif}
+  .bio-example .line{font-size:17px;color:var(--ink);font-weight:600}
+
+  /* how it works — real sequence, numbering justified */
+  .steps{display:grid;gap:18px;max-width:720px;margin:0 auto}
+  .step{display:flex;gap:20px;align-items:flex-start}
+  .step .n{
+    flex:none;width:44px;height:44px;border-radius:13px;background:var(--grad);color:#fff;
+    font-family:"Nunito",sans-serif;font-weight:900;font-size:20px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .step .s-txt h3{font-size:19px;font-weight:800;margin-bottom:3px}
+  .step .s-txt p{color:var(--ink-soft);font-size:16px}
+
+  /* blog aside */
+  .aside{
+    background:var(--sky-wash);border-radius:20px;padding:28px 30px;
+    display:flex;gap:18px;align-items:flex-start;
+  }
+  .aside .dot{flex:none;width:14px;height:14px;border-radius:50%;background:var(--pink);margin-top:7px}
+  .aside h3{font-size:20px;font-weight:800;margin-bottom:6px}
+  .aside p{color:var(--ink-soft)}
+
+  /* trust line */
+  .trust{text-align:center;max-width:640px;margin:0 auto;color:var(--ink-soft)}
+  .trust b{color:var(--ink)}
+
+  /* FORM */
+  .form-sec{background:#0f1633;color:#fff;border-radius:30px;margin:20px 0 0}
+  .form-sec .wrap{padding:52px 26px}
+  .form-sec h2{color:#fff;font-size:clamp(25px,4.2vw,36px);font-weight:900;text-align:center;margin-bottom:8px}
+  .form-sec .fsub{text-align:center;color:#c3ccf0;max-width:520px;margin:0 auto 34px}
+  form{max-width:520px;margin:0 auto;display:grid;gap:16px}
+  .field{display:grid;gap:7px}
+  label{font-family:"Nunito",sans-serif;font-weight:700;font-size:15px;color:#e7ecff}
+  input,select{
+    font-family:"Manrope",sans-serif;font-size:16px;color:#fff;
+    background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.18);
+    border-radius:12px;padding:14px 16px;width:100%;
+  }
+  input::placeholder{color:#8792bd}
+  input:focus,select:focus{outline:none;border-color:var(--sky);background:rgba(255,255,255,.12)}
+  select option{color:#17204a}
+  .form-sec .btn{width:100%;background:var(--yellow);color:#17204a;box-shadow:0 12px 28px rgba(255,220,7,.25)}
+  .form-sec .btn:hover{box-shadow:0 16px 34px rgba(255,220,7,.32)}
+  .form-sec .btn:focus-visible{outline:3px solid var(--sky)}
+  .privacy{text-align:center;font-size:13px;color:#8792bd;margin-top:4px}
+  .ok{
+    display:none;text-align:center;background:rgba(109,205,255,.14);
+    border:1.5px solid var(--sky);border-radius:16px;padding:26px;color:#fff;
+  }
+  .ok.show{display:block}
+  .ok h3{color:#fff;font-size:22px;font-weight:900;margin-bottom:6px}
+  .ok p{color:#c3ccf0}
+
+  footer{text-align:center;padding:36px 22px 48px;color:var(--ink-soft);font-size:14px}
+
+  @media(min-width:680px){
+    .earn-grid{grid-template-columns:1fr 1fr}
+    .earn-grid .ecard.span{grid-column:1 / -1}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Для родителей наших учеников</span>
+    <h1>Снимаете короткие видео с ребёнком — <span class="g">он учится у нас бесплатно</span></h1>
+    <p class="sub">И вы получаете вознаграждение за каждого, кто придёт в школу по вашей рекомендации. Снимать можно на телефон, идеи присылаем мы.</p>
+    <a href="#zayavka" class="btn">Оставить заявку</a>
+    <p class="note">Никакой профессиональной съёмки. Ценим именно живые, домашние видео.</p>
+  </div>
+</header>
+
+<!-- INTRO -->
+<section>
+  <div class="wrap">
+    <p class="lead">Вы снимаете короткие ролики с ребёнком по нашим готовым идеям. За это <b>ребёнок бесплатно занимается в WowSpeak</b> и получает доступ ко всем активностям, а вы зарабатываете на учениках, которые придут по вашей ссылке.</p>
+  </div>
+</section>
+
+<!-- EARNINGS -->
+<section>
+  <div class="wrap">
+    <div class="earn">
+      <h2>Что вы получаете</h2>
+      <p class="h-sub">Ребёнок учится бесплатно, а за каждого приведённого ученика вы получаете вознаграждение.</p>
+      <div class="earn-grid">
+        <div class="ecard">
+          <div class="fig"><span class="mark">2000&nbsp;₽</span></div>
+          <div class="txt">
+            <h3>За полный абонемент</h3>
+            <p>Когда ученик приходит по вашему промокоду или ссылке и покупает полный абонемент.</p>
+          </div>
+        </div>
+        <div class="ecard">
+          <div class="fig small"><span class="mark">250&nbsp;₽</span></div>
+          <div class="txt">
+            <h3>За подписку</h3>
+            <p>За каждого, кто оформит подписку. Выплата повторяется с каждого продления, пока человек ей пользуется.</p>
+          </div>
+        </div>
+        <div class="ecard span">
+          <div class="fig small"><span class="mark">5%</span></div>
+          <div class="txt">
+            <h3>С каждой следующей оплаты</h3>
+            <p>Пока приведённый ученик продолжает у нас заниматься, вы получаете процент со всех его последующих оплат. Если он купил и абонемент, и подписку — выплаты складываются.</p>
+          </div>
+        </div>
+      </div>
+      <div class="free">
+        <div class="free-inner">
+          <h3>Ваш ребёнок учится бесплатно</h3>
+          <p>Полный доступ ко всем активностям: разговорные клубы, мастер-классы, читальные клубы и игровые стримы.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT WE NEED -->
+<section class="block">
+  <div class="wrap two">
+    <div>
+      <h2>Что нужно от вас</h2>
+      <p class="intro">Ничего сложного. Мы даём идею и подсказки, вы снимаете дома на телефон.</p>
+    </div>
+    <ul class="clean">
+      <li>12–16 коротких видео в месяц по нашим брифам. Готовую идею и подсказки присылаем мы, придумывать с нуля не нужно.</li>
+      <li>Съёмка на телефон и простой монтаж на вашей стороне. Ничего профессионального не требуется.</li>
+      <li>Видео выходят в аккаунте школы. Права на аккаунт и контент остаются за школой, это закрепим в договоре.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- PROFILE -->
+<section class="block">
+  <div class="wrap">
+    <div class="panel">
+      <h2>Аккаунт и оформление профиля</h2>
+      <p class="intro">Заводим отдельный аккаунт для съёмок. Если у ребёнка уже есть свой — используем его.</p>
+      <ul class="clean">
+        <li>В шапке профиля указываем, что ребёнок учит английский в WowSpeak.</li>
+        <li>В шапку прикрепляем ссылку на сайт с меткой. Её мы подготовим и пришлём вам готовой.</li>
+        <li>Там же размещаем ваш персональный промокод.</li>
+      </ul>
+      <div class="bio-example">
+        <div class="cap">Пример шапки профиля</div>
+        <div class="line">Учу английский в @wowspeak_online</div>
+      </div>
+      <p class="intro" style="margin-top:18px;margin-bottom:0">По промокоду новый ученик получает <span class="mark">скидку&nbsp;2000&nbsp;₽</span> на первый абонемент, а мы видим, что он пришёл именно от вас.</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS (sequence) -->
+<section class="block">
+  <div class="wrap">
+    <h2 style="text-align:center;margin-bottom:30px">Как начать</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <div class="s-txt"><h3>Оставляете заявку</h3><p>Заполняете короткую форму ниже, мы связываемся с вами.</p></div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div class="s-txt"><h3>Знакомимся и оформляем</h3><p>Договор подряда и отдельное согласие на съёмку и использование образа ребёнка. Для нас это принципиальный момент, всё по документам.</p></div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div class="s-txt"><h3>Получаете идеи, ссылку и промокод</h3><p>Присылаем первые брифы и готовую ссылку с меткой для шапки профиля.</p></div>
+      </div>
+      <div class="step">
+        <div class="n">4</div>
+        <div class="s-txt"><h3>Снимаете и пробуете</h3><p>Начинаем аккуратно и смотрим, как пойдёт. Ребёнок уже занимается бесплатно.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BLOG ASIDE -->
+<section class="block">
+  <div class="wrap">
+    <div class="aside">
+      <div class="dot"></div>
+      <div>
+        <h3>Если у вас есть свой блог с аудиторией</h3>
+        <p>Отдельно рассматриваем вариант дополнительных публикаций — 1–2 видео в месяц у вас в блоге, на вашу аудиторию, на отдельных условиях. Это по желанию и обсуждается индивидуально.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section style="padding-top:20px">
+  <div class="wrap">
+    <p class="trust">Платим за реальный результат: <b>пока приведённый ученик остаётся с нами, вы продолжаете получать выплаты.</b></p>
+  </div>
+</section>
+
+<!-- FORM -->
+<section id="zayavka">
+  <div class="wrap" style="padding-left:0;padding-right:0">
+    <div class="form-sec">
+      <div class="wrap">
+        <h2>Оставить заявку</h2>
+        <p class="fsub">Заполните форму, и мы свяжемся с вами, чтобы обсудить детали.</p>
+
+        <form id="ugcForm" novalidate>
+          <div class="field">
+            <label for="name">Как вас зовут</label>
+            <input id="name" name="name" type="text" placeholder="Имя" required>
+          </div>
+          <div class="field">
+            <label for="contact">Телефон или Telegram для связи</label>
+            <input id="contact" name="contact" type="text" placeholder="+7 900 000-00-00 или @username" required>
+          </div>
+          <div class="field">
+            <label for="age">Возраст ребёнка</label>
+            <input id="age" name="age" type="text" placeholder="Например, 7 лет" required>
+          </div>
+          <div class="field">
+            <label for="blog">Есть ли у вас свой блог с аудиторией</label>
+            <select id="blog" name="blog">
+              <option value="Нет">Нет</option>
+              <option value="Да">Да</option>
+            </select>
+          </div>
+          <!-- Ловушка для ботов: поле скрыто от людей, бот его заполняет и заявка отбрасывается -->
+          <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+            <label for="website">Сайт</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <p class="privacy" id="formErr" role="alert" style="display:none;color:#ffb4b4"></p>
+          <button type="submit" class="btn" id="sendBtn">Оставить заявку</button>
+          <p class="privacy">Нажимая кнопку, вы соглашаетесь на обработку контактных данных для связи с вами.</p>
+        </form>
+
+        <div class="ok" id="ok" role="status" aria-live="polite">
+          <h3>Заявка отправлена</h3>
+          <p>Спасибо! Мы свяжемся с вами в ближайшее время и расскажем, как начать.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  WowSpeak · онлайн-школа английского для детей 4–17 лет
+</footer>
+
+<script>
+  /* Заявка уходит в платформу: «Маркетинг → Контент-завод», этап «Заявка».
+     Сначала через наш адрес api.wowteach.ru (работает из России), при сбое —
+     напрямую. Ключей здесь нет: приём заявок проверяет их на сервере.
+     Подключено 12.10.2026 по решению операционного директора. */
+  var ENDPOINTS = [
+    'https://api.wowteach.ru/functions/v1/ugc-apply',
+    'https://vtcxghsqymwkyiogpndf.supabase.co/functions/v1/ugc-apply'
+  ];
+  function utmFromUrl(){
+    var out = {}, q = new URLSearchParams(location.search);
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k){
+      var v = q.get(k); if (v) out[k] = v.slice(0, 100);
+    });
+    return out;
+  }
+  function send(body, i){
+    return fetch(ENDPOINTS[i], {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+    }).then(function(r){
+      if (r.status >= 500 && i + 1 < ENDPOINTS.length) return send(body, i + 1);
+      return r;
+    }, function(e){
+      if (i + 1 < ENDPOINTS.length) return send(body, i + 1);
+      throw e;
+    });
+  }
+  document.getElementById('ugcForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var form = this;
+    var name = document.getElementById('name').value.trim();
+    var contact = document.getElementById('contact').value.trim();
+    var age = document.getElementById('age').value.trim();
+    var err = document.getElementById('formErr');
+    var btn = document.getElementById('sendBtn');
+    err.style.display = 'none';
+    if(!name || !contact || !age){
+      if(!name){ document.getElementById('name').focus(); }
+      else if(!contact){ document.getElementById('contact').focus(); }
+      else { document.getElementById('age').focus(); }
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Отправляем…';
+    send({
+      name: name, contact: contact, age: age,
+      blog: document.getElementById('blog').value,
+      website: document.getElementById('website').value,
+      utm: utmFromUrl()
+    }, 0).then(function(r){
+      if (r.ok) {
+        form.style.display = 'none';
+        var ok = document.getElementById('ok');
+        ok.classList.add('show');
+        ok.scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+      }
+      err.textContent = r.status === 429
+        ? 'Слишком много заявок подряд. Попробуйте чуть позже.'
+        : 'Проверьте, что заполнены имя, контакт и возраст ребёнка.';
+      err.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Оставить заявку';
+    }).catch(function(){
+      err.textContent = 'Не получилось отправить. Проверьте интернет и попробуйте ещё раз.';
+      err.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Оставить заявку';
+    });
+  });
+</script>
+
+</body>
+</html>
