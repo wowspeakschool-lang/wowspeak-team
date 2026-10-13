@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WowSpeak Team Management</title>
+
+    <!--
+      Тема применяется ДО первой отрисовки и до загрузки бандла. Иначе
+      человек с тёмной темой видит вспышку белого на каждой загрузке
+      страницы, и никакой React это исправить уже не может: к моменту его
+      запуска светлый кадр уже показан.
+
+      Скрипт намеренно синхронный, крошечный и без зависимостей.
+      Ключ хранилища продублирован строкой, а не импортирован из
+      theme.ts — импорт означал бы модуль, а модуль отложил бы исполнение
+      до конца парсинга документа, то есть вернул бы ту же вспышку.
+      При расхождении источник истины — THEME_STORAGE_KEY в src/theme/theme.ts.
+    -->
+    <script>
+      try {
+        var m = window.localStorage.getItem('wowspeak:theme');
+        if (m === 'light' || m === 'dark' || m === 'cute') document.documentElement.setAttribute('data-theme', m);
+      } catch (e) {
+        /* приватное окно или заблокированные данные сайта — остаёмся на системной теме */
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/assets/index-UgUSnPVa.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CBh3_v8q.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
