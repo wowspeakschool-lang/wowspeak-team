@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Снимайте с ребёнком — учитесь бесплатно · WowSpeak</title>
-<!-- Оформление по LANDING_DESIGN.md (правила владельца 15.10.2026): шрифты,
-     цвета, плашки, обводки «от руки», карточки-стикеры. Текст — из файла
-     владельца wowspeak_ugc_landing_v2.html без изменений. -->
+<!-- Цвета и шрифты — по LANDING_DESIGN.md. 15.10.2026 владелец попросила
+     облегчить: плашки, обводки, наклоны, скотч, сердечки и дудлы для этой
+     страницы «уводят от сути» — убраны. Текст — из файла владельца
+     wowspeak_ugc_landing_v2.html без изменений. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@700;800;900&family=Jost:wght@400;500;600&family=Caveat:wght@700&display=swap" rel="stylesheet">
@@ -191,6 +192,51 @@
   .doodle{position:absolute;pointer-events:none;z-index:0}
   .doodle path,.doodle circle{fill:none;stroke-linecap:round;stroke-linejoin:round}
 
+
+  /* облегчённый вариант (решение владельца 15.10.2026) */
+  .hero{padding:40px 0 56px}
+  .hero h1{font-size:clamp(32px,5vw,62px);max-width:960px}
+  .hero .fact{transform:none;background:var(--lilac-soft);color:var(--indigo);font-weight:500}
+  .accent{color:var(--pink)}
+  .num{color:var(--indigo);font-weight:700;white-space:nowrap}
+  .price .num{color:var(--indigo)}
+  .bg-lilac{background:transparent}
+  .bg-lilac .sec-title .w{color:var(--indigo)}
+  .sticker{background:#fff;border:1.5px solid var(--line);border-radius:22px;transform:none}
+  .free.sticker{background:var(--lilac-soft);border-color:transparent}
+  .plan.s-blue{background:#F3F8FE;border-color:#DCEBFA}
+  .plan.s-pink{background:#FDF4FA;border-color:#F6DCEC}
+  .plan .tag{transform:none}
+  .money .row,.calc,.selection,.bio,.rule{border:1px solid var(--line)}
+  .calc .cap,.bio .cap{font-family:"Jost",sans-serif;font-weight:600;font-size:15px;color:var(--indigo)}
+  .rule .x{background:#FDE7F5;color:var(--pink)}
+  .step{padding-top:28px;text-align:left}
+  .step .n{width:40px;height:40px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;
+    font-family:"Fira Sans Condensed",sans-serif;font-weight:800;font-size:19px;margin-bottom:14px}
+  .steps{gap:20px}
+  .sec-title{font-size:clamp(28px,4vw,48px)}
+  .form-intro h2{font-size:clamp(28px,4vw,48px)}
+  .bg-sky{background:#E6F5FE}
+  .form-intro .sticker{background:#fff}
+  section{padding:64px 0}
+
+  /* «чуть поярче» (владелец 15.10.2026): пастели и голубой блок формы, без украшений */
+  .hero .fact{background:var(--violet);color:#fff}
+  .free.sticker{background:var(--lilac)}
+  .plan.s-blue{background:var(--p-blue);border-color:transparent}
+  .plan.s-pink{background:var(--p-pink);border-color:transparent}
+  .money .row,.calc,.selection{border-color:transparent}
+  .two .sticker:first-child{background:var(--p-yellow);border-color:transparent}
+  .two .sticker:last-child{background:var(--lilac-soft);border-color:transparent}
+  .bio,.rule{border-color:transparent}
+  .rule .x{background:var(--pink);color:#fff}
+  .step.s-pink{background:var(--p-pink)} .step.s-yellow{background:var(--p-yellow)}
+  .step.s-blue{background:var(--p-blue)} .step.s-lilac{background:var(--lilac-soft)}
+  .step{border-color:transparent}
+  .step .n{background:var(--pink)}
+  .bg-sky{background:var(--sky)}
+  .form-intro p{color:var(--ink-strong)}
+  .form-intro .sticker{background:var(--p-yellow);border-color:transparent}
   @media(min-width:860px){
     .plans,.two{grid-template-columns:1fr 1fr}
     .steps{grid-template-columns:repeat(4,1fr)}
@@ -227,15 +273,12 @@
 
 <!-- ПЕРВЫЙ ЭКРАН -->
 <section class="hero">
-  <svg class="doodle" style="left:3%;top:40px" width="120" height="90" viewBox="0 0 120 90" aria-hidden="true"><path d="M6 60 C20 20 40 80 58 40 S96 10 112 44" stroke="#9E7EF5" stroke-width="2.4"/><circle cx="100" cy="76" r="6" stroke="#FBE12F" stroke-width="3"/></svg>
-  <svg class="doodle" style="right:4%;top:120px" width="110" height="110" viewBox="0 0 110 110" aria-hidden="true"><path d="M55 20 C62 40 70 48 90 55 C70 62 62 70 55 90 C48 70 40 62 20 55 C40 48 48 40 55 20 Z" stroke="#F772C8" stroke-width="2.4"/><circle cx="18" cy="18" r="5" stroke="#6CCFF6" stroke-width="3"/></svg>
   <div class="wrap">
     <span class="fact violet">Для родителей, которые готовы снимать с ребёнком</span>
-    <h1>Снимаете короткие видео <span class="circ">с ребёнком<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M8 22 C6 8 40 2 66 4 C92 6 100 16 96 26 C92 37 56 40 32 37 C14 35 4 30 8 18 C10 12 18 9 26 8" stroke="#FBE12F"/></svg></span> — он учится у нас <span class="hl">бесплатно</span></h1>
+    <h1>Снимаете короткие видео с ребёнком — он учится у нас <span class="accent">бесплатно</span></h1>
     <p class="sub">У нас два формата сотрудничества. В одном вы зарабатываете на учениках, которые придут по вашей рекомендации. В другом мы платим фиксированную сумму каждый месяц за съёмку роликов по нашим идеям.</p>
     <div class="cta-row">
       <a href="#formats" class="btn">Выбрать формат</a>
-      <span class="hand">← 2 формата</span>
     </div>
     <p class="note">Снимать можно на телефон. Идеи и подсказки присылаем мы.</p>
   </div>
@@ -244,7 +287,7 @@
 <!-- ОБЩАЯ ВЫГОДА -->
 <section style="padding-top:0">
   <div class="wrap">
-    <div class="free sticker s-yellow tape tilt-3">
+    <div class="free sticker s-yellow ">
       <h3>В обоих форматах ваш ребёнок учится бесплатно</h3>
       <p>Занятия английским с преподавателем и полный доступ ко всем активностям WowspeakSpace: разговорные клубы, мастер-классы, читальные клубы и игровые стримы.</p>
     </div>
@@ -253,14 +296,12 @@
 
 <!-- ФОРМАТЫ -->
 <section id="formats" class="bg-lilac">
-  <svg class="doodle" style="left:2%;top:60px" width="140" height="60" viewBox="0 0 140 60" aria-hidden="true"><path d="M4 40 L22 16 L40 40 L58 16 L76 40 L94 16 L112 40 L130 16" stroke="#fff" stroke-width="2.6"/></svg>
-  <svg class="doodle" style="right:3%;bottom:60px" width="100" height="100" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="30" stroke="#F772C8" stroke-width="2.4" stroke-dasharray="6 8"/><circle cx="84" cy="16" r="6" stroke="#FBE12F" stroke-width="3"/></svg>
   <div class="wrap">
     <h2 class="sec-title">Два <span class="w">формата</span> сотрудничества</h2>
     <p class="sec-sub">Выберите тот, что подходит именно вам.</p>
 
     <div class="plans">
-      <article class="plan sticker s-blue tape tilt-1" aria-labelledby="pa">
+      <article class="plan sticker s-blue " aria-labelledby="pa">
         <span class="tag fact indigo">Формат 1 · Партнёр</span>
         <h3 id="pa">Зарабатываете на рекомендациях</h3>
         <p class="who">Подойдёт, если вы готовы вести свой профиль и рассказывать о занятиях своей аудитории.</p>
@@ -280,7 +321,7 @@
             <tr><td>2-й месяц: 5% от 31&nbsp;200&nbsp;₽</td><td>1 560 ₽</td></tr>
             <tr><td>3-й месяц: 5% от 31&nbsp;200&nbsp;₽</td><td>1 560 ₽</td></tr>
             <tr><td>Подписка: 3 человека × 3 оплаты × 250 ₽</td><td>2 250 ₽</td></tr>
-            <tr class="sum"><td>Итого за 3 месяца</td><td><span class="hl">7 370 ₽</span></td></tr>
+            <tr class="sum"><td>Итого за 3 месяца</td><td><b class="num">7 370 ₽</b></td></tr>
           </table>
           <p style="margin-top:10px">Выплаты не ограничены: чем больше людей придёт по вашему промокоду и чем дольше они учатся, тем больше вы получаете. Если человек купил и абонемент, и подписку, выплаты складываются.</p>
         </div>
@@ -295,13 +336,13 @@
         <a href="#zayavka" class="btn" data-pick="a">Хочу этот формат</a>
       </article>
 
-      <article class="plan sticker s-pink tape tilt-2" aria-labelledby="pb">
+      <article class="plan sticker s-pink " aria-labelledby="pb">
         <span class="tag fact pink" style="background:var(--indigo)">Формат 2 · Креатор</span>
         <h3 id="pb">Фиксированная оплата за съёмку</h3>
         <p class="who">Подойдёт, если вы готовы снимать регулярно и по чётким брифам. Свой блог не нужен.</p>
         <div>
           <h4>Что вы получаете</h4>
-          <div class="price"><span class="hl">15 000 ₽</span> в месяц<small>плюс бесплатное обучение ребёнка со всеми активностями</small></div>
+          <div class="price"><b class="num">15 000 ₽</b> в месяц<small>плюс бесплатное обучение ребёнка со всеми активностями</small></div>
         </div>
         <div>
           <h4>Что нужно от вас</h4>
@@ -324,7 +365,7 @@
 <!-- СРАВНЕНИЕ -->
 <section>
   <div class="wrap">
-    <h2 class="sec-title sec-small" style="margin-bottom:34px">Коротко о <span class="circ">разнице<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M8 22 C6 8 40 2 66 4 C92 6 100 16 96 26 C92 37 56 40 32 37 C14 35 4 30 8 18 C10 12 18 9 26 8" stroke="#9E7EF5"/></svg></span></h2>
+    <h2 class="sec-title sec-small" style="margin-bottom:34px">Коротко о разнице</h2>
     <div class="card-white">
       <div class="compare-wrap">
         <table class="compare">
@@ -346,7 +387,7 @@
 <section style="padding-top:20px">
   <div class="wrap">
     <div class="two">
-      <div class="sticker s-yellow tape tilt-3">
+      <div class="sticker s-yellow ">
         <h2>Профиль для формата «Партнёр»</h2>
         <p class="intro">Заводим отдельный аккаунт для съёмок. Если у ребёнка уже есть свой, используем его.</p>
         <ul class="clean">
@@ -358,9 +399,9 @@
           <div class="cap">Пример шапки профиля</div>
           <div class="line">Учу английский в @wowspeak_online</div>
         </div>
-        <p style="margin-top:18px">По промокоду новый ученик получает <span class="hl">скидку 2&nbsp;000&nbsp;₽</span> на первый абонемент, а мы видим, что он пришёл именно от вас.</p>
+        <p style="margin-top:18px">По промокоду новый ученик получает <b class="num">скидку 2&nbsp;000&nbsp;₽</b> на первый абонемент, а мы видим, что он пришёл именно от вас.</p>
       </div>
-      <div class="sticker s-lilac tape tilt-4">
+      <div class="sticker s-lilac ">
         <h2>Чего не должно быть в роликах</h2>
         <p class="intro">Это касается и роликов для аккаунта школы, и роликов в вашем профиле: там ребёнок подписан как ученик WowSpeak.</p>
         <div class="rules">
@@ -377,12 +418,12 @@
 <!-- ШАГИ -->
 <section style="padding-top:20px">
   <div class="wrap">
-    <h2 class="sec-title" style="margin-bottom:64px">Как <span class="hl">начать</span></h2>
+    <h2 class="sec-title" style="margin-bottom:34px">Как начать</h2>
     <div class="steps">
-      <div class="step sticker s-pink tilt-1"><div class="heart"><svg viewBox="0 0 66 60" aria-hidden="true"><path d="M33 58 C10 42 2 30 2 18 C2 8 10 2 18 2 C25 2 30 6 33 12 C36 6 41 2 48 2 C56 2 64 8 64 18 C64 30 56 42 33 58 Z" fill="#F772C8"/></svg><b>01</b></div><h3>Оставляете заявку</h3><p>Выбираете формат. Для формата «Креатор» прикладываете 2–3 видео.</p></div>
-      <div class="step sticker s-yellow tilt-2"><div class="heart"><svg viewBox="0 0 66 60" aria-hidden="true"><path d="M33 58 C10 42 2 30 2 18 C2 8 10 2 18 2 C25 2 30 6 33 12 C36 6 41 2 48 2 C56 2 64 8 64 18 C64 30 56 42 33 58 Z" fill="#F772C8"/></svg><b>02</b></div><h3>Знакомимся и оформляем</h3><p>Договор подряда и отдельное письменное согласие на съёмку и использование образа ребёнка. Для нас это принципиальный момент, всё по документам.</p></div>
-      <div class="step sticker s-blue tilt-3"><div class="heart"><svg viewBox="0 0 66 60" aria-hidden="true"><path d="M33 58 C10 42 2 30 2 18 C2 8 10 2 18 2 C25 2 30 6 33 12 C36 6 41 2 48 2 C56 2 64 8 64 18 C64 30 56 42 33 58 Z" fill="#F772C8"/></svg><b>03</b></div><h3>Получаете брифы</h3><p>Присылаем первые идеи. В формате «Партнёр» — ещё ссылку с меткой и промокод для шапки.</p></div>
-      <div class="step sticker s-lilac tilt-4"><div class="heart"><svg viewBox="0 0 66 60" aria-hidden="true"><path d="M33 58 C10 42 2 30 2 18 C2 8 10 2 18 2 C25 2 30 6 33 12 C36 6 41 2 48 2 C56 2 64 8 64 18 C64 30 56 42 33 58 Z" fill="#F772C8"/></svg><b>04</b></div><h3>Снимаете</h3><p>Начинаем аккуратно и смотрим, как пойдёт. Ребёнок уже занимается бесплатно.</p></div>
+      <div class="step sticker s-pink"><div class="n">1</div><h3>Оставляете заявку</h3><p>Выбираете формат. Для формата «Креатор» прикладываете 2–3 видео.</p></div>
+      <div class="step sticker s-yellow"><div class="n">2</div><h3>Знакомимся и оформляем</h3><p>Договор подряда и отдельное письменное согласие на съёмку и использование образа ребёнка. Для нас это принципиальный момент, всё по документам.</p></div>
+      <div class="step sticker s-blue"><div class="n">3</div><h3>Получаете брифы</h3><p>Присылаем первые идеи. В формате «Партнёр» — ещё ссылку с меткой и промокод для шапки.</p></div>
+      <div class="step sticker s-lilac"><div class="n">4</div><h3>Снимаете</h3><p>Начинаем аккуратно и смотрим, как пойдёт. Ребёнок уже занимается бесплатно.</p></div>
     </div>
     <p class="trust">В формате «Партнёр» <b>вы получаете выплаты, пока приведённый ученик остаётся с нами.</b> В формате «Креатор» — <b>фиксированную сумму каждый месяц за принятые ролики.</b></p>
   </div>
@@ -390,14 +431,12 @@
 
 <!-- ФОРМА -->
 <section id="zayavka" class="bg-sky">
-  <div class="blob" style="width:420px;height:380px;left:-140px;top:-120px" aria-hidden="true"></div>
-  <div class="blob" style="width:360px;height:340px;right:-120px;bottom:-140px" aria-hidden="true"></div>
   <div class="wrap">
     <div class="form-grid">
       <div class="form-intro">
-        <h2>Оставить <span class="hl">заявку</span></h2>
+        <h2>Оставить заявку</h2>
         <p>Заполните форму, и мы свяжемся с вами, чтобы обсудить детали.</p>
-        <div class="sticker s-yellow tape tilt-1">
+        <div class="sticker s-yellow ">
           <p><b style="color:var(--indigo)">В обоих форматах ваш ребёнок учится бесплатно</b></p>
         </div>
       </div>
