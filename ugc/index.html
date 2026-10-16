@@ -458,6 +458,9 @@
             <label for="age">Возраст ребёнка</label>
             <input id="age" name="age" type="text" placeholder="Например, 7 лет" required>
           </div>
+          <!-- 16.10.2026, просьба операционного директора: отметка, что семья уже
+               учится в школе, — уходит в «Заметки» заявки -->
+          <label class="opt"><input type="checkbox" id="student" name="student"><div><b>Мы уже учимся в WowSpeak</b><span>Отметьте, если ребёнок сейчас занимается у нас</span></div></label>
 
           <fieldset>
             <legend>Какой формат вам интересен</legend>
@@ -585,6 +588,7 @@
         name: name, contact: contact, child_name: child, age: age,
         blog: document.getElementById('blog').value,
         format: picked.value,
+        already_student: document.getElementById('student').checked,
         videos: creator ? document.getElementById('videos').value.trim() : '',
         fallback: creator ? document.getElementById('fallback').value : '',
         website: document.getElementById('website').value,
