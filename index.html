@@ -11031,6 +11031,20 @@
             }[ch]));
         }
 
+        // lessons_folder_url хранит одну строку, но иногда там несколько
+        // ссылок через запятую/точку с запятой/перевод строки (временно,
+        // пока не завели пер-преподавательски несколько папок). Разбираем
+        // на отдельные иконки, чтобы клик шёл на нужную папку, а не всегда
+        // на первую по счёту.
+        function renderLessonsFolderLinks(url) {
+            if (!url) return '';
+            const links = String(url).split(/[,;\n]+/).map(u => u.trim()).filter(Boolean);
+            return links.map((u, i) => {
+                const label = links.length > 1 ? `Папка с уроками ${i + 1}` : 'Папка с уроками';
+                return ` <a href="${escapeHtml(u)}" target="_blank" rel="noopener" title="${escapeHtml(label)}" style="text-decoration:none; margin-left:4px;">📁</a>`;
+            }).join('');
+        }
+
         function renderValue(field, val) {
             // Массивы (chiplist)
             if (field.type === 'chiplist') {
@@ -24198,7 +24212,7 @@
                     return `
                         <div class="month-row">
                             ${checkmark}
-                            <div class="name">${escapeHtml(t.name)}${t.lessonsFolderUrl ? ` <a href="${escapeHtml(t.lessonsFolderUrl)}" target="_blank" rel="noopener" title="Папка с уроками" style="text-decoration:none; margin-left:4px;">📁</a>` : ''}${statusTag}</div>
+                            <div class="name">${escapeHtml(t.name)}${renderLessonsFolderLinks(t.lessonsFolderUrl)}${statusTag}</div>
                             ${scoresBlock}
                             ${actions}
                         </div>`;
@@ -24459,7 +24473,7 @@
                     return `
                         <div class="month-row month-row--with-methodist">
                             ${checkmark}
-                            <div class="name">${escapeHtml(t.name)}${t.lessonsFolderUrl ? ` <a href="${escapeHtml(t.lessonsFolderUrl)}" target="_blank" rel="noopener" title="Папка с уроками" style="text-decoration:none; margin-left:4px;">📁</a>` : ''}${statusTag}</div>
+                            <div class="name">${escapeHtml(t.name)}${renderLessonsFolderLinks(t.lessonsFolderUrl)}${statusTag}</div>
                             <div class="scores">${scoresPills}</div>
                             ${supervisorControl}
                             <div class="actions" style="white-space:nowrap;">
