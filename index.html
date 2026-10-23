@@ -13195,8 +13195,12 @@
                 } else {
                     const el = modal.querySelector('#' + key) || modal.querySelector('[name="' + key + '"]');
                     if (el && el.type !== 'checkbox' && el.type !== 'radio') {
+                        // change шлём только если значение правда поменялось:
+                        // на unitSelect он перестраивает списки навыков и стирает
+                        // то, что преподаватель уже написал
+                        const changed = (el.value !== value);
                         el.value = value;
-                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                        if (changed) el.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 }
             }
@@ -37460,10 +37464,14 @@
             }
 
             if (tbKey) {
+                // Подстановка из карточки не должна ничего перезаписывать, если
+                // там уже стоит то же самое: tr_onTextbookChange и tr_onUnitChange
+                // стирают списки навыков, включая строки, набранные руками.
+                const tbWasSame = (tbSel.value === tbKey);
                 tbSel.value = tbKey;
                 tbSel.disabled = true;  // блокируем
                 // Триггер onChange чтобы заполнился список юнитов
-                if (typeof window.tr_onTextbookChange === 'function') window.tr_onTextbookChange();
+                if (!tbWasSame && typeof window.tr_onTextbookChange === 'function') window.tr_onTextbookChange();
 
                 // Через микро-задержку подставим юнит (после того как onChange отрисовал options)
                 setTimeout(() => {
@@ -37475,7 +37483,7 @@
                         );
                         if (unitKey) {
                             const unitSel = document.getElementById('unitSelect');
-                            if (unitSel) {
+                            if (unitSel && unitSel.value !== unitKey) {
                                 unitSel.value = unitKey;
                                 if (typeof window.tr_onUnitChange === 'function') window.tr_onUnitChange();
                             }
@@ -45856,6 +45864,29 @@ function tr_onUnitChange() {
   info.textContent = '📘 ' + unit.label + ' — ' + unit.nameRu;
   info.classList.add('visible');
 
+  // Строки, которые преподаватель написал руками, при смене юнита не теряем.
+  // Отличаем их по тексту: всё, чего нет в каталоге учебника, — своё.
+  const _catalog = new Set();
+  Object.values(tb.units || {}).forEach(u => (u.skills || []).forEach(s => _catalog.add(String(s).trim())));
+  const _manualRows = (containerId) => {
+    const c = document.getElementById(containerId);
+    if (!c) return [];
+    return [...c.querySelectorAll('.skill-row')].map(r => ({
+      text: (r.querySelector('input[type="text"]')?.value || '').trim(),
+      checked: !!r.querySelector('input[type="checkbox"]')?.checked
+    })).filter(x => x.text && !_catalog.has(x.text));
+  };
+  const _appendManual = (container, rows) => {
+    rows.forEach(x => {
+      const r = document.createElement('div');
+      r.className = 'skill-row';
+      r.innerHTML = `<input type="checkbox" class="skill-check"${x.checked ? ' checked' : ''}><input type="text" value="${tr_escHtml(x.text)}">`;
+      container.appendChild(r);
+    });
+  };
+  const keepLearned = _manualRows('skillsLearned');
+  const keepNext    = _manualRows('skillsNext');
+
   // Skills Learned
   const lc = document.getElementById('skillsLearned');
   lc.innerHTML = '';
@@ -45865,6 +45896,7 @@ function tr_onUnitChange() {
     r.innerHTML = `<input type="checkbox" class="skill-check" checked><input type="text" value="${tr_escHtml(s)}">`;
     lc.appendChild(r);
   });
+  _appendManual(lc, keepLearned);
 
   // Next Period Goals
   const nc = document.getElementById('skillsNext');
@@ -45891,6 +45923,7 @@ function tr_onUnitChange() {
     nl.textContent = '🎓 Курс пройден!';
     nc.innerHTML = '<div class="skill-row"><input type="checkbox" class="skill-check" checked><input type="text" value="Курс завершён!"></div>';
   }
+  _appendManual(nc, keepNext);
 }
 
 function tr_onHwChange() {
