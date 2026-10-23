@@ -1,0 +1,1 @@
+import{s as t}from"./client-B_b3UY7k.js";function r(e){try{return e.self!==e.top?"cabinet":"link"}catch{return"cabinet"}}function a(e){t.rpc("mark_report_seen",{p_token:e,p_via:r(window)}).then(({error:n})=>{n&&console.warn("mark_report_seen:",n.message)})}export{a as m};
