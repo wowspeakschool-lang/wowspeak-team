@@ -25741,6 +25741,86 @@
             return `background:${c.bg}; border:1px solid ${c.border}; color:${c.color}; font-weight:600;`;
         }
 
+        // ---------- Чей ход (03.11.2026) ----------
+        // ТЗ «кейсы — чей ход» (31.10.2026), шаг 5: старая версия показывает, чей
+        // ход, и умеет передать его — той же функцией базы case_pass_turn, что и
+        // новая (app.wowteach.ru). Правила хода живут в базе (триггер
+        // client_cases_turn), здесь — только показ и кнопка. Решение
+        // операционного директора 31.10.2026: с кейсами здесь работают, ничего
+        // не скрывать.
+        const CC_CASE_ROLES = ['super_admin', 'methodist', 'assistant', 'curator', 'manager'];
+
+        function _ccPerson(id) {
+            return (_ccState.people || []).find(p => p.id === id) || null;
+        }
+
+        function _ccTurnHtml(c) {
+            const chip = (bg, color, text) =>
+                `<span style="display:inline-block; padding:2px 9px; border-radius:99px; font-size:11px; font-weight:600; background:${bg}; color:${color};">${text}</span>`;
+            if (c.status === 'closed') return '';
+            if (!c.turn_user_id) {
+                if (c.status === 'under_control') {
+                    const d = c.review_at ? new Date(c.review_at + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '';
+                    return chip('#fef3c7', '#a16207', '👁 На контроле' + (d ? ' · проверить ' + d : ''));
+                }
+                return chip('#fee2e2', '#991b1b', 'Ход: ни у кого — нужен ответственный');
+            }
+            const p = _ccPerson(c.turn_user_id);
+            const name = c.turn_user_id === currentAppUser?.id ? 'вы' : escapeHtml(p?.name || 'сотрудник');
+            if (p && !p.is_active) return chip('#fee2e2', '#991b1b', `Ход: ${name} (не работает)`);
+            const hours = Math.max(0, Math.floor((Date.now() - new Date(c.turn_since || c.created_at)) / 3600000));
+            const days = Math.floor(hours / 24);
+            const wait = hours < 1 ? 'меньше часа' : hours < 24 ? `${hours} ч` : `${days} ${days % 10 === 1 && days % 100 !== 11 ? 'день' : [2,3,4].includes(days % 10) && ![12,13,14].includes(days % 100) ? 'дня' : 'дней'}`;
+            const [bg, color] = hours < 24 ? ['#f1f5f9', '#475569'] : hours < 48 ? ['#fef3c7', '#92400e'] : ['#fee2e2', '#991b1b'];
+            return chip(bg, color, `Ход: ${name} · ${wait}`);
+        }
+
+        // Кому можно передать ход: автор, ответственные, работающие кураторы; не себе.
+        // Методисту — только если он ответственный (ту же проверку делает база).
+        function _ccPassCandidates(c) {
+            const me = currentAppUser?.id;
+            const out = [];
+            const add = (id) => {
+                if (!id || id === me || out.some(p => p.id === id)) return;
+                const p = _ccPerson(id);
+                if (!p || !p.is_active || !(p.roles || []).some(r => CC_CASE_ROLES.includes(r))) return;
+                out.push(p);
+            };
+            add(c.created_by);
+            _ccAssignees(c).forEach(add);
+            (_ccState.people || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'))
+                .filter(p => (p.roles || []).includes('curator')).forEach(p => add(p.id));
+            return out;
+        }
+
+        // Кому по умолчанию: ответственный — автору (уволен — старшему куратору);
+        // автор — тому, кто передал ему ход, иначе первому ответственному;
+        // остальные — первому ответственному
+        function _ccDefaultPassTo(c, cands) {
+            const me = currentAppUser?.id;
+            const ok = (id) => !!id && cands.some(p => p.id === id);
+            const asg = _ccAssignees(c).filter(ok);
+            const author = ok(c.created_by) ? c.created_by : (ok(_ccState.senior) ? _ccState.senior : null);
+            let pick;
+            if (_ccAssignees(c).includes(me)) pick = author || asg[0];
+            else if (c.created_by === me) pick = ok(c.turn_set_by) ? c.turn_set_by : asg[0];
+            else pick = asg[0] || author;
+            return pick || cands[0]?.id || '';
+        }
+
+        // Передать ход: комментарий (если написан), ход и одно уведомление «Ваш ход»
+        // получателю делает база; отдельное «Комментарий по кейсу» не шлём
+        async function _ccPassTurn(caseId) {
+            const to = document.getElementById('ccPassTo')?.value || '';
+            if (!to) { alert('Выберите, кому передать ход'); return; }
+            const body = (document.getElementById('ccNewComment')?.value || '').trim();
+            const { error } = await sb.rpc('case_pass_turn', { p_case_id: caseId, p_to_user: to, p_body: body || null });
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            closeClientCase();
+            await _ccLoadData();
+            renderClientCasesList();
+        }
+
         function setClientCasesTab(tab) {
             _ccState.tab = tab;
             document.querySelectorAll('[data-cctab]').forEach(b =>
@@ -25839,7 +25919,7 @@
         }
 
         async function _ccLoadData() {
-            const [casesRes, topicsRes, methRes] = await Promise.all([
+            const [casesRes, topicsRes, methRes, peopleRes, seniorRes] = await Promise.all([
                 sb.from('client_cases')
                     .select('*, students(id, name), teachers(id, name), methodist_topics(id, name, category)')
                     .order('created_at', { ascending: false }),
@@ -25852,7 +25932,13 @@
                     .contains('roles', ['methodist'])
                     .eq('handles_cases', true)
                     .order('name'),
+                // чей ход: имена всех с доступом к кейсам, уволенные тоже (03.11.2026)
+                sb.from('users').select('id, name, roles, is_active')
+                    .overlaps('roles', CC_CASE_ROLES),
+                sb.from('tg_notify_config').select('value').eq('key', 'cases:senior_curator').maybeSingle(),
             ]);
+            _ccState.people     = peopleRes.data || [];
+            _ccState.senior     = seniorRes.data?.value || null;
             _ccState.cases      = casesRes.data || [];
             _ccState.topics     = topicsRes.data || [];
             _ccState.staff = methRes.data || [];
@@ -25930,6 +26016,7 @@
                                 <div style="font-size:13px; color:#334155; margin-top:6px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
                                     ${escapeHtml(c.body || '')}
                                 </div>
+                                ${_ccTurnHtml(c) ? `<div style="margin-top:6px;">${_ccTurnHtml(c)}</div>` : ''}
                             </div>
                             <div style="text-align:right; white-space:nowrap;">
                                 <span style="padding:3px 9px; border-radius:99px; font-size:11px; ${_ccStyle(CC_STATUSES, c.status)}">${CC_STATUSES[c.status]?.label || c.status}</span>
@@ -26213,6 +26300,8 @@
             }
             const cat = CC_CATEGORIES[item.category] || {};
             const assignees = _ccAssignees(item);
+            const passCands = item.status === 'closed' ? [] : _ccPassCandidates(item);
+            const passTo = _ccDefaultPassTo(item, passCands);
             ov.innerHTML = `
                 <div style="background:white; border-radius:14px; padding:22px; width:min(680px,100%); box-shadow:0 20px 60px rgba(0,0,0,0.25);">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
@@ -26221,6 +26310,7 @@
                             <div style="font-size:0.82rem; color:#64748b;">
                                 ${escapeHtml(item.methodist_topics?.name || '—')} · создан ${formatDate(item.created_at)}
                             </div>
+                            ${_ccTurnHtml(item) ? `<div style="margin-top:5px;">${_ccTurnHtml(item)}</div>` : ''}
                         </div>
                         <button class="btn btn-secondary btn-small" onclick="closeClientCase()">Закрыть окно</button>
                     </div>
@@ -26259,6 +26349,12 @@
                             <button class="btn btn-small" style="background:#ede9fe; color:#5b21b6;"
                                     onclick="_ccAddComment('${item.id}')">Добавить</button>
                         </div>
+                        ${passCands.length ? `<div style="display:flex; gap:0.4rem; align-items:center; justify-content:flex-end; flex-wrap:wrap; margin-top:0.4rem;">
+                            <button class="btn btn-primary btn-small" onclick="_ccPassTurn('${item.id}')">👉 Передать ход →</button>
+                            <select id="ccPassTo" aria-label="Кому передать ход" style="padding:0.35rem 0.5rem; border:1px solid #cbd5e1; border-radius:8px; font-family:inherit; font-size:13px;">
+                                ${passCands.map(p => `<option value="${p.id}"${p.id === passTo ? ' selected' : ''}>${escapeHtml(p.name || '—')}</option>`).join('')}
+                            </select>
+                        </div>` : ''}
                     </div>
 
                     <div style="margin-bottom:0.9rem;">
