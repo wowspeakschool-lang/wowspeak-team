@@ -16219,7 +16219,18 @@
             tmSel.innerHTML = months.map(m => `<option value="${m.ym}">${m.lbl}</option>`).join('');
             tmSel.value = _screening.targetMonth || months[0].ym;
             _screening.targetMonth = tmSel.value;
-            tmSel.onchange = (e) => { _screening.targetMonth = e.target.value; loadAiScreeningFlags(); };
+            // Дата скрининга по умолчанию — последний день месяца, за который скринимся
+            // (решение владельца, 03.11.2026): раньше подставлялось «сегодня», и методисты
+            // в основном не меняли дату вручную, из-за чего она почти всегда уезжала
+            // на несколько дней в следующий месяц относительно target_month.
+            _screening.date = lastDayOfMonth(_screening.targetMonth);
+            document.getElementById('screeningDate').value = _screening.date;
+            tmSel.onchange = (e) => {
+                _screening.targetMonth = e.target.value;
+                _screening.date = lastDayOfMonth(_screening.targetMonth);
+                document.getElementById('screeningDate').value = _screening.date;
+                loadAiScreeningFlags();
+            };
 
             renderScreeningTags();
             updateScreeningScore();
@@ -24217,6 +24228,12 @@
             const [y, m] = ym.split('-').map(Number);
             const d = new Date(y, m, 1);   // m = текущий месяц - 1, итог = первое следующего
             return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+        }
+
+        function lastDayOfMonth(ym) {
+            const [y, m] = ym.split('-').map(Number);
+            const d = new Date(y, m, 0);   // день 0 месяца m (1-based) = последний день месяца m
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         }
 
         // Запуск формы скрининга для конкретного препода с указанием за какой месяц
